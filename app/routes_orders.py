@@ -45,10 +45,14 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db), user:
         raise HTTPException(404, "Клиент не найден")
 
     total = sum(item.price * item.quantity for item in data.items)
+    cname = data.client_name or client.full_name
     order = models.Order(
         client_id=data.client_id,
+        client_name=cname,
         order_type=data.order_type,
         status="active",
+        printer=data.printer,
+        description=data.description,
         complaint=data.complaint,
         modeler=data.modeler,
         address=data.address,
@@ -92,6 +96,12 @@ def update_order(order_id: int, data: schemas.OrderUpdate, db: Session = Depends
         if data.status != order.status:
             _log(db, order.id, user.id, user.full_name or user.username, f"Статус: {order.status} → {data.status}")
         order.status = data.status
+    if data.client_name is not None:
+        order.client_name = data.client_name
+    if data.printer is not None:
+        order.printer = data.printer
+    if data.description is not None:
+        order.description = data.description
     if data.complaint is not None:
         order.complaint = data.complaint
     if data.work_done is not None:
@@ -137,6 +147,8 @@ def delete_order(order_id: int, db: Session = Depends(get_db), user: models.User
     order = db.query(models.Order).get(order_id)
     if not order:
         raise HTTPException(404, "Заказ не найден")
+    if not user.role or not user.role.can_delete_orders:
+        raise HTTPException(403, "Нет права на удаление заказов")
     _log(db, order.id, user.id, user.full_name or user.username, "Заказ удалён")
     db.delete(order)
     db.commit()
@@ -163,9 +175,11 @@ def _order_to_out(o: models.Order) -> schemas.OrderOut:
     return schemas.OrderOut(
         id=o.id,
         client_id=o.client_id,
-        client_name=o.client.full_name,
+        client_name=o.client_name or o.client.full_name,
         order_type=o.order_type,
         status=o.status,
+        printer=o.printer,
+        description=o.description,
         complaint=o.complaint,
         work_done=o.work_done,
         parts_replaced=o.parts_replaced,

@@ -29,6 +29,7 @@ if not admin_role:
         can_edit_services=True,
         can_view_orders=True,
         can_edit_orders=True,
+        can_delete_orders=True,
         can_manage_users=True,
     )
     db.add(admin_role)

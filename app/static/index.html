@@ -7,197 +7,184 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-* { font-family: 'Inter', system-ui, sans-serif; }
-:root { --bg: #f8f9fc; --sidebar-bg: #0f172a; --sidebar-hover: #1e293b; --accent: #f97316; --accent-hover: #ea580c; --card-bg: #fff; --text: #1e293b; --text-muted: #64748b; --border: #e2e8f0; --table-header: #f1f5f9; --input-bg: #fff; --modal-bg: #fff; }
-body.dark { --bg: #0f172a; --sidebar-bg: #020617; --sidebar-hover: #1e293b; --accent: #f97316; --accent-hover: #ea580c; --card-bg: #1e293b; --text: #e2e8f0; --text-muted: #94a3b8; --border: #334155; --table-header: #1e293b; --input-bg: #1e293b; --modal-bg: #1e293b; }
-body { background: var(--bg); color: var(--text); transition: background .3s, color .3s; }
-.form-control, .form-select { background: var(--input-bg); color: var(--text); border-color: var(--border); }
-.form-control:focus, .form-select:focus { background: var(--input-bg); color: var(--text); }
-.modal-content { background: var(--modal-bg); color: var(--text); }
-.modal-header { border-bottom-color: var(--border) !important; }
-.modal-footer { border-top-color: var(--border) !important; }
-.table { color: var(--text); }
-.card { background: var(--card-bg); border-color: var(--border); }
-.sidebar { min-height: 100vh; background: var(--sidebar-bg); }
-.sidebar .brand { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,.08); }
-.sidebar .brand h5 { color: #fff; font-weight: 800; margin: 0; }
-.sidebar .brand small { color: var(--accent); font-size: .7rem; text-transform: uppercase; letter-spacing: 1px; }
-.sidebar .nav-link { color: #94a3b8; border-radius: 0; padding: 12px 24px; cursor: pointer; font-size: .9rem; font-weight: 500; transition: .2s; border-left: 3px solid transparent; }
-.sidebar .nav-link:hover { color: #fff; background: var(--sidebar-hover); border-left-color: var(--accent); }
-.sidebar .nav-link.active { color: #fff; background: var(--sidebar-hover); border-left-color: var(--accent); }
-.sidebar .sub-link { padding-left: 48px !important; font-size: .82rem; }
-.sidebar .sub-link.active { border-left-color: #60a5fa; }
-.content { padding: 28px 32px; }
-.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
-.card-body { padding: 0; }
-.table { margin: 0; font-size: .88rem; }
-.table th { background: var(--table-header); color: var(--text-muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .3px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
-.table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.table tr:last-child td { border-bottom: none; }
-.page-title { font-weight: 700; font-size: 1.3rem; margin: 0; }
-.btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-.btn-accent:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
-.btn-outline-accent { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.btn-outline-accent:hover { background: var(--accent); color: #fff; }
-.search-box { border-radius: 8px; border: 1px solid var(--border); padding: 6px 12px; font-size: .85rem; max-width: 260px; }
-.search-box:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
-.status-active { color: #2563eb; font-weight: 600; }
-.status-done { color: #d97706; font-weight: 600; }
-.status-delivered { color: #16a34a; font-weight: 600; }
-.profile-btn { background: none; border: none; color: #94a3b8; padding: 8px 12px; cursor: pointer; font-size: .85rem; border-radius: 8px; transition: .2s; }
-.profile-btn:hover { background: var(--sidebar-hover); color: #fff; }
-.calc-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-.calc-row select { flex: 1; }
-.calc-row input[type=number] { width: 80px; }
-.calc-row .calc-price { width: 100px; text-align: right; font-weight: 600; color: var(--accent); }
-.calc-row .calc-remove { cursor: pointer; color: #ef4444; font-weight: bold; }
-.calendar-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
-.cal-day { padding: 10px 6px; text-align: center; border-radius: 8px; font-size: .82rem; font-weight: 500; }
-.cal-day.present { background: #16a34a; color: #fff; }
-.cal-day.absent { background: #fef2f2; color: #dc2626; }
-.cal-day.future { background: var(--table-header); color: var(--text-muted); }
-.cal-day.today { outline: 2px solid var(--accent); outline-offset: -2px; }
-.cal-day.weekday { font-weight: 700; color: var(--text-muted); font-size: .72rem; text-transform: uppercase; }
-.sub-tabs { display: flex; gap: 4px; margin-bottom: 20px; }
-.sub-tab { padding: 6px 16px; border-radius: 8px; font-size: .82rem; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-muted); transition: .2s; }
-.sub-tab:hover { border-color: var(--accent); color: var(--accent); }
-.sub-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+*{font-family:'Inter',sans-serif}
+:root{--bg:#f8f9fc;--sidebar-bg:#0f172a;--sidebar-hover:#1e293b;--accent:#f97316;--accent-hover:#ea580c;--card-bg:#fff;--text:#1e293b;--text-muted:#64748b;--border:#e2e8f0;--table-header:#f1f5f9;--input-bg:#fff;--modal-bg:#fff}
+body.dark{--bg:#0f172a;--sidebar-bg:#020617;--sidebar-hover:#1e293b;--accent:#f97316;--accent-hover:#ea580c;--card-bg:#1e293b;--text:#e2e8f0;--text-muted:#94a3b8;--border:#334155;--table-header:#1e293b;--input-bg:#1e293b;--modal-bg:#1e293b}
+body{background:var(--bg);color:var(--text);transition:.3s}
+.form-control,.form-select{background:var(--input-bg);color:var(--text);border-color:var(--border)}
+.form-control:focus,.form-select:focus{background:var(--input-bg);color:var(--text)}
+.modal-content{background:var(--modal-bg);color:var(--text)}
+.modal-header,.modal-footer{border-color:var(--border)!important}
+.table{color:var(--text)}.card{background:var(--card-bg);border-color:var(--border)}
+.sidebar{min-height:100vh;background:var(--sidebar-bg)}
+.sidebar .brand{padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar .brand h5{color:#fff;font-weight:800;margin:0}
+.sidebar .brand small{color:var(--accent);font-size:.7rem;text-transform:uppercase;letter-spacing:1px}
+.sidebar .nav-link{color:#94a3b8;border-radius:0;padding:12px 24px;cursor:pointer;font-size:.9rem;font-weight:500;transition:.2s;border-left:3px solid transparent}
+.sidebar .nav-link:hover,.sidebar .nav-link.active{color:#fff;background:var(--sidebar-hover);border-left-color:var(--accent)}
+.sidebar .sub-link{padding-left:48px!important;font-size:.82rem}
+.sidebar .sub-link.active{border-left-color:#60a5fa}
+.content{padding:28px 32px}
+.card{border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card-body{padding:0}.table{margin:0;font-size:.88rem}
+.table th{background:var(--table-header);color:var(--text-muted);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.3px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.table tr:last-child td{border-bottom:none}
+.page-title{font-weight:700;font-size:1.3rem;margin:0}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn-accent:hover{background:var(--accent-hover);border-color:var(--accent-hover);color:#fff}
+.btn-outline-accent{border-color:var(--accent);color:var(--accent);font-weight:600}
+.btn-outline-accent:hover{background:var(--accent);color:#fff}
+.search-box{border-radius:8px;border:1px solid var(--border);padding:6px 12px;font-size:.85rem;max-width:260px}
+.search-box:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.status-active{color:#2563eb;font-weight:600}
+.status-done{color:#d97706;font-weight:600}
+.status-delivered{color:#16a34a;font-weight:600}
+.profile-btn{background:none;border:none;color:#94a3b8;padding:8px 12px;cursor:pointer;font-size:.85rem;border-radius:8px;transition:.2s}
+.profile-btn:hover{background:var(--sidebar-hover);color:#fff}
+.calc-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.calc-row select{flex:1}
+.calc-row input[type=number]{width:80px}
+.calc-row .calc-price{width:100px;text-align:right;font-weight:600;color:var(--accent)}
+.calc-row .calc-remove{cursor:pointer;color:#ef4444;font-weight:bold}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-day{padding:10px 6px;text-align:center;border-radius:8px;font-size:.82rem;font-weight:500}
+.cal-day.present{background:#16a34a;color:#fff}
+.cal-day.absent{background:#fef2f2;color:#dc2626}
+.cal-day.future{background:var(--table-header);color:var(--text-muted)}
+.cal-day.today{outline:2px solid var(--accent);outline-offset:-2px}
+.cal-day.weekday{font-weight:700;color:var(--text-muted);font-size:.72rem;text-transform:uppercase}
 </style>
 </head>
 <body>
-<div class="container-fluid">
-  <div class="row">
-    <!-- SIDEBAR -->
-    <div class="col-2 sidebar p-0 d-flex flex-column">
-      <div class="brand d-flex justify-content-between align-items-center">
-        <div><h5>3D Сервис</h5><small>CRM</small></div>
-        <div class="d-flex">
-          <button class="profile-btn" onclick="toggleTheme()" title="Тема">🌓</button>
-          <button class="profile-btn" onclick="showProfile()">&#128100;</button>
-        </div>
-      </div>
-      <ul class="nav flex-column mt-1 flex-grow-1" id="mainNav">
-        <li class="nav-item"><a class="nav-link" data-tab="tab-clients" onclick="switchTab('tab-clients')">Клиенты</a></li>
-        <li class="nav-item"><a class="nav-link" data-tab="tab-services" onclick="switchTab('tab-services')">Услуги</a></li>
-        <li class="nav-item">
-          <a class="nav-link active" id="ordersParentBtn" onclick="document.getElementById('ordersSubmenu').classList.toggle('show')">
-            Заказы <span class="badge bg-danger badge-notify" id="orderBadge" style="display:none;font-size:.6rem;margin-left:6px">0</span>
-          </a>
-          <div class="collapse show" id="ordersSubmenu">
-            <ul class="nav flex-column" id="ordersSubmenuList">
-              <li class="nav-item"><a class="nav-link sub-link active" data-tab="tab-active" onclick="switchTab('tab-active');updateSub(this)">Актуальные</a></li>
-              <li class="nav-item"><a class="nav-link sub-link" data-tab="tab-archive" onclick="switchTab('tab-archive');updateSub(this)">Архив</a></li>
-            </ul>
-          </div>
-        </li>
-        <li class="nav-item"><a class="nav-link" data-tab="tab-calc" onclick="switchTab('tab-calc')">Калькулятор</a></li>
-        <li class="nav-item">
-          <a class="nav-link" id="staffParentBtn" onclick="document.getElementById('staffSubmenu').classList.toggle('show')">
-            Сотрудники
-          </a>
-          <div class="collapse" id="staffSubmenu">
-            <ul class="nav flex-column" id="staffSubmenuList">
-              <li class="nav-item"><a class="nav-link sub-link" data-tab="tab-tasks" onclick="switchTab('tab-tasks');updateStaffSub(this)">Работы</a></li>
-              <li class="nav-item"><a class="nav-link sub-link" data-tab="tab-my-reports" onclick="switchTab('tab-my-reports');updateStaffSub(this)">Мои отчёты</a></li>
-              <li class="nav-item"><a class="nav-link sub-link" data-tab="tab-attendance" onclick="switchTab('tab-attendance');updateStaffSub(this)">Мои отметки</a></li>
-              <li class="nav-item"><a class="nav-link sub-link" data-tab="tab-schedule" onclick="switchTab('tab-schedule');updateStaffSub(this)">Моё расписание</a></li>
-              <li class="nav-item" id="navReports" style="display:none"><a class="nav-link sub-link" data-tab="tab-reports" onclick="switchTab('tab-reports');updateStaffSub(this)">Отчёты сотрудников</a></li>
-              <li class="nav-item" id="navAttendance" style="display:none"><a class="nav-link sub-link" data-tab="tab-all-attendance" onclick="switchTab('tab-all-attendance');updateStaffSub(this)">Все отметки</a></li>
-              <li class="nav-item" id="navScheduleAll" style="display:none"><a class="nav-link sub-link" data-tab="tab-all-schedule" onclick="switchTab('tab-all-schedule');updateStaffSub(this)">Расписание всех</a></li>
-              <li class="nav-item" id="navSummary" style="display:none"><a class="nav-link sub-link" data-tab="tab-summary" onclick="switchTab('tab-summary');updateStaffSub(this)">Сводка зарплаты</a></li>
-            </ul>
-          </div>
-        </li>
-        <li class="nav-item"><a class="nav-link" data-tab="tab-leads" onclick="switchTab('tab-leads')">Заявки</a></li>
-        <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-tab="tab-users" onclick="switchTab('tab-users')">Пользователи</a></li>
-      </ul>
-      <div class="p-3 border-top border-secondary border-opacity-10">
-        <span id="userName" class="text-white-50 small ms-2"></span>
-        <div class="d-flex gap-2 mt-2">
-          <button class="btn btn-sm btn-outline-light flex-grow-1" onclick="logout()">Выйти</button>
-          <a class="btn btn-sm btn-outline-accent" href="/api/export/database" id="backupBtn" style="display:none" title="Скачать БД">💾</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- CONTENT -->
-    <div class="col-10 content" id="tabContent">
-
-      <div class="tab-page" id="tab-clients" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Клиенты</h4><div><input class="search-box" id="clientSearch" placeholder="Поиск..." oninput="filterTable('clientsBody','clientSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showClientModal()">+ Новый</button><a class="btn btn-outline-accent btn-sm ms-2" href="/api/export/clients">Excel</a></div></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>ФИО</th><th>Телефон</th><th>Дата</th><th></th></tr></thead><tbody id="clientsBody"></tbody></table></div></div>
-      </div>
-
-      <div class="tab-page" id="tab-services" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Услуги</h4><button class="btn btn-accent btn-sm" onclick="showServiceModal()">+ Новая</button></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Название</th><th>Цена</th><th>Категория</th><th></th></tr></thead><tbody id="servicesBody"></tbody></table></div></div>
-      </div>
-
-      <div class="tab-page" id="tab-active" style="display:block">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Заказы в работе</h4><div><input class="search-box" id="activeSearch" placeholder="Поиск по клиенту..." oninput="filterTable('activeOrdersBody','activeSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showOrderModal()">+ Новый</button><a class="btn btn-outline-accent btn-sm ms-2" href="/api/export/orders">Excel</a></div></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Клиент</th><th>Тип</th><th>Статус</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody id="activeOrdersBody"></tbody></table></div></div>
-      </div>
-
-      <div class="tab-page" id="tab-archive" style="display:none">
-        <h4 class="page-title mb-3">Архив</h4>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Клиент</th><th>Тип</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody id="archiveOrdersBody"></tbody></table></div></div>
-      </div>
-
-      <div class="tab-page" id="tab-calc" style="display:none">
-        <h4 class="page-title mb-3">Калькулятор</h4>
-        <div class="card p-4"><div class="mb-3"><label class="form-label fw500">Категория</label><select class="form-select" id="calcCategory" onchange="loadCalcServices()" style="max-width:300px"><option value="repair">Ремонт</option><option value="print">3D печать</option></select></div><div id="calcRows"></div><button class="btn btn-outline-accent btn-sm mb-3" onclick="addCalcRow()">+ Добавить услугу</button><hr><div class="text-end fs-4"><strong>Итого: <span id="calcTotal" style="color:var(--accent)">0</span> ₽</strong></div></div>
-      </div>
-
-      <!-- STAFF TABS -->
-      <div class="tab-page" id="tab-tasks" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Работы</h4><button class="btn btn-accent btn-sm" onclick="showTaskModal()">+ Новая</button></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Название</th><th>Цена</th><th>Ед.</th><th></th></tr></thead><tbody id="tasksBody"></tbody></table></div></div>
-      </div>
-      <div class="tab-page" id="tab-my-reports" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Мои отчёты</h4><button class="btn btn-accent btn-sm" onclick="showReportModal()">+ Новый</button></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Работа</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Заказ</th><th>Дата</th></tr></thead><tbody id="myReportsBody"></tbody></table></div></div>
-      </div>
-      <div class="tab-page" id="tab-attendance" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Мои отметки</h4><div><button class="btn btn-accent btn-sm" onclick="checkIn()">✅ Отметиться</button><button class="btn btn-outline-accent btn-sm ms-2" onclick="checkOut()">🚪 Уйти</button></div></div>
-        <div class="row"><div class="col-12 mb-3"><div class="card p-3"><div id="attendanceCalendar" class="calendar-grid"></div></div></div><div class="col-12"><div class="card"><div class="card-body"><table class="table"><thead><tr><th>Дата</th><th>Пришёл</th><th>Ушёл</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div></div></div></div>
-      </div>
-      <div class="tab-page" id="tab-schedule" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Моё расписание</h4></div>
-        <div class="card p-3">
-          <div class="calendar-grid" id="scheduleCalendar"></div>
-        </div>
-        <div class="mt-3 card"><div class="card-body"><table class="table"><thead><tr><th>Дата</th><th>С</th><th>До</th></tr></thead><tbody id="myScheduleBody"></tbody></table></div></div>
-      </div>
-      <div class="tab-page" id="tab-reports" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Отчёты сотрудников</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/reports">Excel</a></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Работа</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Заказ</th><th>Дата</th><th></th></tr></thead><tbody id="allReportsBody"></tbody></table></div></div>
-      </div>
-      <div class="tab-page" id="tab-all-attendance" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Все отметки</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/attendance">Excel</a></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Пришёл</th><th>Ушёл</th><th></th></tr></thead><tbody id="allAttendanceBody"></tbody></table></div></div>
-      </div>
-      <div class="tab-page" id="tab-all-schedule" style="display:none">
-        <h4 class="page-title mb-3">Расписание всех сотрудников</h4>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Дата</th><th>С</th><th>До</th><th></th></tr></thead><tbody id="allScheduleBody"></tbody></table></div></div>
-      </div>
-      <div class="tab-page" id="tab-summary" style="display:none">
-        <h4 class="page-title mb-3">Сводка зарплаты</h4>
-        <div class="row mb-3 g-2"><div class="col"><label class="form-label small">С</label><input type="date" class="form-control form-control-sm" id="summaryFrom"></div><div class="col"><label class="form-label small">По</label><input type="date" class="form-control form-control-sm" id="summaryTo"></div><div class="col"><label class="form-label small">Сотрудник</label><select class="form-select form-select-sm" id="summaryUser"><option value="">Все</option></select></div><div class="col d-flex align-items-end"><button class="btn btn-accent btn-sm" onclick="loadSummary()">Показать</button></div></div>
-        <div class="card p-4" id="summaryResult" style="display:none"><p><strong>Всего:</strong> <span id="summaryTotal"></span> ₽</p><p><strong>Отчётов:</strong> <span id="summaryCount"></span></p><hr><h6>По сотрудникам</h6><div id="summaryByUser"></div></div>
-      </div>
-
-      <div class="tab-page" id="tab-leads" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Заявки с сайта</h4></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Имя</th><th>Телефон</th><th>Услуга</th><th>Сообщение</th><th>Статус</th><th>Дата</th><th></th></tr></thead><tbody id="leadsBody"></tbody></table></div></div>
-      </div>
-      <div class="tab-page" id="tab-users" style="display:none">
-        <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Пользователи</h4><div><button class="btn btn-outline-accent btn-sm me-2" onclick="showRoleModal()">Роли</button><button class="btn btn-accent btn-sm" onclick="showUserModal()">+ Новый</button></div></div>
-        <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Логин</th><th>Имя</th><th>Роль</th><th>Активен</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
-      </div>
-
-    </div>
-  </div>
+<div class="container-fluid"><div class="row">
+<div class="col-2 sidebar p-0 d-flex flex-column">
+<div class="brand d-flex justify-content-between align-items-center">
+<div><h5>3D Сервис</h5><small>CRM</small></div>
+<div><button class="profile-btn" onclick="toggleTheme()">🌓</button><button class="profile-btn" onclick="showProfile()">&#128100;</button></div>
 </div>
+<ul class="nav flex-column mt-1 flex-grow-1" id="mainNav">
+<li class="nav-item"><a class="nav-link" data-tab="tab-clients" onclick="switchTab('tab-clients')">Клиенты</a></li>
+<li class="nav-item"><a class="nav-link" data-tab="tab-services" onclick="switchTab('tab-services')">Услуги</a></li>
+<li class="nav-item">
+<a class="nav-link active" onclick="document.getElementById('ordersSubmenu').classList.toggle('show')">
+Заказы <span class="badge bg-danger" id="orderBadge" style="display:none;font-size:.6rem;margin-left:6px">0</span>
+</a>
+<div class="collapse show" id="ordersSubmenu">
+<ul class="nav flex-column" id="ordersSubmenuList">
+<li class="nav-item"><a class="nav-link sub-link active" data-tab="tab-active" onclick="switchTab('tab-active');updateOrderSub(this)">Актуальные</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-archive" onclick="switchTab('tab-archive');updateOrderSub(this)">Архив</a></li>
+</ul>
+</div>
+</li>
+<li class="nav-item"><a class="nav-link" data-tab="tab-leads" onclick="switchTab('tab-leads')">Заявки</a></li>
+<li class="nav-item"><a class="nav-link" data-tab="tab-calc" onclick="switchTab('tab-calc')">Калькулятор</a></li>
+<li class="nav-item">
+<a class="nav-link" onclick="document.getElementById('staffSubmenu').classList.toggle('show')">Сотрудники</a>
+<div class="collapse" id="staffSubmenu">
+<ul class="nav flex-column" id="staffSubmenuList">
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-tasks" onclick="switchTab('tab-tasks');updateStaffSub(this)">Работы</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-my-reports" onclick="switchTab('tab-my-reports');updateStaffSub(this)">Мои отчёты</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-attendance" onclick="switchTab('tab-attendance');updateStaffSub(this)">Мои отметки</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-schedule" onclick="switchTab('tab-schedule');updateStaffSub(this)">Моё расписание</a></li>
+<li class="nav-item" id="navReports" style="display:none"><a class="nav-link sub-link" data-tab="tab-reports" onclick="switchTab('tab-reports');updateStaffSub(this)">Отчёты сотрудников</a></li>
+<li class="nav-item" id="navAttendance" style="display:none"><a class="nav-link sub-link" data-tab="tab-all-attendance" onclick="switchTab('tab-all-attendance');updateStaffSub(this)">Все отметки</a></li>
+<li class="nav-item" id="navScheduleAll" style="display:none"><a class="nav-link sub-link" data-tab="tab-all-schedule" onclick="switchTab('tab-all-schedule');updateStaffSub(this)">Расписание всех</a></li>
+<li class="nav-item" id="navSummary" style="display:none"><a class="nav-link sub-link" data-tab="tab-summary" onclick="switchTab('tab-summary');updateStaffSub(this)">Сводка зарплаты</a></li>
+</ul>
+</div>
+</li>
+<li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-tab="tab-users" onclick="switchTab('tab-users')">Пользователи</a></li>
+</ul>
+<div class="p-3 border-top border-secondary border-opacity-10">
+<span id="userName" class="text-white-50 small ms-2"></span>
+<div class="d-flex gap-2 mt-2">
+<button class="btn btn-sm btn-outline-light flex-grow-1" onclick="logout()">Выйти</button>
+<a class="btn btn-sm btn-outline-accent" href="/api/export/database" id="backupBtn" style="display:none">💾</a>
+</div>
+</div>
+</div>
+
+<div class="col-10 content" id="tabContent">
+
+<div class="tab-page" id="tab-clients" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Клиенты</h4><div><input class="search-box" id="clientSearch" placeholder="Поиск..." oninput="filterTable('clientsBody','clientSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showClientModal()">+ Новый</button><a class="btn btn-outline-accent btn-sm ms-2" href="/api/export/clients">Excel</a></div></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>ФИО</th><th>Телефон</th><th>Дата</th><th></th></tr></thead><tbody id="clientsBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-services" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Услуги</h4><button class="btn btn-accent btn-sm" onclick="showServiceModal()">+ Новая</button></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Название</th><th>Цена</th><th>Категория</th><th></th></tr></thead><tbody id="servicesBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-active" style="display:block">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Актуальные заказы</h4><div><input class="search-box" id="activeSearch" placeholder="Поиск..." oninput="filterTable('activeOrdersBody','activeSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showOrderModal()">+ Новый</button><a class="btn btn-outline-accent btn-sm ms-2" href="/api/export/orders">Excel</a></div></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Тип</th><th>Клиент</th><th>Принтер</th><th>Статус</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody id="activeOrdersBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-archive" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Архив</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/orders">Excel</a></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Тип</th><th>Клиент</th><th>Принтер</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody id="archiveOrdersBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-leads" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Заявки с сайта</h4></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Имя</th><th>Телефон</th><th>Услуга</th><th>Сообщение</th><th>Статус</th><th>Дата</th><th></th></tr></thead><tbody id="leadsBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-calc" style="display:none">
+<h4 class="page-title mb-3">Калькулятор</h4>
+<div class="card p-4"><div class="mb-3"><label class="form-label fw500">Категория</label><select class="form-select" id="calcCategory" onchange="loadCalcServices()" style="max-width:300px"><option value="repair">Ремонт</option><option value="print">3D печать</option></select></div><div id="calcRows"></div><button class="btn btn-outline-accent btn-sm mb-3" onclick="addCalcRow()">+ Добавить услугу</button><hr><div class="text-end fs-4"><strong>Итого: <span id="calcTotal" style="color:var(--accent)">0</span> ₽</strong></div></div>
+</div>
+
+<div class="tab-page" id="tab-tasks" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Работы</h4><button class="btn btn-accent btn-sm" onclick="showTaskModal()">+ Новая</button></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Название</th><th>Цена</th><th>Ед.</th><th></th></tr></thead><tbody id="tasksBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-my-reports" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Мои отчёты</h4><button class="btn btn-accent btn-sm" onclick="showReportModal()">+ Новый</button></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Работа</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Заказ</th><th>Дата</th></tr></thead><tbody id="myReportsBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-attendance" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Мои отметки</h4><div><button class="btn btn-accent btn-sm" onclick="checkIn()">✅ Отметиться</button><button class="btn btn-outline-accent btn-sm ms-2" onclick="checkOut()">🚪 Уйти</button></div></div>
+<div class="row"><div class="col-12 mb-3"><div class="card p-3"><div id="attendanceCalendar" class="calendar-grid"></div></div></div><div class="col-12"><div class="card"><div class="card-body"><table class="table"><thead><tr><th>Дата</th><th>Пришёл</th><th>Ушёл</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div></div></div></div>
+</div>
+
+<div class="tab-page" id="tab-schedule" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Моё расписание</h4></div>
+<div class="card p-3"><div class="calendar-grid" id="scheduleCalendar"></div></div>
+<div class="mt-3 card"><div class="card-body"><table class="table"><thead><tr><th>Дата</th><th>С</th><th>До</th></tr></thead><tbody id="myScheduleBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-reports" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Отчёты сотрудников</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/reports">Excel</a></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Работа</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Заказ</th><th>Дата</th><th></th></tr></thead><tbody id="allReportsBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-all-attendance" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Все отметки</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/attendance">Excel</a></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Пришёл</th><th>Ушёл</th><th></th></tr></thead><tbody id="allAttendanceBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-all-schedule" style="display:none">
+<h4 class="page-title mb-3">Расписание всех сотрудников</h4>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Дата</th><th>С</th><th>До</th><th></th></tr></thead><tbody id="allScheduleBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-summary" style="display:none">
+<h4 class="page-title mb-3">Сводка зарплаты</h4>
+<div class="row mb-3 g-2"><div class="col"><label class="form-label small">С</label><input type="date" class="form-control form-control-sm" id="summaryFrom"></div><div class="col"><label class="form-label small">По</label><input type="date" class="form-control form-control-sm" id="summaryTo"></div><div class="col"><label class="form-label small">Сотрудник</label><select class="form-select form-select-sm" id="summaryUser"><option value="">Все</option></select></div><div class="col d-flex align-items-end"><button class="btn btn-accent btn-sm" onclick="loadSummary()">Показать</button></div></div>
+<div class="card p-4" id="summaryResult" style="display:none"><p><strong>Всего:</strong> <span id="summaryTotal"></span> ₽</p><p><strong>Отчётов:</strong> <span id="summaryCount"></span></p><hr><h6>По сотрудникам</h6><div id="summaryByUser"></div></div>
+</div>
+
+<div class="tab-page" id="tab-users" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Пользователи</h4><div><button class="btn btn-outline-accent btn-sm me-2" onclick="showRoleModal()">Роли</button><button class="btn btn-accent btn-sm" onclick="showUserModal()">+ Новый</button></div></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Логин</th><th>Имя</th><th>Роль</th><th>Активен</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
+</div>
+
+</div></div></div>
 
 <!-- MODALы -->
 <div class="modal fade" id="clientModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
@@ -213,27 +200,31 @@ body { background: var(--bg); color: var(--text); transition: background .3s, co
 <div class="modal fade" id="orderModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
 <form id="orderForm" onsubmit="return saveOrder(event)"><div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title">Новый заказ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
 <div class="modal-body">
-  <div class="row mb-3"><div class="col"><label class="form-label">Клиент</label><select class="form-select" id="orderClientSelect" required><option value="">— выберите —</option></select></div><div class="col"><label class="form-label">Тип</label><select class="form-select" id="orderType" onchange="toggleOrderTypeFields()"><option value="repair">Ремонт</option><option value="print">3D печать</option></select></div></div>
-  <div class="mb-3" id="orderModelerField" style="display:none"><label class="form-label">Кто моделировал</label><input class="form-control" id="orderModeler"></div>
-  <div class="mb-3"><label class="form-label">Жалоба</label><textarea class="form-control" id="orderComplaint" rows="2"></textarea></div>
-  <div class="row mb-3"><div class="col"><label class="form-label">Адрес</label><input class="form-control" id="orderAddress"></div><div class="col"><label class="form-label">Время получения</label><input class="form-control" id="orderPickupTime" placeholder="завтра 14:00"></div></div>
-  <div class="mb-3"><label class="form-label">Примечание</label><textarea class="form-control" id="orderNote" rows="2"></textarea></div>
-  <h6 class="fw600">Услуги</h6><div id="orderItems" class="mb-2"></div><button type="button" class="btn btn-outline-accent btn-sm" onclick="addOrderItem()">+ Добавить</button><hr>
-  <div class="text-end fs-5"><strong>Итого: <span id="orderTotal" style="color:var(--accent)">0</span> ₽</strong></div>
+<div class="row mb-3"><div class="col"><label class="form-label">Клиент из БД</label><select class="form-select" id="orderClientSelect"><option value="">— выберите —</option></select></div><div class="col"><label class="form-label">Или имя вручную</label><input class="form-control" id="orderClientName" placeholder="ФИО"></div></div>
+<div class="row mb-3"><div class="col"><label class="form-label">Тип</label><select class="form-select" id="orderType" onchange="toggleOrderTypeFields()"><option value="repair">Ремонт</option><option value="print">3D печать</option></select></div><div class="col"><label class="form-label">Принтер / оборудование</label><input class="form-control" id="orderPrinter" placeholder="Creality, Anycubic..."></div></div>
+<div class="mb-3"><label class="form-label">Описание / что нужно сделать</label><textarea class="form-control" id="orderDescription" rows="3"></textarea></div>
+<div class="mb-3" id="orderModelerField" style="display:none"><label class="form-label">Кто моделировал</label><input class="form-control" id="orderModeler"></div>
+<div class="mb-3"><label class="form-label">Жалоба клиента</label><textarea class="form-control" id="orderComplaint" rows="2"></textarea></div>
+<div class="row mb-3"><div class="col"><label class="form-label">Адрес</label><input class="form-control" id="orderAddress"></div><div class="col"><label class="form-label">Время получения</label><input class="form-control" id="orderPickupTime" placeholder="завтра 14:00"></div></div>
+<div class="mb-3"><label class="form-label">Примечание</label><textarea class="form-control" id="orderNote" rows="2"></textarea></div>
+<h6 class="fw600">Услуги</h6><div id="orderItems" class="mb-2"></div><button type="button" class="btn btn-outline-accent btn-sm" onclick="addOrderItem()">+ Добавить</button><hr>
+<div class="text-end fs-5"><strong>Итого: <span id="orderTotal" style="color:var(--accent)">0</span> ₽</strong></div>
 </div>
 <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-accent">Создать</button></div></form></div></div></div>
 
 <div class="modal fade" id="editOrderModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
 <form id="editOrderForm" onsubmit="return saveEditOrder(event)"><input type="hidden" id="editOrderId"><div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title" id="editOrderTitle">Заказ #</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
 <div class="modal-body">
-  <div class="row mb-3"><div class="col"><strong>Клиент:</strong> <span id="editClientName"></span></div><div class="col"><strong>Тип:</strong> <span id="editOrderType"></span></div><div class="col"><strong>Статус:</strong><select class="form-select form-select-sm d-inline-block w-auto" id="editOrderStatus"><option value="active">В работе</option><option value="done">Сделан</option><option value="delivered">Выдан</option></select></div></div>
-  <div id="editRepairFields"><div class="mb-3"><label class="form-label">Жалоба</label><textarea class="form-control" id="editComplaint" rows="2"></textarea></div><div class="mb-3"><label class="form-label">Что сделано</label><textarea class="form-control" id="editWorkDone" rows="3"></textarea></div><div class="mb-3"><label class="form-label">Запчасти</label><textarea class="form-control" id="editPartsReplaced" rows="3"></textarea></div></div>
-  <div class="mb-3" id="editModelerField"><label class="form-label">Кто моделировал</label><input class="form-control" id="editModeler"></div>
-  <div class="row mb-3"><div class="col"><label class="form-label">Адрес</label><input class="form-control" id="editAddress"></div><div class="col"><label class="form-label">Время</label><input class="form-control" id="editPickupTime"></div></div>
-  <div class="mb-3"><label class="form-label">Примечание</label><textarea class="form-control" id="editNote" rows="2"></textarea></div>
-  <h6 class="fw600">Услуги</h6><div id="editOrderItems" class="mb-2"></div><button type="button" class="btn btn-outline-accent btn-sm" onclick="addEditOrderItem()">+ Добавить</button><hr>
-  <div class="text-end fs-5"><strong>Итого: <span id="editOrderTotal" style="color:var(--accent)">0</span> ₽</strong></div>
-  <hr><h6 class="fw600">История</h6><div id="orderLogs" class="small text-muted"></div>
+<div class="row mb-3"><div class="col"><strong>Тип:</strong> <span id="editOrderType"></span></div><div class="col"><strong>Статус:</strong><select class="form-select form-select-sm d-inline-block w-auto" id="editOrderStatus"><option value="active">В работе</option><option value="done">Сделан</option><option value="delivered">Выдан</option></select></div></div>
+<div class="row mb-3"><div class="col"><label class="form-label">Клиент</label><input class="form-control" id="editClientName"></div><div class="col"><label class="form-label">Принтер</label><input class="form-control" id="editPrinter"></div></div>
+<div class="mb-3"><label class="form-label">Описание</label><textarea class="form-control" id="editDescription" rows="3"></textarea></div>
+<div id="editRepairFields"><div class="mb-3"><label class="form-label">Жалоба</label><textarea class="form-control" id="editComplaint" rows="2"></textarea></div><div class="mb-3"><label class="form-label">Что сделано</label><textarea class="form-control" id="editWorkDone" rows="3"></textarea></div><div class="mb-3"><label class="form-label">Запчасти</label><textarea class="form-control" id="editPartsReplaced" rows="3"></textarea></div></div>
+<div class="mb-3" id="editModelerField"><label class="form-label">Кто моделировал</label><input class="form-control" id="editModeler"></div>
+<div class="row mb-3"><div class="col"><label class="form-label">Адрес</label><input class="form-control" id="editAddress"></div><div class="col"><label class="form-label">Время</label><input class="form-control" id="editPickupTime"></div></div>
+<div class="mb-3"><label class="form-label">Примечание</label><textarea class="form-control" id="editNote" rows="2"></textarea></div>
+<h6 class="fw600">Услуги</h6><div id="editOrderItems" class="mb-2"></div><button type="button" class="btn btn-outline-accent btn-sm" onclick="addEditOrderItem()">+ Добавить</button><hr>
+<div class="text-end fs-5"><strong>Итого: <span id="editOrderTotal" style="color:var(--accent)">0</span> ₽</strong></div>
+<hr><h6 class="fw600">История</h6><div id="orderLogs" class="small text-muted"></div>
 </div>
 <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Закрыть</button><button type="submit" class="btn btn-accent">Сохранить</button></div></form></div></div></div>
 
@@ -249,25 +240,12 @@ body { background: var(--bg); color: var(--text); transition: background .3s, co
 
 <div class="modal fade" id="scheduleModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
 <form id="scheduleForm" onsubmit="return saveSchedule(event)"><div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title">Расписание на <span id="scheduleModalDate"></span></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-<div class="modal-body">
-  <input type="hidden" id="scheduleDate">
-  <div class="mb-3"><label class="form-label">С</label><input type="time" class="form-control" id="scheduleFrom" required></div>
-  <div class="mb-3"><label class="form-label">До</label><input type="time" class="form-control" id="scheduleTo" required></div>
-</div>
+<div class="modal-body"><input type="hidden" id="scheduleDate"><div class="mb-3"><label class="form-label">С</label><input type="time" class="form-control" id="scheduleFrom" required></div><div class="mb-3"><label class="form-label">До</label><input type="time" class="form-control" id="scheduleTo" required></div></div>
 <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-accent">Сохранить</button></div></form></div></div></div>
 
 <div class="modal fade" id="profileModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
 <div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title">Профиль</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-<div class="modal-body">
-  <p><strong>Логин:</strong> <span id="profileUsername"></span></p>
-  <p><strong>Имя:</strong> <span id="profileFullName"></span></p>
-  <p><strong>Роль:</strong> <span id="profileRole"></span></p>
-  <hr><h6>Сменить пароль</h6>
-  <div class="mb-2"><input type="password" class="form-control" id="changeCurrentPassword" placeholder="Текущий пароль"></div>
-  <div class="mb-2"><input type="password" class="form-control" id="changeNewPassword" placeholder="Новый пароль"></div>
-  <button class="btn btn-accent btn-sm" onclick="changePassword()">Сменить</button>
-  <div id="changePasswordMsg" class="mt-2 small"></div>
-</div></div></div></div>
+<div class="modal-body"><p><strong>Логин:</strong> <span id="profileUsername"></span></p><p><strong>Имя:</strong> <span id="profileFullName"></span></p><p><strong>Роль:</strong> <span id="profileRole"></span></p><hr><h6>Сменить пароль</h6><div class="mb-2"><input type="password" class="form-control" id="changeCurrentPassword" placeholder="Текущий"></div><div class="mb-2"><input type="password" class="form-control" id="changeNewPassword" placeholder="Новый"></div><button class="btn btn-accent btn-sm" onclick="changePassword()">Сменить</button><div id="changePasswordMsg" class="mt-2 small"></div></div></div></div>
 
 <div class="modal fade" id="userModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
 <form id="userForm" onsubmit="return saveUser(event)"><input type="hidden" id="userId"><div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title" id="userModalTitle">Пользователь</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
@@ -277,12 +255,22 @@ body { background: var(--bg); color: var(--text); transition: background .3s, co
 <div class="modal fade" id="roleModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content">
 <div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title">Роли</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
 <div class="modal-body">
-  <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Роль</th><th>Клиенты (пр.)</th><th>Клиенты (ред.)</th><th>Услуги (пр.)</th><th>Услуги (ред.)</th><th>Заказы (пр.)</th><th>Заказы (ред.)</th><th>Упр. пользователями</th><th></th></tr></thead><tbody id="rolesBody"></tbody></table></div>
-  <hr><h6>Новая роль</h6>
-  <form id="roleForm" onsubmit="return saveRole(event)"><div class="row g-2 mb-2"><div class="col-3"><input class="form-control form-control-sm" id="roleName" placeholder="Название" required></div></div>
-  <div class="row g-2 mb-2"><div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleViewClients" checked><label class="form-check-label small">Просмотр клиентов</label></div><div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleEditClients"><label class="form-check-label small">Редакт. клиентов</label></div><div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleViewServices" checked><label class="form-check-label small">Просмотр услуг</label></div><div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleEditServices"><label class="form-check-label small">Редакт. услуг</label></div></div>
-  <div class="row g-2 mb-2"><div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleViewOrders" checked><label class="form-check-label small">Просмотр заказов</label></div><div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleEditOrders"><label class="form-check-label small">Редакт. заказов</label></div><div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleManageUsers"><label class="form-check-label small">Упр. пользователями</label></div></div>
-  <button type="submit" class="btn btn-accent btn-sm">Создать</button></form>
+<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Роль</th><th>Клиенты (пр.)</th><th>Клиенты (ред.)</th><th>Услуги (пр.)</th><th>Услуги (ред.)</th><th>Заказы (пр.)</th><th>Заказы (ред.)</th><th>Удаление заказов</th><th>Упр. пользователями</th><th></th></tr></thead><tbody id="rolesBody"></tbody></table></div>
+<hr><h6>Новая роль</h6>
+<form id="roleForm" onsubmit="return saveRole(event)"><div class="row g-2 mb-2"><div class="col-3"><input class="form-control form-control-sm" id="roleName" placeholder="Название" required></div></div>
+<div class="row g-2 mb-2">
+<div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleViewClients" checked><label class="form-check-label small">Просмотр клиентов</label></div>
+<div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleEditClients"><label class="form-check-label small">Редакт. клиентов</label></div>
+<div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleViewServices" checked><label class="form-check-label small">Просмотр услуг</label></div>
+<div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleEditServices"><label class="form-check-label small">Редакт. услуг</label></div>
+</div>
+<div class="row g-2 mb-2">
+<div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleViewOrders" checked><label class="form-check-label small">Просмотр заказов</label></div>
+<div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleEditOrders"><label class="form-check-label small">Редакт. заказов</label></div>
+<div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleDeleteOrders"><label class="form-check-label small">Удаление заказов</label></div>
+<div class="col-3 form-check"><input type="checkbox" class="form-check-input" id="roleManageUsers"><label class="form-check-label small">Упр. пользователями</label></div>
+</div>
+<button type="submit" class="btn btn-accent btn-sm">Создать</button></form>
 </div></div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -292,119 +280,105 @@ if(!token)window.location.href='/login';
 const origFetch=window.fetch;
 window.fetch=function(u,o){o=o||{};o.headers=o.headers||{};o.headers['Authorization']='Bearer '+token;return origFetch(u,o).then(r=>{if(r.status===401){localStorage.clear();window.location.href='/login'}return r})};
 
-let currentUser=null;const loaded={};
+let currentUser=null;const loaded={};let canDeleteOrders=false;
 
 function toggleTheme(){document.body.classList.toggle('dark');localStorage.setItem('theme',document.body.classList.contains('dark')?'dark':'')}
 if(localStorage.getItem('theme')==='dark')document.body.classList.add('dark');
-
 function filterTable(tid,sid){const q=document.getElementById(sid).value.toLowerCase();document.getElementById(tid).querySelectorAll('tr').forEach(tr=>{tr.style.display=tr.textContent.toLowerCase().includes(q)?'':'none'})}
+function updateOrderSub(el){el.parentElement.parentElement.querySelectorAll('.sub-link').forEach(x=>x.classList.remove('active'));el.classList.add('active')}
+function updateStaffSub(el){el.parentElement.parentElement.querySelectorAll('.sub-link').forEach(x=>x.classList.remove('active'));el.classList.add('active')}
 
-function updateSub(el){el.parentElement.parentElement.querySelectorAll('.sub-link').forEach(x=>x.classList.remove('active'));el.classList.add('active');document.getElementById('ordersParentBtn').textContent='Заказы '+(el.textContent.trim()!=='Актуальные'?'— '+el.textContent.trim():'')}
-function updateStaffSub(el){el.parentElement.parentElement.querySelectorAll('.sub-link').forEach(x=>x.classList.remove('active'));el.classList.add('active');document.getElementById('staffParentBtn').textContent='Сотрудники — '+el.textContent.trim()}
+function switchTab(tabId){document.querySelectorAll('.tab-page').forEach(p=>p.style.display='none');const el=document.getElementById(tabId);if(el)el.style.display='block';document.querySelectorAll('#mainNav .nav-link[data-tab]').forEach(l=>l.classList.remove('active'));document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(l=>l.classList.add('active'));if(!loaded[tabId]){const h={'tab-active':loadActiveOrders,'tab-archive':loadArchiveOrders,'tab-leads':loadLeads,'tab-clients':loadClients,'tab-services':loadServices,'tab-calc':loadCalcServices,'tab-tasks':loadTasks,'tab-my-reports':loadMyReports,'tab-attendance':()=>{loadMyAttendance();renderCalendar()},'tab-schedule':loadMySchedule,'tab-reports':loadAllReports,'tab-all-attendance':loadAllAttendance,'tab-all-schedule':loadAllSchedule,'tab-summary':()=>{loadSummaryUsers()},'tab-users':()=>{loadUsers();loadRoles()}};(h[tabId]||(()=>{}))();loaded[tabId]=true}}
 
-function switchTab(tabId){document.querySelectorAll('.tab-page').forEach(p=>p.style.display='none');const el=document.getElementById(tabId);if(el)el.style.display='block';document.querySelectorAll('#mainNav .nav-link[data-tab]').forEach(l=>l.classList.remove('active'));document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(l=>l.classList.add('active'));if(!loaded[tabId]){  const h={'tab-active':loadActiveOrders,'tab-archive':loadArchiveOrders,'tab-leads':loadLeads,'tab-clients':loadClients,'tab-services':loadServices,'tab-calc':loadCalcServices,'tab-tasks':loadTasks,'tab-my-reports':loadMyReports,'tab-attendance':()=>{loadMyAttendance();renderCalendar()},'tab-schedule':loadMySchedule,'tab-reports':loadAllReports,'tab-all-attendance':loadAllAttendance,'tab-all-schedule':loadAllSchedule,'tab-summary':()=>{loadSummaryUsers()},'tab-users':()=>{loadUsers();loadRoles()}};(h[tabId]||(()=>{}))();loaded[tabId]=true}}
-
-(async function initApp(){try{const r=await fetch(`${API}/auth/me`);currentUser=await r.json();document.querySelector('#userName').textContent=currentUser.full_name||currentUser.username;if(currentUser.role_name==='admin'){['navUsers','navReports','navAttendance','navScheduleAll','navSummary','backupBtn'].forEach(id=>document.getElementById(id).style.display='')}}catch(e){window.location.href='/login'}switchTab('tab-active')})();
+(async function initApp(){try{const r=await fetch(`${API}/auth/me`);currentUser=await r.json();document.querySelector('#userName').textContent=currentUser.full_name||currentUser.username;if(currentUser.role_name==='admin'){['navUsers','navReports','navAttendance','navScheduleAll','navSummary','backupBtn'].forEach(id=>document.getElementById(id).style.display='');canDeleteOrders=true}else{const roles=await(await fetch(`${API}/auth/roles`)).json();const r=roles.find(x=>x.id===currentUser.role_id);if(r)canDeleteOrders=r.can_delete_orders}}catch(e){window.location.href='/login'}switchTab('tab-active')})();
 
 function showProfile(){document.getElementById('profileUsername').textContent=currentUser.username;document.getElementById('profileFullName').textContent=currentUser.full_name;document.getElementById('profileRole').textContent=currentUser.role_name;document.getElementById('changeCurrentPassword').value='';document.getElementById('changeNewPassword').value='';document.getElementById('changePasswordMsg').textContent='';new bootstrap.Modal('#profileModal').show()}
 async function changePassword(){const cur=document.getElementById('changeCurrentPassword').value;const nw=document.getElementById('changeNewPassword').value;if(!cur||!nw){document.getElementById('changePasswordMsg').textContent='Заполните поля';return}if(nw.length<4){document.getElementById('changePasswordMsg').textContent='Минимум 4 символа';return}const r=await fetch(`${API}/auth/change-password`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:cur,new_password:nw})});const d=await r.json();document.getElementById('changePasswordMsg').textContent=r.ok?'Пароль изменён':(d.detail||'Ошибка')}
 function logout(){localStorage.clear();window.location.href='/login'}
-
 function toggleOrderTypeFields(){const t=document.getElementById('orderType').value;document.getElementById('orderModelerField').style.display=t==='print'?'block':'none'}
 function statusLabel(s){if(s==='active')return'<span class="status-active">В работе</span>';if(s==='done')return'<span class="status-done">Сделан</span>';return'<span class="status-delivered">Выдан</span>'}
-function orderTypeLabel(t){return t==='repair'?'Ремонт':'3D печать'}
+function typeLabel(t){return t==='repair'?'🔧 Ремонт':'🖨️ 3D печать'}
 async function changeStatus(id,s){await fetch(`${API}/orders/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s})});loadActiveOrders();loadArchiveOrders()}
 
-// КЛИЕНТЫ
 async function loadClients(){const c=await(await fetch(`${API}/clients`)).json();document.getElementById('clientsBody').innerHTML=c.map(x=>`<tr><td>${x.id}</td><td>${x.full_name}</td><td>${x.phone}</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editClient(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteClient(${x.id})">✕</button></td></tr>`).join('');const sel=document.getElementById('orderClientSelect');sel.innerHTML='<option value="">— выберите —</option>';c.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.full_name} (${x.phone})</option>`)}
 function showClientModal(d){document.getElementById('clientId').value=d?.id||'';document.getElementById('clientName').value=d?.full_name||'';document.getElementById('clientPhone').value=d?.phone||'';document.getElementById('clientModalTitle').textContent=d?'Редактировать':'Новый клиент';new bootstrap.Modal('#clientModal').show()}
 function editClient(id){fetch(`${API}/clients/${id}`).then(r=>r.json()).then(d=>showClientModal(d))}
 async function saveClient(e){e.preventDefault();const id=document.getElementById('clientId').value;const b={full_name:document.getElementById('clientName').value,phone:document.getElementById('clientPhone').value};await fetch(id?`${API}/clients/${id}`:`${API}/clients`,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});bootstrap.Modal.getInstance('#clientModal').hide();loadClients()}
 async function deleteClient(id){if(!confirm('Удалить клиента?'))return;await fetch(`${API}/clients/${id}`,{method:'DELETE'});loadClients()}
 
-// УСЛУГИ
-async function loadServices(){const s=await(await fetch(`${API}/services`)).json();document.getElementById('servicesBody').innerHTML=s.map(x=>`<tr><td>${x.name}</td><td>${x.price} ₽</td><td>${x.category==='repair'?'Ремонт':'3D печать'}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editService(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteService(${x.id})">✕</button></td></tr>`).join('');refreshServiceDependants()}
+async function loadServices(){const s=await(await fetch(`${API}/services`)).json();document.getElementById('servicesBody').innerHTML=s.map(x=>`<tr><td>${x.name}</td><td>${x.price} ₽</td><td>${x.category==='repair'?'Ремонт':'3D печать'}</td><td><button class="btn btn-sm btn-outline-primary" onclick="editService(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteService(${x.id})">✕</button></td></tr>`).join('');refreshServiceDependants()}
 function refreshServiceDependants(){loadCalcServices();if(document.getElementById('orderType'))loadServicesForOrder()}
 function showServiceModal(d){document.getElementById('serviceId').value=d?.id||'';document.getElementById('serviceName').value=d?.name||'';document.getElementById('servicePrice').value=d?.price||'';document.getElementById('serviceCategory').value=d?.category||'repair';document.getElementById('serviceModalTitle').textContent=d?'Редактировать':'Новая услуга';new bootstrap.Modal('#serviceModal').show()}
 function editService(id){fetch(`${API}/services/${id}`).then(r=>r.json()).then(d=>showServiceModal(d))}
 async function saveService(e){e.preventDefault();const id=document.getElementById('serviceId').value;const b={name:document.getElementById('serviceName').value,price:parseFloat(document.getElementById('servicePrice').value),category:document.getElementById('serviceCategory').value};await fetch(id?`${API}/services/${id}`:`${API}/services`,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});bootstrap.Modal.getInstance('#serviceModal').hide();loadServices()}
 async function deleteService(id){if(!confirm('Удалить услугу?'))return;await fetch(`${API}/services/${id}`,{method:'DELETE'});loadServices()}
 
-// ЗАКАЗЫ
-let itemIndex=0;let servicesCache={};
-async function loadServicesForOrder(){const t=document.getElementById('orderType').value;const s=await(await fetch(`${API}/services?category=${t}`)).json();servicesCache={};s.forEach(x=>servicesCache[x.id]=x);document.querySelectorAll('#orderItems select').forEach(sel=>{const v=sel.value;sel.innerHTML='<option value="">— выберите —</option>';s.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name} — ${x.price}₽</option>`);if(v)sel.value=v;sel.onchange()});recalcOrderTotal()}
-function addOrderItem(){const idx=itemIndex++;const div=document.createElement('div');div.className='row g-2 mb-2 align-items-center order-item';div.id=`item-${idx}`;div.innerHTML=`<div class="col-5"><select class="form-select form-select-sm" onchange="onItemChange(${idx})" required><option value="">— выберите —</option></select></div><div class="col-2"><input type="number" class="form-control form-control-sm" value="1" min="1" onchange="onItemChange(${idx})"></div><div class="col-3"><input type="number" class="form-control form-control-sm price-input" step="0.01" onchange="onItemChange(${idx})"></div><div class="col-2"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeOrderItem(${idx})">✕</button></div>`;document.getElementById('orderItems').appendChild(div);loadServicesForOrder()}
-function removeOrderItem(idx){document.getElementById(`item-${idx}`).remove();recalcOrderTotal()}
-function onItemChange(idx){const div=document.getElementById(`item-${idx}`);if(!div)return;const s=servicesCache[div.querySelector('select').value];const pi=div.querySelector('.price-input');if(s){pi.value=s.price;pi.readOnly=true}else{pi.readOnly=false}recalcOrderTotal()}
+let itemIndex=0;let sc={};
+async function loadServicesForOrder(){const t=document.getElementById('orderType').value;const s=await(await fetch(`${API}/services?category=${t}`)).json();sc={};s.forEach(x=>sc[x.id]=x);document.querySelectorAll('#orderItems select').forEach(sel=>{const v=sel.value;sel.innerHTML='<option value="">— выберите —</option>';s.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name} — ${x.price}₽</option>`);if(v)sel.value=v;sel.onchange()});recalcOrderTotal()}
+function addOrderItem(){const idx=itemIndex++;const div=document.createElement('div');div.className='row g-2 mb-2 align-items-center order-item';div.id=`item-${idx}`;div.innerHTML=`<div class="col-5"><select class="form-select form-select-sm" onchange="oi(${idx})" required><option value="">— выберите —</option></select></div><div class="col-2"><input type="number" class="form-control form-control-sm" value="1" min="1" onchange="oi(${idx})"></div><div class="col-3"><input type="number" class="form-control form-control-sm price-input" step="0.01" onchange="oi(${idx})"></div><div class="col-2"><button type="button" class="btn btn-sm btn-outline-danger" onclick="ro(${idx})">✕</button></div>`;document.getElementById('orderItems').appendChild(div);loadServicesForOrder()}
+function ro(idx){document.getElementById(`item-${idx}`).remove();recalcOrderTotal()}
+function oi(idx){const div=document.getElementById(`item-${idx}`);if(!div)return;const s=sc[div.querySelector('select').value];const pi=div.querySelector('.price-input');if(s){pi.value=s.price;pi.readOnly=true}else{pi.readOnly=false}recalcOrderTotal()}
 function recalcOrderTotal(){let t=0;document.querySelectorAll('.order-item').forEach(d=>{t+=(parseInt(d.querySelector('input[type="number"]').value)||0)*(parseFloat(d.querySelector('.price-input').value)||0)});['orderTotal','editOrderTotal'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t.toFixed(2)})}
 function showOrderModal(cid){document.getElementById('orderForm').reset();document.getElementById('orderItems').innerHTML='';itemIndex=0;addOrderItem();if(cid)document.getElementById('orderClientSelect').value=cid;toggleOrderTypeFields();new bootstrap.Modal('#orderModal').show()}
-async function saveOrder(e){e.preventDefault();const cid=document.getElementById('orderClientSelect').value;if(!cid){alert('Выберите клиента');return}const items=[];let ok=true;document.querySelectorAll('#orderItems .order-item').forEach(div=>{const sel=div.querySelector('select');if(!sel.value){ok=false;return}items.push({service_id:parseInt(sel.value),quantity:parseInt(div.querySelector('input[type="number"]').value)||1,price:parseFloat(div.querySelector('.price-input').value)||0})});if(!ok||!items.length){alert('Заполните услуги');return}await fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:parseInt(cid),order_type:document.getElementById('orderType').value,modeler:document.getElementById('orderModeler').value,complaint:document.getElementById('orderComplaint').value,address:document.getElementById('orderAddress').value,pickup_time:document.getElementById('orderPickupTime').value,note:document.getElementById('orderNote').value,items})});bootstrap.Modal.getInstance('#orderModal').hide();loadActiveOrders();loadArchiveOrders()}
-async function loadActiveOrders(){const o=await(await fetch(`${API}/orders?status=active`)).json();const d=await(await fetch(`${API}/orders?status=done`)).json();const all=[...o,...d];document.getElementById('activeOrdersBody').innerHTML=all.map(x=>`<tr><td>${x.id}</td><td>${x.client_name}</td><td>${orderTypeLabel(x.order_type)}</td><td><select class="form-select form-select-sm" onchange="changeStatus(${x.id},this.value)"><option value="active" ${x.status==='active'?'selected':''}>В работе</option><option value="done" ${x.status==='done'?'selected':''}>Сделан</option><option value="delivered" ${x.status==='delivered'?'selected':''}>Выдан</option></select></td><td>${x.total_price.toFixed(2)} ₽</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editOrder(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteOrder(${x.id})">✕</button></td></tr>`).join('');const badge=document.getElementById('orderBadge');badge.style.display=all.length?'inline':'none';badge.textContent=all.length}
-async function loadArchiveOrders(){const o=await(await fetch(`${API}/orders?status=delivered`)).json();document.getElementById('archiveOrdersBody').innerHTML=o.map(x=>`<tr><td>${x.id}</td><td>${x.client_name}</td><td>${orderTypeLabel(x.order_type)}</td><td>${x.total_price.toFixed(2)} ₽</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editOrder(${x.id})">✎</button></td></tr>`).join('')}
+async function saveOrder(e){e.preventDefault();const cid=document.getElementById('orderClientSelect').value;const cname=document.getElementById('orderClientName').value;if(!cid&&!cname){alert('Выберите клиента или введите имя');return}const items=[];let ok=true;document.querySelectorAll('#orderItems .order-item').forEach(div=>{const sel=div.querySelector('select');if(!sel.value){ok=false;return}items.push({service_id:parseInt(sel.value),quantity:parseInt(div.querySelector('input[type="number"]').value)||1,price:parseFloat(div.querySelector('.price-input').value)||0})});if(!ok||!items.length){alert('Заполните услуги');return}await fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:cid?parseInt(cid):0,client_name:cname,order_type:document.getElementById('orderType').value,printer:document.getElementById('orderPrinter').value,description:document.getElementById('orderDescription').value,modeler:document.getElementById('orderModeler').value,complaint:document.getElementById('orderComplaint').value,address:document.getElementById('orderAddress').value,pickup_time:document.getElementById('orderPickupTime').value,note:document.getElementById('orderNote').value,items})});bootstrap.Modal.getInstance('#orderModal').hide();loadActiveOrders();loadArchiveOrders()}
+async function loadActiveOrders(){const o=await(await fetch(`${API}/orders?status=active`)).json();const d=await(await fetch(`${API}/orders?status=done`)).json();const all=[...o,...d];document.getElementById('activeOrdersBody').innerHTML=all.map(x=>`<tr><td>${typeLabel(x.order_type)}</td><td>${x.client_name}</td><td>${x.printer||'—'}</td><td><select class="form-select form-select-sm" onchange="changeStatus(${x.id},this.value)"><option value="active" ${x.status==='active'?'selected':''}>В работе</option><option value="done" ${x.status==='done'?'selected':''}>Сделан</option><option value="delivered" ${x.status==='delivered'?'selected':''}>Выдан</option></select></td><td>${x.total_price.toFixed(2)} ₽</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editOrder(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteOrder(${x.id})">✕</button></td></tr>`).join('');const badge=document.getElementById('orderBadge');badge.style.display=all.length?'inline':'none';badge.textContent=all.length}
+async function loadArchiveOrders(){const o=await(await fetch(`${API}/orders?status=delivered`)).json();document.getElementById('archiveOrdersBody').innerHTML=o.map(x=>`<tr><td>${typeLabel(x.order_type)}</td><td>${x.client_name}</td><td>${x.printer||'—'}</td><td>${x.total_price.toFixed(2)} ₽</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td class="text-end">${canDeleteOrders?`<button class="btn btn-sm btn-outline-danger" onclick="deleteOrder(${x.id})">✕</button>`:''}</td></tr>`).join('')}
 async function deleteOrder(id){if(!confirm('Удалить заказ?'))return;await fetch(`${API}/orders/${id}`,{method:'DELETE'});loadActiveOrders();loadArchiveOrders()}
-let editItemIndex=0;let editServicesCache={};
-async function loadEditServices(t){const s=await(await fetch(`${API}/services?category=${t}`)).json();editServicesCache={};s.forEach(x=>editServicesCache[x.id]=x);return s}
-function addEditOrderItem(sid,qty,price){const idx=editItemIndex++;const div=document.createElement('div');div.className='row g-2 mb-2 align-items-center order-item';div.id=`eitem-${idx}`;div.innerHTML=`<div class="col-5"><select class="form-select form-select-sm" onchange="onEditItemChange(${idx})" required><option value="">— выберите —</option></select></div><div class="col-2"><input type="number" class="form-control form-control-sm" value="${qty||1}" min="1" onchange="onEditItemChange(${idx})"></div><div class="col-3"><input type="number" class="form-control form-control-sm price-input" value="${price||0}" step="0.01" onchange="onEditItemChange(${idx})"></div><div class="col-2"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEditOrderItem(${idx})">✕</button></div>`;document.getElementById('editOrderItems').appendChild(div);const sel=div.querySelector('select');Object.values(editServicesCache).forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name} — ${x.price}₽</option>`);if(sid)sel.value=sid;sel.onchange()}
-function removeEditOrderItem(idx){document.getElementById(`eitem-${idx}`).remove();recalcOrderTotal()}
-function onEditItemChange(idx){const div=document.getElementById(`eitem-${idx}`);if(!div)return;const s=editServicesCache[div.querySelector('select').value];const pi=div.querySelector('.price-input');if(s){pi.value=s.price;pi.readOnly=true}else{pi.readOnly=false}recalcOrderTotal()}
-async function editOrder(id){const o=await(await fetch(`${API}/orders/${id}`)).json();editItemIndex=0;document.getElementById('editOrderId').value=o.id;document.getElementById('editOrderTitle').textContent=`Заказ #${o.id}`;document.getElementById('editClientName').textContent=o.client_name;document.getElementById('editOrderType').textContent=orderTypeLabel(o.order_type);document.getElementById('editOrderStatus').value=o.status;document.getElementById('editComplaint').value=o.complaint||'';document.getElementById('editWorkDone').value=o.work_done||'';document.getElementById('editPartsReplaced').value=o.parts_replaced||'';document.getElementById('editModeler').value=o.modeler||'';document.getElementById('editAddress').value=o.address||'';document.getElementById('editPickupTime').value=o.pickup_time||'';document.getElementById('editNote').value=o.note||'';document.getElementById('editRepairFields').style.display=o.order_type==='repair'?'block':'none';document.getElementById('editModelerField').style.display=o.order_type==='print'?'block':'none';await loadEditServices(o.order_type);document.getElementById('editOrderItems').innerHTML='';o.items.forEach(i=>addEditOrderItem(i.service_id,i.quantity,i.price));if(!o.items.length)addEditOrderItem(null,1,0);recalcOrderTotal();loadOrderLogs(o.id);new bootstrap.Modal('#editOrderModal').show()}
+let eii=0;let esc={};
+async function loadEditServices(t){const s=await(await fetch(`${API}/services?category=${t}`)).json();esc={};s.forEach(x=>esc[x.id]=x);return s}
+function aei(sid,q,p){const idx=eii++;const div=document.createElement('div');div.className='row g-2 mb-2 align-items-center order-item';div.id=`eitem-${idx}`;div.innerHTML=`<div class="col-5"><select class="form-select form-select-sm" onchange="oei(${idx})" required><option value="">— выберите —</option></select></div><div class="col-2"><input type="number" class="form-control form-select-sm" value="${q||1}" min="1" onchange="oei(${idx})"></div><div class="col-3"><input type="number" class="form-control form-select-sm price-input" value="${p||0}" step="0.01" onchange="oei(${idx})"></div><div class="col-2"><button type="button" class="btn btn-sm btn-outline-danger" onclick="rei(${idx})">✕</button></div>`;document.getElementById('editOrderItems').appendChild(div);const sel=div.querySelector('select');Object.values(esc).forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name} — ${x.price}₽</option>`);if(sid)sel.value=sid;sel.onchange()}
+function rei(idx){document.getElementById(`eitem-${idx}`).remove();recalcOrderTotal()}
+function oei(idx){const div=document.getElementById(`eitem-${idx}`);if(!div)return;const s=esc[div.querySelector('select').value];const pi=div.querySelector('.price-input');if(s){pi.value=s.price;pi.readOnly=true}else{pi.readOnly=false}recalcOrderTotal()}
+async function editOrder(id){const o=await(await fetch(`${API}/orders/${id}`)).json();eii=0;document.getElementById('editOrderId').value=o.id;document.getElementById('editOrderTitle').textContent=`Заказ #${o.id}`;document.getElementById('editOrderType').textContent=typeLabel(o.order_type);document.getElementById('editOrderStatus').value=o.status;document.getElementById('editClientName').value=o.client_name;document.getElementById('editPrinter').value=o.printer||'';document.getElementById('editDescription').value=o.description||'';document.getElementById('editComplaint').value=o.complaint||'';document.getElementById('editWorkDone').value=o.work_done||'';document.getElementById('editPartsReplaced').value=o.parts_replaced||'';document.getElementById('editModeler').value=o.modeler||'';document.getElementById('editAddress').value=o.address||'';document.getElementById('editPickupTime').value=o.pickup_time||'';document.getElementById('editNote').value=o.note||'';document.getElementById('editRepairFields').style.display=o.order_type==='repair'?'block':'none';document.getElementById('editModelerField').style.display=o.order_type==='print'?'block':'none';await loadEditServices(o.order_type);document.getElementById('editOrderItems').innerHTML='';o.items.forEach(i=>aei(i.service_id,i.quantity,i.price));if(!o.items.length)aei(null,1,0);recalcOrderTotal();loadOrderLogs(o.id);new bootstrap.Modal('#editOrderModal').show()}
 async function loadOrderLogs(id){const logs=await(await fetch(`${API}/orders/${id}/logs`)).json();document.getElementById('orderLogs').innerHTML=logs.map(l=>`<div>${new Date(l.created_at).toLocaleString()} — ${l.user_name}: ${l.action}</div>`).join('')}
-async function saveEditOrder(e){e.preventDefault();const id=document.getElementById('editOrderId').value;const items=[];let ok=true;document.querySelectorAll('#editOrderItems .order-item').forEach(div=>{const sel=div.querySelector('select');if(!sel.value){ok=false;return}items.push({service_id:parseInt(sel.value),quantity:parseInt(div.querySelector('input[type="number"]').value)||1,price:parseFloat(div.querySelector('.price-input').value)||0})});if(!ok||!items.length){alert('Заполните услуги');return}await fetch(`${API}/orders/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:document.getElementById('editOrderStatus').value,complaint:document.getElementById('editComplaint').value,work_done:document.getElementById('editWorkDone').value,parts_replaced:document.getElementById('editPartsReplaced').value,modeler:document.getElementById('editModeler').value,address:document.getElementById('editAddress').value,pickup_time:document.getElementById('editPickupTime').value,note:document.getElementById('editNote').value,items})});bootstrap.Modal.getInstance('#editOrderModal').hide();loadActiveOrders();loadArchiveOrders()}
+async function saveEditOrder(e){e.preventDefault();const id=document.getElementById('editOrderId').value;const items=[];let ok=true;document.querySelectorAll('#editOrderItems .order-item').forEach(div=>{const sel=div.querySelector('select');if(!sel.value){ok=false;return}items.push({service_id:parseInt(sel.value),quantity:parseInt(div.querySelector('input[type="number"]').value)||1,price:parseFloat(div.querySelector('.price-input').value)||0})});if(!ok||!items.length){alert('Заполните услуги');return}await fetch(`${API}/orders/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:document.getElementById('editOrderStatus').value,client_name:document.getElementById('editClientName').value,printer:document.getElementById('editPrinter').value,description:document.getElementById('editDescription').value,complaint:document.getElementById('editComplaint').value,work_done:document.getElementById('editWorkDone').value,parts_replaced:document.getElementById('editPartsReplaced').value,modeler:document.getElementById('editModeler').value,address:document.getElementById('editAddress').value,pickup_time:document.getElementById('editPickupTime').value,note:document.getElementById('editNote').value,items})});bootstrap.Modal.getInstance('#editOrderModal').hide();loadActiveOrders();loadArchiveOrders()}
 
-// КАЛЬКУЛЯТОР
-let calcRowIdx=0;let calcServicesCache=[];
-async function loadCalcServices(){const t=document.getElementById('calcCategory').value;calcServicesCache=await(await fetch(`${API}/services?category=${t}`)).json();document.querySelectorAll('#calcRows .calc-service-select').forEach(sel=>{const v=sel.value;sel.innerHTML='<option value="">— выберите —</option>';calcServicesCache.forEach(x=>sel.innerHTML+=`<option value="${x.id}" data-price="${x.price}">${x.name} — ${x.price}₽</option>`);if(v)sel.value=v;calcCalcTotal()})}
-function addCalcRow(){const idx=calcRowIdx++;const div=document.createElement('div');div.className='calc-row';div.id=`crow-${idx}`;div.innerHTML=`<select class="form-select form-select-sm calc-service-select" onchange="calcCalcTotal()"><option value="">— выберите —</option></select><input type="number" class="form-control form-control-sm" value="1" min="1" onchange="calcCalcTotal()" style="width:70px"><span class="calc-price">0 ₽</span><span class="calc-remove" onclick="document.getElementById('crow-${idx}').remove();calcCalcTotal()">✕</span>`;document.getElementById('calcRows').appendChild(div);const sel=div.querySelector('select');calcServicesCache.forEach(x=>sel.innerHTML+=`<option value="${x.id}" data-price="${x.price}">${x.name} — ${x.price}₽</option>`)}
-function calcCalcTotal(){let t=0;document.querySelectorAll('#calcRows .calc-row').forEach(row=>{const sel=row.querySelector('select');const qty=parseInt(row.querySelector('input[type="number"]').value)||0;const opt=sel.options[sel.selectedIndex];const p=opt?parseFloat(opt.dataset.price)||0:0;const s=qty*p;t+=s;row.querySelector('.calc-price').textContent=s.toFixed(2)+' ₽'});document.getElementById('calcTotal').textContent=t.toFixed(2)}
+let crIdx=0;let csc=[];
+async function loadCalcServices(){const t=document.getElementById('calcCategory').value;csc=await(await fetch(`${API}/services?category=${t}`)).json();document.querySelectorAll('#calcRows .calc-service-select').forEach(sel=>{const v=sel.value;sel.innerHTML='<option value="">— выберите —</option>';csc.forEach(x=>sel.innerHTML+=`<option value="${x.id}" data-price="${x.price}">${x.name} — ${x.price}₽</option>`);if(v)sel.value=v;calcTotal()})}
+function addCalcRow(){const idx=crIdx++;const div=document.createElement('div');div.className='calc-row';div.id=`crow-${idx}`;div.innerHTML=`<select class="form-select form-select-sm calc-service-select" onchange="calcTotal()"><option value="">— выберите —</option></select><input type="number" class="form-control form-control-sm" value="1" min="1" onchange="calcTotal()" style="width:70px"><span class="calc-price">0 ₽</span><span class="calc-remove" onclick="document.getElementById('crow-${idx}').remove();calcTotal()">✕</span>`;document.getElementById('calcRows').appendChild(div);const sel=div.querySelector('select');csc.forEach(x=>sel.innerHTML+=`<option value="${x.id}" data-price="${x.price}">${x.name} — ${x.price}₽</option>`)}
+function calcTotal(){let t=0;document.querySelectorAll('#calcRows .calc-row').forEach(row=>{const sel=row.querySelector('select');const qty=parseInt(row.querySelector('input[type="number"]').value)||0;const opt=sel.options[sel.selectedIndex];const p=opt?parseFloat(opt.dataset.price)||0:0;const s=qty*p;t+=s;row.querySelector('.calc-price').textContent=s.toFixed(2)+' ₽'});document.getElementById('calcTotal').textContent=t.toFixed(2)}
 
-// РАБОТЫ
-async function loadTasks(){const t=await(await fetch(`${API}/tasks`)).json();document.getElementById('tasksBody').innerHTML=t.map(x=>`<tr><td>${x.name}</td><td>${x.price} ₽</td><td>${x.unit}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editTask(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${x.id})">✕</button></td></tr>`).join('')}
+async function loadTasks(){const t=await(await fetch(`${API}/tasks`)).json();document.getElementById('tasksBody').innerHTML=t.map(x=>`<tr><td>${x.name}</td><td>${x.price} ₽</td><td>${x.unit}</td><td><button class="btn btn-sm btn-outline-primary" onclick="editTask(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${x.id})">✕</button></td></tr>`).join('')}
 function showTaskModal(d){document.getElementById('taskId').value=d?.id||'';document.getElementById('taskName').value=d?.name||'';document.getElementById('taskPrice').value=d?.price||'';document.getElementById('taskUnit').value=d?.unit||'шт';document.getElementById('taskModalTitle').textContent=d?'Редактировать':'Новая работа';new bootstrap.Modal('#taskModal').show()}
 function editTask(id){fetch(`${API}/tasks/${id}`).then(r=>r.json()).then(d=>showTaskModal(d))}
 async function saveTask(e){e.preventDefault();const id=document.getElementById('taskId').value;const b={name:document.getElementById('taskName').value,price:parseFloat(document.getElementById('taskPrice').value),unit:document.getElementById('taskUnit').value};await fetch(id?`${API}/tasks/${id}`:`${API}/tasks`,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});bootstrap.Modal.getInstance('#taskModal').hide();loadTasks()}
 async function deleteTask(id){if(!confirm('Удалить работу?'))return;await fetch(`${API}/tasks/${id}`,{method:'DELETE'});loadTasks()}
 
-// ОТЧЁТЫ
 async function loadMyReports(){const r=await(await fetch(`${API}/reports`)).json();document.getElementById('myReportsBody').innerHTML=r.map(x=>`<tr><td>${x.task_name}</td><td>${x.quantity} ${x.task_unit}</td><td>${x.task_price} ₽</td><td>${x.total} ₽</td><td>${x.order_info||'—'}</td><td>${new Date(x.created_at).toLocaleDateString()}</td></tr>`).join('')}
-async function loadAllReports(){const r=await(await fetch(`${API}/reports`)).json();document.getElementById('allReportsBody').innerHTML=r.map(x=>`<tr><td>${x.user_name}</td><td>${x.task_name}</td><td><span id="qty-${x.id}">${x.quantity}</span> ${x.task_unit}</td><td>${x.task_price} ₽</td><td id="total-${x.id}">${x.total} ₽</td><td>${x.order_info||'—'}</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editReportQty(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteReport(${x.id})">✕</button></td></tr>`).join('')}
-async function showReportModal(){const t=await(await fetch(`${API}/tasks`)).json();const sel=document.getElementById('reportTask');sel.innerHTML='<option value="">— выберите —</option>';t.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name} — ${x.price} ₽/${x.unit}</option>`);const oSel=document.getElementById('reportOrder');oSel.innerHTML='<option value="">— без заказа —</option>';const orders=await(await fetch(`${API}/orders`)).json();orders.filter(o=>o.status!=='delivered').forEach(o=>oSel.innerHTML+=`<option value="${o.id}">Заказ #${o.id} — ${o.client_name}</option>`);document.getElementById('reportQuantity').value='';new bootstrap.Modal('#reportModal').show()}
-async function saveReport(e){e.preventDefault();const taskId=document.getElementById('reportTask').value;const qty=parseFloat(document.getElementById('reportQuantity').value);if(!taskId||!qty){alert('Заполните поля');return}const orderId=document.getElementById('reportOrder').value;await fetch(`${API}/reports`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_id:parseInt(taskId),quantity:qty,order_id:orderId?parseInt(orderId):null})});bootstrap.Modal.getInstance('#reportModal').hide();loadMyReports()}
+async function loadAllReports(){const r=await(await fetch(`${API}/reports`)).json();document.getElementById('allReportsBody').innerHTML=r.map(x=>`<tr><td>${x.user_name}</td><td>${x.task_name}</td><td><span id="qty-${x.id}">${x.quantity}</span> ${x.task_unit}</td><td>${x.task_price} ₽</td><td>${x.total} ₽</td><td>${x.order_info||'—'}</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td><button class="btn btn-sm btn-outline-primary" onclick="editReportQty(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteReport(${x.id})">✕</button></td></tr>`).join('')}
+async function showReportModal(){const t=await(await fetch(`${API}/tasks`)).json();const sel=document.getElementById('reportTask');sel.innerHTML='<option value="">— выберите —</option>';t.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name} — ${x.price} ₽/${x.unit}</option>`);const os=document.getElementById('reportOrder');os.innerHTML='<option value="">— без заказа —</option>';const orders=await(await fetch(`${API}/orders`)).json();orders.filter(o=>o.status!=='delivered').forEach(o=>os.innerHTML+=`<option value="${o.id}">Заказ #${o.id} — ${o.client_name}</option>`);document.getElementById('reportQuantity').value='';new bootstrap.Modal('#reportModal').show()}
+async function saveReport(e){e.preventDefault();const tid=document.getElementById('reportTask').value;const qty=parseFloat(document.getElementById('reportQuantity').value);if(!tid||!qty){alert('Заполните поля');return}const oid=document.getElementById('reportOrder').value;await fetch(`${API}/reports`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_id:parseInt(tid),quantity:qty,order_id:oid?parseInt(oid):null})});bootstrap.Modal.getInstance('#reportModal').hide();loadMyReports()}
 async function editReportQty(id){const n=prompt('Новое количество:',document.getElementById(`qty-${id}`).textContent);if(!n||!parseFloat(n))return;await fetch(`${API}/reports/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({quantity:parseFloat(n)})});loadAllReports()}
 async function deleteReport(id){if(!confirm('Удалить?'))return;await fetch(`${API}/reports/${id}`,{method:'DELETE'});loadAllReports()}
 
-// ОТМЕТКИ
 async function loadMyAttendance(){const r=await(await fetch(`${API}/attendance`)).json();document.getElementById('myAttendanceBody').innerHTML=r.map(x=>`<tr><td>${x.date}</td><td>${x.check_in}</td><td>${x.check_out||'—'}</td></tr>`).join('')}
-async function loadAllAttendance(){const r=await(await fetch(`${API}/attendance`)).json();document.getElementById('allAttendanceBody').innerHTML=r.map(x=>`<tr><td>${x.user_name}</td><td>${x.date}</td><td>${x.check_in}</td><td>${x.check_out||'—'}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteAttendance(${x.id})">✕</button></td></tr>`).join('')}
+async function loadAllAttendance(){const r=await(await fetch(`${API}/attendance`)).json();document.getElementById('allAttendanceBody').innerHTML=r.map(x=>`<tr><td>${x.user_name}</td><td>${x.date}</td><td>${x.check_in}</td><td>${x.check_out||'—'}</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteAttendance(${x.id})">✕</button></td></tr>`).join('')}
 async function checkIn(){const r=await fetch(`${API}/attendance/checkin`,{method:'POST'});const d=await r.json();if(!r.ok){alert(d.detail);return}loadMyAttendance();renderCalendar()}
 async function checkOut(){const r=await fetch(`${API}/attendance/checkout`,{method:'POST'});const d=await r.json();if(!r.ok){alert(d.detail);return}loadMyAttendance();renderCalendar()}
 async function deleteAttendance(id){if(!confirm('Удалить?'))return;await fetch(`${API}/attendance/${id}`,{method:'DELETE'});loadAllAttendance()}
-async function renderCalendar(){const r=await(await fetch(`${API}/attendance`)).json();const dates={};r.forEach(x=>dates[x.date]=x);const today=new Date();const y=today.getFullYear();const m=today.getMonth();const first=new Date(y,m,1);const last=new Date(y,m+1,0);const days=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];let h=days.map(d=>`<div class="cal-day weekday">${d}</div>`).join('');const startPad=first.getDay()===0?6:first.getDay()-1;for(let i=0;i<startPad;i++)h+='<div></div>';for(let d=1;d<=last.getDate();d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const rec=dates[ds];const tc=ds===today.toISOString().slice(0,10)?' today':'';let cls=rec?(rec.check_in?'present':'absent'):(new Date(ds)<new Date(today.toISOString().slice(0,10))?'absent':'future');h+=`<div class="cal-day ${cls}${tc}">${d}</div>`}document.getElementById('attendanceCalendar').innerHTML=h}
+async function renderCalendar(){const r=await(await fetch(`${API}/attendance`)).json();const dates={};r.forEach(x=>dates[x.date]=x);const today=new Date();const y=today.getFullYear();const m=today.getMonth();const first=new Date(y,m,1);const last=new Date(y,m+1,0);const days=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];let h=days.map(d=>`<div class="cal-day weekday">${d}</div>`).join('');const pad=first.getDay()===0?6:first.getDay()-1;for(let i=0;i<pad;i++)h+='<div></div>';for(let d=1;d<=last.getDate();d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const rec=dates[ds];const tc=ds===today.toISOString().slice(0,10)?' today':'';let cls=rec?(rec.check_in?'present':'absent'):(new Date(ds)<new Date(today.toISOString().slice(0,10))?'absent':'future');h+=`<div class="cal-day ${cls}${tc}">${d}</div>`}document.getElementById('attendanceCalendar').innerHTML=h}
 
-// РАСПИСАНИЕ
 async function loadMySchedule(){const r=await(await fetch(`${API}/schedule`)).json();document.getElementById('myScheduleBody').innerHTML=r.map(x=>`<tr><td>${x.date}</td><td>${x.time_from}</td><td>${x.time_to}</td></tr>`).join('');renderScheduleCalendar(r)}
-async function loadAllSchedule(){const r=await(await fetch(`${API}/schedule`)).json();document.getElementById('allScheduleBody').innerHTML=r.map(x=>`<tr><td>${x.user_name}</td><td>${x.date}</td><td>${x.time_from}</td><td>${x.time_to}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteSchedule(${x.id})">✕</button></td></tr>`).join('')}
+async function loadAllSchedule(){const r=await(await fetch(`${API}/schedule`)).json();document.getElementById('allScheduleBody').innerHTML=r.map(x=>`<tr><td>${x.user_name}</td><td>${x.date}</td><td>${x.time_from}</td><td>${x.time_to}</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteSchedule(${x.id})">✕</button></td></tr>`).join('')}
 function renderScheduleCalendar(records){const map={};records.forEach(r=>{map[r.date]=r});const today=new Date();const y=today.getFullYear();const m=today.getMonth();const first=new Date(y,m,1);const last=new Date(y,m+1,0);const days=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];let h=days.map(d=>`<div class="cal-day weekday">${d}</div>`).join('');const pad=first.getDay()===0?6:first.getDay()-1;for(let i=0;i<pad;i++)h+='<div></div>';for(let d=1;d<=last.getDate();d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const rec=map[ds];const tc=ds===today.toISOString().slice(0,10)?' today':'';let cls='future';if(rec)cls='present';h+=`<div class="cal-day ${cls}${tc}" onclick="scheduleClickDay('${ds}')" style="cursor:pointer">${d}${rec?`<br><small>${rec.time_from}-${rec.time_to}</small>`:''}</div>`}document.getElementById('scheduleCalendar').innerHTML=h}
-function scheduleClickDay(dateStr){document.getElementById('scheduleDate').value=dateStr;document.getElementById('scheduleModalDate').textContent=dateStr;document.getElementById('scheduleFrom').value='09:00';document.getElementById('scheduleTo').value='18:00';new bootstrap.Modal('#scheduleModal').show()}
+function scheduleClickDay(ds){document.getElementById('scheduleDate').value=ds;document.getElementById('scheduleModalDate').textContent=ds;document.getElementById('scheduleFrom').value='09:00';document.getElementById('scheduleTo').value='18:00';new bootstrap.Modal('#scheduleModal').show()}
 async function saveSchedule(e){e.preventDefault();await fetch(`${API}/schedule`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:document.getElementById('scheduleDate').value,time_from:document.getElementById('scheduleFrom').value,time_to:document.getElementById('scheduleTo').value})});bootstrap.Modal.getInstance('#scheduleModal').hide();loadMySchedule()}
 async function deleteSchedule(id){if(!confirm('Удалить?'))return;await fetch(`${API}/schedule/${id}`,{method:'DELETE'});loadAllSchedule()}
 
-// СВОДКА
 async function loadSummaryUsers(){const u=await(await fetch(`${API}/auth/users`)).json();const sel=document.getElementById('summaryUser');sel.innerHTML='<option value="">Все</option>';u.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.full_name||x.username}</option>`);const n=new Date();document.getElementById('summaryFrom').value=n.getDate()>1?new Date(n.getFullYear(),n.getMonth(),1).toISOString().slice(0,10):n.toISOString().slice(0,10);document.getElementById('summaryTo').value=n.toISOString().slice(0,10)}
 async function loadSummary(){const uid=document.getElementById('summaryUser').value;const f=document.getElementById('summaryFrom').value;const t=document.getElementById('summaryTo').value;let url=`${API}/report/summary?date_from=${f}T00:00:00&date_to=${t}T23:59:59`;if(uid)url+=`&user_id=${uid}`;const r=await(await fetch(url)).json();document.getElementById('summaryResult').style.display='block';document.getElementById('summaryTotal').textContent=r.total;document.getElementById('summaryCount').textContent=r.count;document.getElementById('summaryByUser').innerHTML=Object.entries(r.by_user).map(([k,v])=>`<div>${k}: ${v} ₽</div>`).join('')}
 
-// ЗАЯВКИ
-async function loadLeads(){const r=await(await fetch(`${API}/leads`)).json();document.getElementById('leadsBody').innerHTML=r.map(x=>`<tr><td>${x.id}</td><td>${x.name}</td><td>${x.phone}</td><td>${x.service_type||'—'}</td><td>${x.message||'—'}</td><td><select class="form-select form-select-sm" onchange="updateLeadStatus(${x.id},this.value)"><option value="new" ${x.status==='new'?'selected':''}>Новая</option><option value="contacted" ${x.status==='contacted'?'selected':''}>Связались</option><option value="converted" ${x.status==='converted'?'selected':''}>Конвертирован</option><option value="closed" ${x.status==='closed'?'selected':''}>Закрыта</option></select></td><td>${new Date(x.created_at).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteLead(${x.id})">✕</button></td></tr>`).join('')}
+async function loadLeads(){const r=await(await fetch(`${API}/leads`)).json();document.getElementById('leadsBody').innerHTML=r.map(x=>`<tr><td>${x.id}</td><td>${x.name}</td><td>${x.phone}</td><td>${x.service_type||'—'}</td><td>${x.message||'—'}</td><td><select class="form-select form-select-sm" onchange="updateLeadStatus(${x.id},this.value)"><option value="new" ${x.status==='new'?'selected':''}>Новая</option><option value="contacted" ${x.status==='contacted'?'selected':''}>Связались</option><option value="converted" ${x.status==='converted'?'selected':''}>Конвертирован</option><option value="closed" ${x.status==='closed'?'selected':''}>Закрыта</option></select></td><td>${new Date(x.created_at).toLocaleDateString()}</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteLead(${x.id})">✕</button></td></tr>`).join('')}
 async function updateLeadStatus(id,s){await fetch(`${API}/leads/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s})});loadLeads()}
 async function deleteLead(id){if(!confirm('Удалить заявку?'))return;await fetch(`${API}/leads/${id}`,{method:'DELETE'});loadLeads()}
 
-// ПОЛЬЗОВАТЕЛИ
-async function loadUsers(){const u=await(await fetch(`${API}/auth/users`)).json();document.getElementById('usersBody').innerHTML=u.map(x=>`<tr><td>${x.id}</td><td>${x.username}</td><td>${x.full_name}</td><td>${x.role_name||'—'}</td><td>${x.is_active?'Да':'Нет'}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editUser(${x.id})">✎</button><button class="btn btn-sm btn-outline-${x.is_active?'warning':'success'}" onclick="toggleUser(${x.id})">${x.is_active?'Диз.':'Акт.'}</button></td></tr>`).join('')}
-async function loadRoles(){const r=await(await fetch(`${API}/auth/roles`)).json();const sel=document.getElementById('userRole');sel.innerHTML='';r.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name}</option>`);document.getElementById('rolesBody').innerHTML=r.map(x=>`<tr><td>${x.name}</td><td>${'+'||'—'}</td><td>${x.can_edit_clients?'+':'—'}</td><td>${x.can_view_services?'+':'—'}</td><td>${x.can_edit_services?'+':'—'}</td><td>${x.can_view_orders?'+':'—'}</td><td>${x.can_edit_orders?'+':'—'}</td><td>${x.can_manage_users?'+':'—'}</td><td>${x.name!=='admin'?`<button class="btn btn-sm btn-outline-danger" onclick="deleteRole(${x.id})">✕</button>`:''}</td></tr>`).join('')}
+async function loadUsers(){const u=await(await fetch(`${API}/auth/users`)).json();document.getElementById('usersBody').innerHTML=u.map(x=>`<tr><td>${x.id}</td><td>${x.username}</td><td>${x.full_name}</td><td>${x.role_name||'—'}</td><td>${x.is_active?'Да':'Нет'}</td><td><button class="btn btn-sm btn-outline-primary" onclick="editUser(${x.id})">✎</button><button class="btn btn-sm btn-outline-${x.is_active?'warning':'success'}" onclick="toggleUser(${x.id})">${x.is_active?'Диз.':'Акт.'}</button></td></tr>`).join('')}
+async function loadRoles(){const r=await(await fetch(`${API}/auth/roles`)).json();const sel=document.getElementById('userRole');sel.innerHTML='';r.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name}</option>`);document.getElementById('rolesBody').innerHTML=r.map(x=>`<tr><td>${x.name}</td><td>${x.can_view_clients?'+':'—'}</td><td>${x.can_edit_clients?'+':'—'}</td><td>${x.can_view_services?'+':'—'}</td><td>${x.can_edit_services?'+':'—'}</td><td>${x.can_view_orders?'+':'—'}</td><td>${x.can_edit_orders?'+':'—'}</td><td>${x.can_delete_orders?'+':'—'}</td><td>${x.can_manage_users?'+':'—'}</td><td>${x.name!=='admin'?`<button class="btn btn-sm btn-outline-danger" onclick="deleteRole(${x.id})">✕</button>`:''}</td></tr>`).join('')}
 function showUserModal(d){document.getElementById('userId').value=d?.id||'';document.getElementById('userUsername').value=d?.username||'';document.getElementById('userUsername').readOnly=!!d;document.getElementById('userPassword').value='';document.getElementById('userPassword').required=!d;document.getElementById('userFullName').value=d?.full_name||'';document.getElementById('userModalTitle').textContent=d?'Редактировать':'Новый пользователь';loadRoles().then(()=>{if(d?.role_id)document.getElementById('userRole').value=d.role_id});new bootstrap.Modal('#userModal').show()}
 function editUser(id){fetch(`${API}/auth/users`).then(r=>r.json()).then(u=>{showUserModal(u.find(x=>x.id===id))})}
 async function saveUser(e){e.preventDefault();const id=document.getElementById('userId').value;const b={username:document.getElementById('userUsername').value,password:document.getElementById('userPassword').value,role_id:parseInt(document.getElementById('userRole').value),full_name:document.getElementById('userFullName').value};if(id){await fetch(`${API}/auth/users/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({full_name:b.full_name,role_id:b.role_id})})}else{await fetch(`${API}/auth/users`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}bootstrap.Modal.getInstance('#userModal').hide();loadUsers()}
 async function toggleUser(id){await fetch(`${API}/auth/users/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});loadUsers()}
-async function saveRole(e){e.preventDefault();const b={name:document.getElementById('roleName').value,can_view_clients:document.getElementById('roleViewClients').checked,can_edit_clients:document.getElementById('roleEditClients').checked,can_view_services:document.getElementById('roleViewServices').checked,can_edit_services:document.getElementById('roleEditServices').checked,can_view_orders:document.getElementById('roleViewOrders').checked,can_edit_orders:document.getElementById('roleEditOrders').checked,can_manage_users:document.getElementById('roleManageUsers').checked};await fetch(`${API}/auth/roles`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});document.getElementById('roleForm').reset();loadRoles()}
+async function saveRole(e){e.preventDefault();const b={name:document.getElementById('roleName').value,can_view_clients:document.getElementById('roleViewClients').checked,can_edit_clients:document.getElementById('roleEditClients').checked,can_view_services:document.getElementById('roleViewServices').checked,can_edit_services:document.getElementById('roleEditServices').checked,can_view_orders:document.getElementById('roleViewOrders').checked,can_edit_orders:document.getElementById('roleEditOrders').checked,can_delete_orders:document.getElementById('roleDeleteOrders').checked,can_manage_users:document.getElementById('roleManageUsers').checked};await fetch(`${API}/auth/roles`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});document.getElementById('roleForm').reset();loadRoles()}
 async function deleteRole(id){if(!confirm('Удалить?'))return;await fetch(`${API}/auth/roles/${id}`,{method:'DELETE'});loadRoles()}
 function showRoleModal(){loadRoles();new bootstrap.Modal('#roleModal').show()}
 </script>

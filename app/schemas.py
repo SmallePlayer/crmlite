@@ -43,7 +43,10 @@ class OrderItemIn(BaseModel):
 
 class OrderCreate(BaseModel):
     client_id: int
+    client_name: str = ""
     order_type: str
+    printer: Optional[str] = None
+    description: Optional[str] = None
     complaint: Optional[str] = None
     modeler: Optional[str] = None
     address: Optional[str] = None
@@ -54,6 +57,9 @@ class OrderCreate(BaseModel):
 
 class OrderUpdate(BaseModel):
     status: Optional[str] = None
+    client_name: Optional[str] = None
+    printer: Optional[str] = None
+    description: Optional[str] = None
     complaint: Optional[str] = None
     work_done: Optional[str] = None
     parts_replaced: Optional[str] = None
@@ -81,6 +87,8 @@ class OrderOut(BaseModel):
     client_name: str
     order_type: str
     status: str
+    printer: Optional[str]
+    description: Optional[str]
     complaint: Optional[str]
     work_done: Optional[str]
     parts_replaced: Optional[str]

@@ -47,6 +47,7 @@ class RoleCreate(BaseModel):
     can_edit_services: bool = False
     can_view_orders: bool = True
     can_edit_orders: bool = False
+    can_delete_orders: bool = False
     can_manage_users: bool = False
 
 
@@ -60,6 +61,7 @@ class RoleOut(BaseModel):
     can_edit_services: bool
     can_view_orders: bool
     can_edit_orders: bool
+    can_delete_orders: bool
     can_manage_users: bool
 
     class Config:

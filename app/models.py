@@ -30,6 +30,7 @@ class Role(Base):
     can_edit_services: Mapped[bool] = mapped_column(Boolean, default=False)
     can_view_orders: Mapped[bool] = mapped_column(Boolean, default=True)
     can_edit_orders: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_delete_orders: Mapped[bool] = mapped_column(Boolean, default=False)
     can_manage_users: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
@@ -66,6 +67,9 @@ class Order(Base):
     client_id: Mapped[int] = mapped_column(Integer, ForeignKey("clients.id"))
     order_type: Mapped[str] = mapped_column(String(50))  # "repair" or "print"
     status: Mapped[str] = mapped_column(String(50), default="active")
+    client_name: Mapped[str] = mapped_column(String(255), default="")
+    printer: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     complaint: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     work_done: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     parts_replaced: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
