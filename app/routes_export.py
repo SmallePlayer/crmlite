@@ -40,7 +40,7 @@ def export_orders(db: Session = Depends(get_db)):
     ws.append(["ID", "Клиент", "Тип", "Статус", "Сумма", "Дата"])
     orders = db.query(Order).options(joinedload(Order.client)).order_by(Order.created_at.desc()).all()
     for o in orders:
-        ws.append([o.id, o.client.full_name, o.order_type, o.status, o.total_price, o.created_at.isoformat()])
+        ws.append([o.id, o.client_name or o.client.full_name, o.order_type, o.status, o.total_price, o.created_at.isoformat()])
     return _stream(wb, "orders.xlsx")
 
 

@@ -54,7 +54,6 @@ class RoleCreate(BaseModel):
 class RoleOut(BaseModel):
     id: int
     name: str
-    name: str
     can_view_clients: bool
     can_edit_clients: bool
     can_view_services: bool
