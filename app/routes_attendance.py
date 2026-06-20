@@ -17,9 +17,14 @@ class AttendanceOut(BaseModel):
     date: str
     check_in: str
     check_out: Optional[str] = None
+    report_text: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class CheckoutData(BaseModel):
+    report_text: str = ""
 
 
 @router.get("", response_model=List[AttendanceOut])
@@ -50,7 +55,7 @@ def check_in(db: Session = Depends(get_db), user: User = Depends(get_current_use
 
 
 @router.post("/checkout", response_model=AttendanceOut)
-def check_out(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def check_out(data: CheckoutData, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     today = datetime.now().strftime("%Y-%m-%d")
     now = datetime.now().strftime("%H:%M")
     record = db.query(Attendance).filter(
@@ -62,6 +67,7 @@ def check_out(db: Session = Depends(get_db), user: User = Depends(get_current_us
     if record.check_out:
         raise HTTPException(400, "Вы уже отметили уход")
     record.check_out = now
+    record.report_text = data.report_text
     db.commit()
     db.refresh(record)
     record = db.query(Attendance).options(joinedload(Attendance.user)).get(record.id)
@@ -86,4 +92,5 @@ def _att_out(r: Attendance) -> AttendanceOut:
         date=r.date,
         check_in=r.check_in,
         check_out=r.check_out,
+        report_text=r.report_text,
     )

@@ -158,8 +158,8 @@ body{background:var(--bg);color:var(--text);transition:.3s}
 </div>
 
 <div class="tab-page" id="tab-attendance" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Мои отметки</h4><div><button class="btn btn-accent btn-sm" onclick="checkIn()">✅ Отметиться</button><button class="btn btn-outline-accent btn-sm ms-2" onclick="checkOut()">🚪 Уйти</button></div></div>
-<div class="row"><div class="col-12 mb-3"><div class="card p-3"><div id="attendanceCalendar" class="calendar-grid"></div></div></div><div class="col-12"><div class="card"><div class="card-body"><table class="table"><thead><tr><th>Дата</th><th>Пришёл</th><th>Ушёл</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div></div></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Мои отметки</h4><div><button class="btn btn-accent btn-sm" onclick="checkIn()">✅ Отметиться</button><button class="btn btn-outline-accent btn-sm ms-2" onclick="showCheckoutModal()">🚪 Уйти</button></div></div>
+<div class="row"><div class="col-12 mb-3"><div class="card p-3"><div id="attendanceCalendar" class="calendar-grid"></div></div></div><div class="col-12"><div class="card"><div class="card-body"><table class="table"><thead><tr><th>Дата</th><th>Пришёл</th><th>Ушёл</th><th>Отчёт о работе</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div></div></div></div>
 </div>
 
 <div class="tab-page" id="tab-schedule" style="display:none">
@@ -175,7 +175,7 @@ body{background:var(--bg);color:var(--text);transition:.3s}
 
 <div class="tab-page" id="tab-all-attendance" style="display:none">
 <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Все отметки</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/attendance">Excel</a></div>
-<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Пришёл</th><th>Ушёл</th><th></th></tr></thead><tbody id="allAttendanceBody"></tbody></table></div></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Пришёл</th><th>Ушёл</th><th>Отчёт</th><th></th></tr></thead><tbody id="allAttendanceBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-all-schedule" style="display:none">
@@ -252,6 +252,17 @@ body{background:var(--bg);color:var(--text);transition:.3s}
 <form id="scheduleForm" onsubmit="return saveSchedule(event)"><div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title">Расписание на <span id="scheduleModalDate"></span></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
 <div class="modal-body"><input type="hidden" id="scheduleDate"><div class="mb-3"><label class="form-label">С</label><input type="time" class="form-control" id="scheduleFrom" required></div><div class="mb-3"><label class="form-label">До</label><input type="time" class="form-control" id="scheduleTo" required></div></div>
 <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-accent">Сохранить</button></div></form></div></div></div>
+
+<div class="modal fade" id="checkoutModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title">Завершение смены</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+<div class="modal-body">
+<p class="text-muted mb-3">Напишите, что вы сделали за сегодня:</p>
+<textarea class="form-control" id="checkoutReport" rows="5" placeholder="Например: заменил хотэнд на Creality Ender 3, откалибровал стол, напечатал тестовую модель..." style="resize:vertical"></textarea>
+</div>
+<div class="modal-footer border-0">
+<button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+<button type="button" class="btn btn-accent" onclick="checkOut()">🚪 Завершить смену</button>
+</div></div></div></div>
 
 <div class="modal fade" id="profileModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
 <div class="modal-header border-0" style="background:var(--accent);color:#fff"><h5 class="modal-title">Профиль</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
@@ -361,10 +372,11 @@ async function saveReport(e){e.preventDefault();const tid=document.getElementByI
 async function editReportQty(id){const n=prompt('Новое количество:',document.getElementById(`qty-${id}`).textContent);if(!n||!parseFloat(n))return;await fetch(`${API}/reports/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({quantity:parseFloat(n)})});loadAllReports()}
 async function deleteReport(id){if(!confirm('Удалить?'))return;await fetch(`${API}/reports/${id}`,{method:'DELETE'});loadAllReports()}
 
-async function loadMyAttendance(){const r=await(await fetch(`${API}/attendance`)).json();document.getElementById('myAttendanceBody').innerHTML=r.map(x=>`<tr><td>${x.date}</td><td>${x.check_in}</td><td>${x.check_out||'—'}</td></tr>`).join('')}
-async function loadAllAttendance(){const r=await(await fetch(`${API}/attendance`)).json();document.getElementById('allAttendanceBody').innerHTML=r.map(x=>`<tr><td>${x.user_name}</td><td>${x.date}</td><td>${x.check_in}</td><td>${x.check_out||'—'}</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteAttendance(${x.id})">✕</button></td></tr>`).join('')}
+async function loadMyAttendance(){const r=await(await fetch(`${API}/attendance`)).json();document.getElementById('myAttendanceBody').innerHTML=r.map(x=>`<tr><td>${x.date}</td><td>${x.check_in}</td><td>${x.check_out||'—'}</td><td>${x.report_text||'—'}</td></tr>`).join('')}
+async function loadAllAttendance(){const r=await(await fetch(`${API}/attendance`)).json();document.getElementById('allAttendanceBody').innerHTML=r.map(x=>`<tr><td>${x.user_name}</td><td>${x.date}</td><td>${x.check_in}</td><td>${x.check_out||'—'}</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${x.report_text||''}">${x.report_text||'—'}</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteAttendance(${x.id})">✕</button></td></tr>`).join('')}
 async function checkIn(){const r=await fetch(`${API}/attendance/checkin`,{method:'POST'});const d=await r.json();if(!r.ok){alert(d.detail);return}loadMyAttendance();renderCalendar()}
-async function checkOut(){const r=await fetch(`${API}/attendance/checkout`,{method:'POST'});const d=await r.json();if(!r.ok){alert(d.detail);return}loadMyAttendance();renderCalendar()}
+function showCheckoutModal(){document.getElementById('checkoutReport').value='';new bootstrap.Modal('#checkoutModal').show()}
+async function checkOut(){const report=document.getElementById('checkoutReport').value;const r=await fetch(`${API}/attendance/checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({report_text:report})});const d=await r.json();if(!r.ok){alert(d.detail);return}bootstrap.Modal.getInstance('#checkoutModal').hide();loadMyAttendance();renderCalendar()}
 async function deleteAttendance(id){if(!confirm('Удалить?'))return;await fetch(`${API}/attendance/${id}`,{method:'DELETE'});loadAllAttendance()}
 async function renderCalendar(){const r=await(await fetch(`${API}/attendance`)).json();const dates={};r.forEach(x=>dates[x.date]=x);const today=new Date();const y=today.getFullYear();const m=today.getMonth();const first=new Date(y,m,1);const last=new Date(y,m+1,0);const days=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];let h=days.map(d=>`<div class="cal-day weekday">${d}</div>`).join('');const pad=first.getDay()===0?6:first.getDay()-1;for(let i=0;i<pad;i++)h+='<div></div>';for(let d=1;d<=last.getDate();d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const rec=dates[ds];const tc=ds===today.toISOString().slice(0,10)?' today':'';let cls=rec?(rec.check_in?'present':'absent'):(new Date(ds)<new Date(today.toISOString().slice(0,10))?'absent':'future');h+=`<div class="cal-day ${cls}${tc}">${d}</div>`}document.getElementById('attendanceCalendar').innerHTML=h}
 

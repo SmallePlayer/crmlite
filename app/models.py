@@ -129,9 +129,10 @@ class Attendance(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
-    date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
-    check_in: Mapped[str] = mapped_column(String(5))  # HH:MM
+    date: Mapped[str] = mapped_column(String(10))
+    check_in: Mapped[str] = mapped_column(String(5))
     check_out: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)
+    report_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     user: Mapped["User"] = relationship("User")
