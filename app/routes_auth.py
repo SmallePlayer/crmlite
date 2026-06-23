@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Role
 from app.auth import hash_password, verify_password, create_access_token, get_current_user, require_admin
+from app.audit import log
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -76,6 +77,7 @@ def login(data: LoginData, db: Session = Depends(get_db)):
         raise HTTPException(403, "Пользователь заблокирован")
     token = create_access_token(user.id, user.role_id)
     role_name = user.role.name if user.role else ""
+    log(user, "login", "user", user.id, f"Вход в систему", db=db)
     return {
         "token": token,
         "user": {
@@ -111,6 +113,7 @@ def change_password(data: ChangePasswordData, db: Session = Depends(get_db), use
         raise HTTPException(400, "Неверный текущий пароль")
     user.hashed_password = hash_password(data.new_password)
     db.commit()
+    log(user, "update", "user", user.id, "Смена пароля", db=db)
     return {"ok": True}
 
 
@@ -149,6 +152,7 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), _=Depends(requi
     db.add(user)
     db.commit()
     db.refresh(user)
+    log(_, "create", "user", user.id, f"Создан пользователь {user.username}", db=db)
     return UserOut(
         id=user.id,
         username=user.username,
@@ -175,6 +179,7 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _
         user.is_active = data.is_active
     db.commit()
     db.refresh(user)
+    log(_, "update", "user", user.id, f"Обновлён пользователь {user.username}", db=db)
     return UserOut(
         id=user.id,
         username=user.username,
@@ -201,6 +206,7 @@ def create_role(data: RoleCreate, db: Session = Depends(get_db), _=Depends(requi
     db.add(role)
     db.commit()
     db.refresh(role)
+    log(_, "create", "role", role.id, f"Создана роль {role.name}", db=db)
     return role
 
 
@@ -213,6 +219,7 @@ def update_role(role_id: int, data: RoleCreate, db: Session = Depends(get_db), _
         setattr(role, k, v)
     db.commit()
     db.refresh(role)
+    log(_, "update", "role", role.id, f"Обновлена роль {role.name}", db=db)
     return role
 
 
@@ -225,4 +232,5 @@ def delete_role(role_id: int, db: Session = Depends(get_db), _=Depends(require_a
         raise HTTPException(400, "Нельзя удалить роль админа")
     db.delete(role)
     db.commit()
+    log(_, "delete", "role", role_id, f"Удалена роль {role.name}", db=db)
     return {"ok": True}

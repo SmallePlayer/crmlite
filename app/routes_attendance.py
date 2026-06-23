@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import Attendance, User
 from app.auth import get_current_user, require_admin
+from app.audit import log
 
 router = APIRouter(prefix="/api/attendance", tags=["attendance"], dependencies=[Depends(get_current_user)])
 
@@ -50,6 +51,7 @@ def check_in(db: Session = Depends(get_db), user: User = Depends(get_current_use
     db.add(record)
     db.commit()
     db.refresh(record)
+    log(user, "create", "attendance", record.id, f"Отметка о приходе {today} {now}", db=db)
     record = db.query(Attendance).options(joinedload(Attendance.user)).get(record.id)
     return _att_out(record)
 
@@ -70,6 +72,7 @@ def check_out(data: CheckoutData, db: Session = Depends(get_db), user: User = De
     record.report_text = data.report_text
     db.commit()
     db.refresh(record)
+    log(user, "update", "attendance", record.id, f"Отметка об уходе {today} {now}", db=db)
     record = db.query(Attendance).options(joinedload(Attendance.user)).get(record.id)
     return _att_out(record)
 
@@ -81,6 +84,7 @@ def delete_attendance(record_id: int, db: Session = Depends(get_db), _=Depends(r
         raise HTTPException(404, "Запись не найдена")
     db.delete(record)
     db.commit()
+    log(_, "delete", "attendance", record_id, f"Удалена запись посещаемости #{record_id}", db=db)
     return {"ok": True}
 
 

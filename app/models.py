@@ -162,6 +162,19 @@ class Schedule(Base):
     user: Mapped["User"] = relationship("User")
 
 
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    user_name: Mapped[str] = mapped_column(String(255), default="")
+    action: Mapped[str] = mapped_column(String(255))  # create / update / delete / login / logout
+    entity_type: Mapped[str] = mapped_column(String(100))  # client / order / service / role / user / task / report / lead
+    entity_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
 class Lead(Base):
     __tablename__ = "leads"
 

@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Lead
+from app.models import Lead, User
 from app.auth import get_current_user
+from app.audit import log
 
 # открытый роутер — без авторизации (для сайта)
 public = APIRouter(prefix="/api/leads", tags=["leads"])
@@ -48,6 +49,7 @@ def create_lead(data: LeadIn, db: Session = Depends(get_db)):
     db.add(lead)
     db.commit()
     db.refresh(lead)
+    log(None, "create", "lead", lead.id, f"Новая заявка от {lead.name} ({lead.phone})", db=db)
     return _lead_out(lead)
 
 
@@ -61,23 +63,25 @@ def list_leads(status: Optional[str] = None, db: Session = Depends(get_db)):
 
 
 @protected.put("/{lead_id}", response_model=LeadOut)
-def update_lead(lead_id: int, data: LeadUpdate, db: Session = Depends(get_db)):
+def update_lead(lead_id: int, data: LeadUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     lead = db.query(Lead).get(lead_id)
     if not lead:
         raise HTTPException(404, "Заявка не найдена")
     lead.status = data.status
     db.commit()
     db.refresh(lead)
+    log(user, "update", "lead", lead.id, f"Статус заявки #{lead.id}: {lead.status}", db=db)
     return _lead_out(lead)
 
 
 @protected.delete("/{lead_id}")
-def delete_lead(lead_id: int, db: Session = Depends(get_db)):
+def delete_lead(lead_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     lead = db.query(Lead).get(lead_id)
     if not lead:
         raise HTTPException(404, "Заявка не найдена")
     db.delete(lead)
     db.commit()
+    log(user, "delete", "lead", lead_id, f"Удалена заявка #{lead_id}", db=db)
     return {"ok": True}
 
 

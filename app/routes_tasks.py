@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Task
 from app.auth import get_current_user, require_admin
+from app.audit import log
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"], dependencies=[Depends(get_current_user)])
 
@@ -38,6 +39,7 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db), _=Depends(requi
     db.add(task)
     db.commit()
     db.refresh(task)
+    log(_, "create", "task", task.id, f"Создана работа {task.name}", db=db)
     return _task_out(task)
 
 
@@ -51,6 +53,7 @@ def update_task(task_id: int, data: TaskCreate, db: Session = Depends(get_db), _
     task.unit = data.unit
     db.commit()
     db.refresh(task)
+    log(_, "update", "task", task.id, f"Обновлена работа {task.name}", db=db)
     return _task_out(task)
 
 
@@ -61,6 +64,7 @@ def delete_task(task_id: int, db: Session = Depends(get_db), _=Depends(require_a
         raise HTTPException(404, "Работа не найдена")
     db.delete(task)
     db.commit()
+    log(_, "delete", "task", task_id, f"Удалена работа {task.name}", db=db)
     return {"ok": True}
 
 

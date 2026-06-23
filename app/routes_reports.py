@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import WorkReport, Task, User
 from app import models as m
 from app.auth import get_current_user, require_admin
+from app.audit import log
 
 router = APIRouter(prefix="/api/reports", tags=["reports"], dependencies=[Depends(get_current_user)])
 
@@ -65,6 +66,7 @@ def create_report(data: ReportCreate, db: Session = Depends(get_db), user: User 
     db.add(report)
     db.commit()
     db.refresh(report)
+    log(user, "create", "report", report.id, f"Создан отчёт о работе #{report.id}", db=db)
     report = db.query(WorkReport).options(
         joinedload(WorkReport.user),
         joinedload(WorkReport.task),
@@ -85,6 +87,7 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
     report.quantity = data.quantity
     db.commit()
     db.refresh(report)
+    log(_, "update", "report", report.id, f"Обновлён отчёт о работе #{report.id}", db=db)
     return _report_out(report)
 
 
@@ -95,6 +98,7 @@ def delete_report(report_id: int, db: Session = Depends(get_db), _=Depends(requi
         raise HTTPException(404, "Отчёт не найден")
     db.delete(report)
     db.commit()
+    log(_, "delete", "report", report_id, f"Удалён отчёт о работе #{report_id}", db=db)
     return {"ok": True}
 
 

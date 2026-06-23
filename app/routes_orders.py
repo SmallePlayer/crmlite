@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app import models, schemas
 from app.auth import get_current_user
+from app.audit import log as audit_log
 
 router = APIRouter(prefix="/api/orders", tags=["orders"], dependencies=[Depends(get_current_user)])
 
@@ -77,6 +78,7 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db), user:
 
     db.commit()
     db.refresh(order)
+    audit_log(user, "create", "order", order.id, f"Создан заказ №{order.id} ({data.order_type})", db=db)
     order = db.query(models.Order).options(
         joinedload(models.Order.client),
         joinedload(models.Order.items).joinedload(models.OrderItem.service),
@@ -135,6 +137,7 @@ def update_order(order_id: int, data: schemas.OrderUpdate, db: Session = Depends
 
     db.commit()
     db.refresh(order)
+    audit_log(user, "update", "order", order.id, f"Обновлён заказ №{order.id}", db=db)
     order = db.query(models.Order).options(
         joinedload(models.Order.client),
         joinedload(models.Order.items).joinedload(models.OrderItem.service),
@@ -152,6 +155,7 @@ def delete_order(order_id: int, db: Session = Depends(get_db), user: models.User
     _log(db, order.id, user.id, user.full_name or user.username, "Заказ удалён")
     db.delete(order)
     db.commit()
+    audit_log(user, "delete", "order", order_id, f"Удалён заказ №{order_id}", db=db)
     return {"ok": True}
 
 

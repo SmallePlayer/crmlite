@@ -107,6 +107,7 @@ body{background:var(--bg);color:var(--text);transition:.3s}
 </div>
 </li>
 <li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-tab="tab-users" onclick="switchTab('tab-users')">Пользователи</a></li>
+<li class="nav-item" id="navLogs" style="display:none"><a class="nav-link" data-tab="tab-logs" onclick="switchTab('tab-logs')">📋 Логи</a></li>
 </ul>
 <div class="p-3 border-top border-secondary border-opacity-10">
 <span id="userName" class="text-white-50 small ms-2"></span>
@@ -199,6 +200,11 @@ body{background:var(--bg);color:var(--text);transition:.3s}
 <div class="tab-page" id="tab-users" style="display:none">
 <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Пользователи</h4><div><button class="btn btn-outline-accent btn-sm me-2" onclick="showRoleModal()">Роли</button><button class="btn btn-accent btn-sm" onclick="showUserModal()">+ Новый</button></div></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Логин</th><th>Имя</th><th>Роль</th><th>Активен</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
+</div>
+
+<div class="tab-page" id="tab-logs" style="display:none">
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📋 Логи действий</h4><div><button class="btn btn-outline-accent btn-sm" onclick="loadLogs()">🔄 Обновить</button></div></div>
+<div class="card"><div class="card-body"><div class="table-responsive" style="max-height:70vh;overflow-y:auto"><table class="table table-sm"><thead><tr><th>Время</th><th>Пользователь</th><th>Действие</th><th>Объект</th><th>ID</th><th>Детали</th></tr></thead><tbody id="logsBody"></tbody></table></div></div></div>
 </div>
 
 </div></div></div>
@@ -294,9 +300,9 @@ function filterTable(tid,sid){const q=document.getElementById(sid).value.toLower
 function updateOrderSub(el){el.parentElement.parentElement.querySelectorAll('.sub-link').forEach(x=>x.classList.remove('active'));el.classList.add('active')}
 function updateStaffSub(el){el.parentElement.parentElement.querySelectorAll('.sub-link').forEach(x=>x.classList.remove('active'));el.classList.add('active')}
 
-function switchTab(tabId){document.querySelectorAll('.tab-page').forEach(p=>p.style.display='none');const el=document.getElementById(tabId);if(el)el.style.display='block';document.querySelectorAll('#mainNav .nav-link[data-tab]').forEach(l=>l.classList.remove('active'));document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(l=>l.classList.add('active'));if(!loaded[tabId]){const h={'tab-repair':()=>loadOrdersByType('repair'),'tab-print':()=>loadOrdersByType('print'),'tab-archive':loadArchiveOrders,'tab-leads':loadLeads,'tab-clients':loadClients,'tab-services':loadServices,'tab-calc':loadCalcServices,'tab-tasks':loadTasks,'tab-my-reports':loadMyReports,'tab-attendance':()=>{loadMyAttendance();renderCalendar()},'tab-schedule':loadMySchedule,'tab-reports':loadAllReports,'tab-all-attendance':loadAllAttendance,'tab-all-schedule':loadAllSchedule,'tab-summary':()=>{loadSummaryUsers()},'tab-users':()=>{loadUsers();loadRoles()}};(h[tabId]||(()=>{}))();loaded[tabId]=true}}
+function switchTab(tabId){document.querySelectorAll('.tab-page').forEach(p=>p.style.display='none');const el=document.getElementById(tabId);if(el)el.style.display='block';document.querySelectorAll('#mainNav .nav-link[data-tab]').forEach(l=>l.classList.remove('active'));document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(l=>l.classList.add('active'));if(!loaded[tabId]){const h={'tab-repair':()=>loadOrdersByType('repair'),'tab-print':()=>loadOrdersByType('print'),'tab-archive':loadArchiveOrders,'tab-leads':loadLeads,'tab-clients':loadClients,'tab-services':loadServices,'tab-calc':loadCalcServices,'tab-tasks':loadTasks,'tab-my-reports':loadMyReports,'tab-attendance':()=>{loadMyAttendance();renderCalendar()},'tab-schedule':loadMySchedule,'tab-reports':loadAllReports,'tab-all-attendance':loadAllAttendance,'tab-all-schedule':loadAllSchedule,'tab-summary':()=>{loadSummaryUsers()},'tab-users':()=>{loadUsers();loadRoles()},'tab-logs':loadLogs};(h[tabId]||(()=>{}))();loaded[tabId]=true}}
 
-(async function initApp(){try{const r=await fetch(`${API}/auth/me`);currentUser=await r.json();document.querySelector('#userName').textContent=currentUser.full_name||currentUser.username;if(currentUser.role_name==='admin'){['navUsers','navReports','navAttendance','navScheduleAll','navSummary','backupBtn'].forEach(id=>document.getElementById(id).style.display='');canDeleteOrders=true}else{const roles=await(await fetch(`${API}/auth/roles`)).json();const r=roles.find(x=>x.id===currentUser.role_id);if(r)canDeleteOrders=r.can_delete_orders}}catch(e){window.location.href='/login'}switchTab('tab-repair')})();
+(async function initApp(){try{const r=await fetch(`${API}/auth/me`);currentUser=await r.json();document.querySelector('#userName').textContent=currentUser.full_name||currentUser.username;if(currentUser.role_name==='admin'){['navUsers','navLogs','navReports','navAttendance','navScheduleAll','navSummary','backupBtn'].forEach(id=>document.getElementById(id).style.display='');canDeleteOrders=true}else{const roles=await(await fetch(`${API}/auth/roles`)).json();const r=roles.find(x=>x.id===currentUser.role_id);if(r)canDeleteOrders=r.can_delete_orders}}catch(e){window.location.href='/login'}switchTab('tab-repair')})();
 
 function showProfile(){document.getElementById('profileUsername').textContent=currentUser.username;document.getElementById('profileFullName').textContent=currentUser.full_name;document.getElementById('profileRole').textContent=currentUser.role_name;document.getElementById('changeCurrentPassword').value='';document.getElementById('changeNewPassword').value='';document.getElementById('changePasswordMsg').textContent='';new bootstrap.Modal('#profileModal').show()}
 async function changePassword(){const cur=document.getElementById('changeCurrentPassword').value;const nw=document.getElementById('changeNewPassword').value;if(!cur||!nw){document.getElementById('changePasswordMsg').textContent='Заполните поля';return}if(nw.length<4){document.getElementById('changePasswordMsg').textContent='Минимум 4 символа';return}const r=await fetch(`${API}/auth/change-password`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:cur,new_password:nw})});const d=await r.json();document.getElementById('changePasswordMsg').textContent=r.ok?'Пароль изменён':(d.detail||'Ошибка')}
@@ -390,6 +396,7 @@ async function deleteRole(id){if(!confirm('Удалить?'))return;await fetch(
 function hideUserModal(){var el=document.getElementById('userModal');el.style.display='none';el.classList.remove('show');document.body.classList.remove('modal-open');var b=document.querySelector('.modal-backdrop');if(b)b.remove()}
 function hideRoleModal(){var el=document.getElementById('roleModal');el.style.display='none';el.classList.remove('show');document.body.classList.remove('modal-open');var b=document.querySelector('.modal-backdrop');if(b)b.remove()}
 function showRoleModal(){loadRoles().finally(()=>{var el=document.getElementById('roleModal');el.style.display='block';el.classList.add('show');document.body.classList.add('modal-open');var b=document.createElement('div');b.className='modal-backdrop fade show';document.body.appendChild(b)})}
+async function loadLogs(){var r=await(await fetch(`${API}/audit/logs`)).json();document.getElementById('logsBody').innerHTML=r.map(x=>'<tr><td style="white-space:nowrap">'+new Date(x.created_at).toLocaleString()+'</td><td>'+x.user_name+'</td><td>'+x.action+'</td><td>'+x.entity_type+'</td><td>'+(x.entity_id||'')+'</td><td>'+(x.details||'')+'</td></tr>').join('')}
 </script>
 </body>
 </html>
