@@ -75,40 +75,40 @@ body{background:var(--bg);color:var(--text);transition:.3s}
 <div><button class="profile-btn" onclick="toggleTheme()">🌓</button><button class="profile-btn" onclick="showProfile()">&#128100;</button></div>
 </div>
 <ul class="nav flex-column mt-1 flex-grow-1" id="mainNav">
-<li class="nav-item"><a class="nav-link active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">📊 Дашборд</a></li>
-<li class="nav-item"><a class="nav-link" data-tab="tab-clients" onclick="switchTab('tab-clients')">Клиенты</a></li>
-<li class="nav-item"><a class="nav-link" data-tab="tab-services" onclick="switchTab('tab-services')">Услуги</a></li>
+<li class="nav-item"><a class="nav-link active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">📊 Панель</a></li>
+<li class="nav-item"><a class="nav-link" data-tab="tab-clients" onclick="switchTab('tab-clients')">👥 Клиенты</a></li>
+<li class="nav-item"><a class="nav-link" data-tab="tab-leads" onclick="switchTab('tab-leads')">📨 Заявки</a></li>
 <li class="nav-item">
 <a class="nav-link active" onclick="document.getElementById('ordersSubmenu').classList.toggle('show')">
-Заказы <span class="badge bg-danger" id="orderBadge" style="display:none;font-size:.6rem;margin-left:6px">0</span>
+📋 Заказы <span class="badge bg-danger" id="orderBadge" style="display:none;font-size:.6rem;margin-left:6px">0</span>
 </a>
 <div class="collapse show" id="ordersSubmenu">
 <ul class="nav flex-column" id="ordersSubmenuList">
 <li class="nav-item"><a class="nav-link sub-link active" data-tab="tab-repair" onclick="switchTab('tab-repair');updateOrderSub(this)">🔧 Ремонт</a></li>
-<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-print" onclick="switchTab('tab-print');updateOrderSub(this)">🖨️ 3D печать</a></li>
-<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-archive" onclick="switchTab('tab-archive');updateOrderSub(this)">📦 Архив</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-print" onclick="switchTab('tab-print');updateOrderSub(this)">🖨️ 3D Печать</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-archive" onclick="switchTab('tab-archive');updateOrderSub(this)">📦 Выполненные</a></li>
 </ul>
 </div>
 </li>
-<li class="nav-item"><a class="nav-link" data-tab="tab-leads" onclick="switchTab('tab-leads')">Заявки</a></li>
-<li class="nav-item"><a class="nav-link" data-tab="tab-calc" onclick="switchTab('tab-calc')">Калькулятор</a></li>
+<li class="nav-item"><a class="nav-link" data-tab="tab-services" onclick="switchTab('tab-services')">🛠️ Услуги</a></li>
+<li class="nav-item"><a class="nav-link" data-tab="tab-calc" onclick="switchTab('tab-calc')">🧮 Калькулятор</a></li>
 <li class="nav-item">
-<a class="nav-link" onclick="document.getElementById('staffSubmenu').classList.toggle('show')">Сотрудники</a>
+<a class="nav-link" onclick="document.getElementById('staffSubmenu').classList.toggle('show')">👤 Сотрудники</a>
 <div class="collapse" id="staffSubmenu">
 <ul class="nav flex-column" id="staffSubmenuList">
-<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-tasks" onclick="switchTab('tab-tasks');updateStaffSub(this)">Работы</a></li>
-<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-my-reports" onclick="switchTab('tab-my-reports');updateStaffSub(this)">Мои отчёты</a></li>
-<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-attendance" onclick="switchTab('tab-attendance');updateStaffSub(this)">Мои отметки</a></li>
-<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-schedule" onclick="switchTab('tab-schedule');updateStaffSub(this)">Моё расписание</a></li>
-<li class="nav-item" id="navReports" style="display:none"><a class="nav-link sub-link" data-tab="tab-reports" onclick="switchTab('tab-reports');updateStaffSub(this)">Отчёты сотрудников</a></li>
-<li class="nav-item" id="navAttendance" style="display:none"><a class="nav-link sub-link" data-tab="tab-all-attendance" onclick="switchTab('tab-all-attendance');updateStaffSub(this)">Все отметки</a></li>
-<li class="nav-item" id="navScheduleAll" style="display:none"><a class="nav-link sub-link" data-tab="tab-all-schedule" onclick="switchTab('tab-all-schedule');updateStaffSub(this)">Расписание всех</a></li>
-<li class="nav-item" id="navSummary" style="display:none"><a class="nav-link sub-link" data-tab="tab-summary" onclick="switchTab('tab-summary');updateStaffSub(this)">Сводка зарплаты</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-tasks" onclick="switchTab('tab-tasks');updateStaffSub(this)">📌 Задачи</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-my-reports" onclick="switchTab('tab-my-reports');updateStaffSub(this)">📝 Мои работы</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-attendance" onclick="switchTab('tab-attendance');updateStaffSub(this)">⏱️ Явка</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-schedule" onclick="switchTab('tab-schedule');updateStaffSub(this)">🗓️ Расписание</a></li>
+<li class="nav-item" id="navReports" style="display:none"><a class="nav-link sub-link" data-tab="tab-reports" onclick="switchTab('tab-reports');updateStaffSub(this)">📊 Отчёты</a></li>
+<li class="nav-item" id="navAttendance" style="display:none"><a class="nav-link sub-link" data-tab="tab-all-attendance" onclick="switchTab('tab-all-attendance');updateStaffSub(this)">⏱️ Все явки</a></li>
+<li class="nav-item" id="navScheduleAll" style="display:none"><a class="nav-link sub-link" data-tab="tab-all-schedule" onclick="switchTab('tab-all-schedule');updateStaffSub(this)">🗓️ Все графики</a></li>
+<li class="nav-item" id="navSummary" style="display:none"><a class="nav-link sub-link" data-tab="tab-summary" onclick="switchTab('tab-summary');updateStaffSub(this)">💰 Зарплата</a></li>
 </ul>
 </div>
 </li>
-<li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-tab="tab-users" onclick="switchTab('tab-users')">Пользователи</a></li>
-<li class="nav-item" id="navLogs" style="display:none"><a class="nav-link" data-tab="tab-logs" onclick="switchTab('tab-logs')">📋 Логи</a></li>
+<li class="nav-item" id="navUsers" style="display:none"><a class="nav-link" data-tab="tab-users" onclick="switchTab('tab-users')">🔐 Доступ</a></li>
+<li class="nav-item" id="navLogs" style="display:none"><a class="nav-link" data-tab="tab-logs" onclick="switchTab('tab-logs')">📋 Журнал</a></li>
 </ul>
 <div class="p-3 border-top border-secondary border-opacity-10">
 <span id="userName" class="text-white-50 small ms-2"></span>
@@ -122,95 +122,95 @@ body{background:var(--bg);color:var(--text);transition:.3s}
 <div class="col-10 content" id="tabContent">
 
 <div class="tab-page" id="tab-dashboard">
-<h4 class="page-title mb-3">📊 Дашборд</h4>
+<h4 class="page-title mb-3">📊 Панель управления</h4>
 <div class="row g-3 mb-3" id="dashboardCards"></div>
-<div class="row g-3"><div class="col-8"><div class="card p-3"><h6 class="fw600 mb-2">Последние заказы</h6><div class="table-responsive" style="max-height:320px;overflow-y:auto"><table class="table table-sm"><thead><tr><th>#</th><th>Клиент</th><th>Тип</th><th>Статус</th><th>Сумма</th></tr></thead><tbody id="dashboardOrdersBody"></tbody></table></div></div></div><div class="col-4"><div class="card p-3 mb-3"><h6 class="fw600 mb-2">Быстрые действия</h6><div class="d-flex flex-wrap gap-2"><a class="btn btn-accent btn-sm" onclick="switchTab('tab-clients')">+ Клиент</a><a class="btn btn-accent btn-sm" onclick="switchTab('tab-repair')">+ Заказ</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-leads')">Заявки</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-attendance')">Отметиться</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-tasks')">Работы</a></div></div><div class="card p-3"><h6 class="fw600 mb-2">Последние заявки</h6><div class="table-responsive" style="max-height:250px;overflow-y:auto"><table class="table table-sm"><thead><tr><th>#</th><th>Имя</th><th>Тел.</th><th>Услуга</th><th>Статус</th></tr></thead><tbody id="dashboardLeadsBody"></tbody></table></div></div></div></div>
+<div class="row g-3"><div class="col-8"><div class="card p-3"><h6 class="fw600 mb-2">Последние заказы</h6><div class="table-responsive" style="max-height:320px;overflow-y:auto"><table class="table table-sm"><thead><tr><th>#</th><th>Клиент</th><th>Тип</th><th>Статус</th><th>Сумма</th></tr></thead><tbody id="dashboardOrdersBody"></tbody></table></div></div></div><div class="col-4"><div class="card p-3 mb-3"><h6 class="fw600 mb-2">⚡ Быстрый доступ</h6><div class="d-flex flex-wrap gap-2"><a class="btn btn-accent btn-sm" onclick="switchTab('tab-clients')">➕ Клиент</a><a class="btn btn-accent btn-sm" onclick="switchTab('tab-repair')">➕ Заказ</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-leads')">📨 Заявки</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-attendance')">⏱️ Отметиться</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-tasks')">📌 Задачи</a></div></div><div class="card p-3"><h6 class="fw600 mb-2">Последние заявки</h6><div class="table-responsive" style="max-height:250px;overflow-y:auto"><table class="table table-sm"><thead><tr><th>#</th><th>Имя</th><th>Тел.</th><th>Услуга</th><th>Статус</th></tr></thead><tbody id="dashboardLeadsBody"></tbody></table></div></div></div></div>
 </div>
 
 <div class="tab-page" id="tab-clients" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Клиенты</h4><div><input class="search-box" id="clientSearch" placeholder="Поиск..." oninput="filterTable('clientsBody','clientSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showClientModal()">+ Новый</button><a class="btn btn-outline-accent btn-sm ms-2" href="/api/export/clients">Excel</a></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">👥 Клиенты</h4><div><input class="search-box" id="clientSearch" placeholder="Поиск..." oninput="filterTable('clientsBody','clientSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showClientModal()">➕ Новый клиент</button><a class="btn btn-outline-accent btn-sm ms-2" href="/api/export/clients">Excel</a></div></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>ФИО</th><th>Телефон</th><th>Дата</th><th></th></tr></thead><tbody id="clientsBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-services" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Услуги</h4><button class="btn btn-accent btn-sm" onclick="showServiceModal()">+ Новая</button></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">🛠️ Услуги</h4><button class="btn btn-accent btn-sm" onclick="showServiceModal()">➕ Новая услуга</button></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Название</th><th>Цена</th><th>Категория</th><th></th></tr></thead><tbody id="servicesBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-repair" style="display:block">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">🔧 Ремонт</h4><div><input class="search-box" id="repairSearch" placeholder="Поиск..." oninput="filterTable('repairOrdersBody','repairSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showOrderModal()">+ Новый</button></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">🔧 Ремонт — активные</h4><div><input class="search-box" id="repairSearch" placeholder="Поиск..." oninput="filterTable('repairOrdersBody','repairSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showOrderModal()">➕ Новый заказ</button></div></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Клиент</th><th>Принтер</th><th>Статус</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody id="repairOrdersBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-print" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">🖨️ 3D печать</h4><div><input class="search-box" id="printSearch" placeholder="Поиск..." oninput="filterTable('printOrdersBody','printSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showOrderModal()">+ Новый</button></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">🖨️ 3D Печать — активные</h4><div><input class="search-box" id="printSearch" placeholder="Поиск..." oninput="filterTable('printOrdersBody','printSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showOrderModal()">➕ Новый заказ</button></div></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Клиент</th><th>Принтер</th><th>Статус</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody id="printOrdersBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-archive" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Архив</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/orders">Excel</a></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📦 Выполненные заказы</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/orders">Excel</a></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Тип</th><th>Клиент</th><th>Принтер</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody id="archiveOrdersBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-leads" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Заявки с сайта</h4></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📨 Входящие заявки</h4></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Имя</th><th>Телефон</th><th>Услуга</th><th>Сообщение</th><th>Статус</th><th>Дата</th><th></th></tr></thead><tbody id="leadsBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-calc" style="display:none">
-<h4 class="page-title mb-3">Калькулятор</h4>
+<h4 class="page-title mb-3">🧮 Калькулятор стоимости</h4>
 <div class="card p-4"><div class="mb-3"><label class="form-label fw500">Категория</label><select class="form-select" id="calcCategory" onchange="loadCalcServices()" style="max-width:300px"><option value="repair">Ремонт</option><option value="print">3D печать</option></select></div><div id="calcRows"></div><button class="btn btn-outline-accent btn-sm mb-3" onclick="addCalcRow()">+ Добавить услугу</button><hr><div class="text-end fs-4"><strong>Итого: <span id="calcTotal" style="color:var(--accent)">0</span> ₽</strong></div></div>
 </div>
 
 <div class="tab-page" id="tab-tasks" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Работы</h4><button class="btn btn-accent btn-sm" onclick="showTaskModal()">+ Новая</button></div>
-<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Название</th><th>Цена</th><th>Ед.</th><th></th></tr></thead><tbody id="tasksBody"></tbody></table></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📌 Задачи для сотрудников</h4><button class="btn btn-accent btn-sm" onclick="showTaskModal()">➕ Новая задача</button></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Задача</th><th>Цена</th><th>Ед.</th><th></th></tr></thead><tbody id="tasksBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-my-reports" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Мои отчёты</h4><button class="btn btn-accent btn-sm" onclick="showReportModal()">+ Новый</button></div>
-<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Работа</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Заказ</th><th>Дата</th></tr></thead><tbody id="myReportsBody"></tbody></table></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📝 Мои работы</h4><button class="btn btn-accent btn-sm" onclick="showReportModal()">➕ Добавить</button></div>
+<div class="card"><div class="card-body"><table class="table"><thead><tr><th>Задача</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Заказ</th><th>Дата</th></tr></thead><tbody id="myReportsBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-attendance" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Мои отметки</h4><div><button class="btn btn-accent btn-sm" onclick="checkIn()">✅ Отметиться</button><button class="btn btn-outline-accent btn-sm ms-2" onclick="showCheckoutModal()">🚪 Уйти</button></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">⏱️ Явка на работу</h4><div><button class="btn btn-accent btn-sm" onclick="checkIn()">✅ Пришёл</button><button class="btn btn-outline-accent btn-sm ms-2" onclick="showCheckoutModal()">🚪 Ухожу</button></div></div>
 <div class="row"><div class="col-12 mb-3"><div class="card p-3"><div id="attendanceCalendar" class="calendar-grid"></div></div></div><div class="col-12"><div class="card"><div class="card-body"><table class="table"><thead><tr><th>Дата</th><th>Пришёл</th><th>Ушёл</th><th>Отчёт о работе</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div></div></div></div>
 </div>
 
 <div class="tab-page" id="tab-schedule" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Моё расписание</h4><button class="btn btn-outline-accent btn-sm" id="toAllScheduleBtn" style="display:none" onclick="switchTab('tab-all-schedule')">📋 Расписание всех</button></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">🗓️ График работы</h4><button class="btn btn-outline-accent btn-sm" id="toAllScheduleBtn" style="display:none" onclick="switchTab('tab-all-schedule')">📋 Расписание всех</button></div>
 <div class="card p-3"><div class="calendar-grid" id="scheduleCalendar"></div></div>
 <div class="mt-3 card"><div class="card-body"><table class="table"><thead><tr><th>Дата</th><th>С</th><th>До</th></tr></thead><tbody id="myScheduleBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-reports" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Отчёты сотрудников</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/reports">Excel</a></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📊 Отчёты сотрудников</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/reports">Excel</a></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Работа</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Заказ</th><th>Дата</th><th></th></tr></thead><tbody id="allReportsBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-all-attendance" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Все отметки</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/attendance">Excel</a></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">⏱️ Журнал явок</h4><a class="btn btn-outline-accent btn-sm" href="/api/export/attendance">Excel</a></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>Сотрудник</th><th>Дата</th><th>Пришёл</th><th>Ушёл</th><th>Отчёт</th><th></th></tr></thead><tbody id="allAttendanceBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-all-schedule" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Расписание всех сотрудников</h4><button class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-schedule')">📅 Моё расписание</button></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">🗓️ Все графики</h4><button class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-schedule')">📅 Моё расписание</button></div>
 <div class="card p-3" id="allScheduleCalendarWrap"><div class="calendar-grid" id="allScheduleCalendar"></div></div>
 </div>
 
 <div class="tab-page" id="tab-summary" style="display:none">
-<h4 class="page-title mb-3">Сводка зарплаты</h4>
+<h4 class="page-title mb-3">💰 Расчёт зарплаты</h4>
 <div class="row mb-3 g-2"><div class="col"><label class="form-label small">С</label><input type="date" class="form-control form-control-sm" id="summaryFrom"></div><div class="col"><label class="form-label small">По</label><input type="date" class="form-control form-control-sm" id="summaryTo"></div><div class="col"><label class="form-label small">Сотрудник</label><select class="form-select form-select-sm" id="summaryUser"><option value="">Все</option></select></div><div class="col d-flex align-items-end"><button class="btn btn-accent btn-sm" onclick="loadSummary()">Показать</button></div></div>
 <div class="card p-4" id="summaryResult" style="display:none"><p><strong>Всего:</strong> <span id="summaryTotal"></span> ₽</p><p><strong>Отчётов:</strong> <span id="summaryCount"></span></p><hr><h6>По сотрудникам</h6><div id="summaryByUser"></div></div>
 </div>
 
 <div class="tab-page" id="tab-users" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">Пользователи</h4><div><button class="btn btn-outline-accent btn-sm me-2" onclick="showRoleModal()">Роли</button><button class="btn btn-accent btn-sm" onclick="showUserModal()">+ Новый</button></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">🔐 Управление доступом</h4><div><button class="btn btn-outline-accent btn-sm me-2" onclick="showRoleModal()">🔑 Роли</button><button class="btn btn-accent btn-sm" onclick="showUserModal()">➕ Пользователь</button></div></div>
 <div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>Логин</th><th>Имя</th><th>Роль</th><th>Активен</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
 </div>
 
 <div class="tab-page" id="tab-logs" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📋 Логи действий</h4><div><button class="btn btn-outline-accent btn-sm" onclick="loadLogs()">🔄 Обновить</button></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📋 Журнал действий</h4><div><button class="btn btn-outline-accent btn-sm" onclick="loadLogs()">🔄 Обновить</button></div></div>
 <div class="card"><div class="card-body"><div class="table-responsive" style="max-height:70vh;overflow-y:auto"><table class="table table-sm"><thead><tr><th>Время</th><th>Пользователь</th><th>Действие</th><th>Объект</th><th>ID</th><th>Детали</th></tr></thead><tbody id="logsBody"></tbody></table></div></div></div>
 </div>
 
