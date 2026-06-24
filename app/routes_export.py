@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from io import BytesIO
 from openpyxl import Workbook
 from app.database import get_db, DATABASE_URL
-from app.models import Client, Order, Task, WorkReport, Attendance, User
+from app.models import Client, Order, Task, WorkReport, Attendance, User, Product
 from app.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/export", tags=["export"], dependencies=[Depends(get_current_user)])
@@ -68,6 +68,17 @@ def export_attendance(db: Session = Depends(get_db), _=Depends(require_admin)):
     for r in records:
         ws.append([r.id, r.user.full_name or r.user.username, r.date, r.check_in, r.check_out or ""])
     return _stream(wb, "attendance.xlsx")
+
+
+@router.get("/warehouse")
+def export_warehouse(db: Session = Depends(get_db)):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Склад"
+    ws.append(["ID", "Название", "Цвет", "Артикул", "Количество"])
+    for p in db.query(Product).order_by(Product.name).all():
+        ws.append([p.id, p.name, p.color, p.article, p.quantity])
+    return _stream(wb, "warehouse.xlsx")
 
 
 @router.get("/database")
