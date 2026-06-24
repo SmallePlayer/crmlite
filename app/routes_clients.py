@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
+from sqlalchemy.orm import joinedload
 from app.auth import get_current_user
 from app.audit import log
 
@@ -43,6 +44,27 @@ def update_client(client_id: int, data: schemas.ClientCreate, db: Session = Depe
     db.refresh(client)
     log(user, "update", "client", client.id, f"Обновлён клиент {client.full_name}", db=db)
     return client
+
+
+@router.get("/{client_id}/orders")
+def get_client_orders(client_id: int, db: Session = Depends(get_db)):
+    client = db.query(models.Client).get(client_id)
+    if not client:
+        raise HTTPException(404, "Клиент не найден")
+    orders = db.query(models.Order).options(
+        joinedload(models.Order.items),
+    ).filter(models.Order.client_id == client_id).order_by(models.Order.created_at.desc()).all()
+    return [
+        {
+            "id": o.id,
+            "client_name": o.client_name,
+            "order_type": o.order_type,
+            "status": o.status,
+            "total_price": o.total_price,
+            "created_at": o.created_at.isoformat(),
+        }
+        for o in orders
+    ]
 
 
 @router.delete("/{client_id}")

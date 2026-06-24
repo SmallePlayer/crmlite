@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Product, OrderTemplate, User
+from app.models import Product, OrderTemplate, User, Order
 from app.auth import get_current_user
 from app.audit import log
 
@@ -84,6 +84,32 @@ def create_template(data: TemplateCreate, db: Session = Depends(get_db), user: U
     db.refresh(t)
     log(user, "create", "order_template", t.id, f"Создан шаблон заказа {t.name}", db=db)
     return t
+
+
+@router.post("/templates/{template_id}/apply")
+def apply_template(template_id: int, order_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    t = db.query(OrderTemplate).get(template_id)
+    if not t:
+        raise HTTPException(404, "Шаблон не найден")
+    o = db.query(Order).get(order_id)
+    if not o:
+        raise HTTPException(404, "Заказ не найден")
+    if t.printer is not None:
+        o.printer = t.printer
+    if t.description is not None:
+        o.description = t.description
+    if t.complaint is not None:
+        o.complaint = t.complaint
+    if t.modeler is not None:
+        o.modeler = t.modeler
+    if t.address is not None:
+        o.address = t.address
+    if t.pickup_time is not None:
+        o.pickup_time = t.pickup_time
+    if t.note is not None:
+        o.note = t.note
+    db.commit()
+    return {"ok": True}
 
 
 @router.delete("/templates/{template_id}")
