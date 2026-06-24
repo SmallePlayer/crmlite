@@ -37,6 +37,7 @@ class ServiceOut(BaseModel):
 
 class OrderItemIn(BaseModel):
     service_id: int
+    custom_name: Optional[str] = None
     quantity: int = 1
     price: float
 
@@ -74,6 +75,7 @@ class OrderItemOut(BaseModel):
     id: int
     service_id: int
     service_name: str
+    custom_name: Optional[str] = None
     quantity: int
     price: float
 

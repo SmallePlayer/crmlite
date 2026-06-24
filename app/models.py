@@ -94,6 +94,7 @@ class OrderItem(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"))
     service_id: Mapped[int] = mapped_column(Integer, ForeignKey("services.id"))
+    custom_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     price: Mapped[float] = mapped_column(Float, default=0)
 

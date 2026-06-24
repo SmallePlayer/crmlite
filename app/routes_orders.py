@@ -67,12 +67,13 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db), user:
     _log(db, order.id, user.id, user.full_name or user.username, f"Создан заказ ({data.order_type})")
 
     for item in data.items:
-        service = db.query(models.Service).get(item.service_id)
-        if not service:
+        service = db.query(models.Service).get(item.service_id) if item.service_id else None
+        if item.service_id and not service:
             raise HTTPException(404, f"Услуга {item.service_id} не найдена")
         db.add(models.OrderItem(
             order_id=order.id,
-            service_id=item.service_id,
+            service_id=item.service_id or 0,
+            custom_name=item.custom_name,
             quantity=item.quantity,
             price=item.price,
         ))
@@ -126,12 +127,14 @@ def update_order(order_id: int, data: schemas.OrderUpdate, db: Session = Depends
         for old_item in order.items:
             db.delete(old_item)
         for item in data.items:
-            service = db.query(models.Service).get(item.service_id)
-            if not service:
-                raise HTTPException(404, f"Услуга {item.service_id} не найдена")
+            if item.service_id:
+                service = db.query(models.Service).get(item.service_id)
+                if not service:
+                    raise HTTPException(404, f"Услуга {item.service_id} не найдена")
             db.add(models.OrderItem(
                 order_id=order.id,
-                service_id=item.service_id,
+                service_id=item.service_id or 0,
+                custom_name=item.custom_name,
                 quantity=item.quantity,
                 price=item.price,
             ))
@@ -233,7 +236,8 @@ def _order_to_out(o: models.Order) -> schemas.OrderOut:
             schemas.OrderItemOut(
                 id=item.id,
                 service_id=item.service_id,
-                service_name=item.service.name,
+                service_name=item.custom_name or item.service.name,
+                custom_name=item.custom_name,
                 quantity=item.quantity,
                 price=item.price,
             )
