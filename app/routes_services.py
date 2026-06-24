@@ -27,6 +27,14 @@ def create_service(data: schemas.ServiceCreate, db: Session = Depends(get_db), u
     return service
 
 
+@router.get("/{service_id}", response_model=schemas.ServiceOut)
+def get_service(service_id: int, db: Session = Depends(get_db)):
+    service = db.query(models.Service).get(service_id)
+    if not service:
+        raise HTTPException(404, "Услуга не найдена")
+    return service
+
+
 @router.put("/{service_id}", response_model=schemas.ServiceOut)
 def update_service(service_id: int, data: schemas.ServiceCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     service = db.query(models.Service).get(service_id)

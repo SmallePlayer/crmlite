@@ -45,6 +45,14 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db), _=Depends(requi
     return _task_out(task)
 
 
+@router.get("/{task_id}", response_model=TaskOut)
+def get_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(Task).get(task_id)
+    if not task:
+        raise HTTPException(404, "Работа не найдена")
+    return _task_out(task)
+
+
 @router.put("/{task_id}", response_model=TaskOut)
 def update_task(task_id: int, data: TaskCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
     task = db.query(Task).get(task_id)
