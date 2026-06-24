@@ -63,14 +63,14 @@ def _can_edit(u: User):
     return u.role and (u.role.name == "admin" or u.role.can_edit_warehouse)
 
 
-@router.get("/products", response_model=List[ProductOut])
+@router.get("/products")
 def list_products(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not _can_view(user):
         raise HTTPException(403, "Нет доступа к складу")
-    return db.query(Product).order_by(Product.name).all()
+    return [_product_out(p) for p in db.query(Product).order_by(Product.name).all()]
 
 
-@router.post("/products", response_model=ProductOut)
+@router.post("/products")
 def create_product(data: ProductCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not _can_edit(user):
         raise HTTPException(403, "Нет прав")
@@ -79,20 +79,24 @@ def create_product(data: ProductCreate, db: Session = Depends(get_db), user: Use
     db.commit()
     db.refresh(p)
     log(user, "create", "product", p.id, f"Добавлен товар {p.name} ({p.article})", db=db)
-    return p
+    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "created_at": p.created_at.isoformat()}
 
 
-@router.get("/products/{product_id}", response_model=ProductOut)
+def _product_out(p):
+    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "created_at": p.created_at.isoformat()}
+
+
+@router.get("/products/{product_id}")
 def get_product(product_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not _can_view(user):
         raise HTTPException(403, "Нет доступа к складу")
     p = db.query(Product).get(product_id)
     if not p:
         raise HTTPException(404, "Товар не найден")
-    return p
+    return _product_out(p)
 
 
-@router.put("/products/{product_id}", response_model=ProductOut)
+@router.put("/products/{product_id}")
 def update_product(product_id: int, data: ProductCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not _can_edit(user):
         raise HTTPException(403, "Нет прав")
@@ -106,7 +110,7 @@ def update_product(product_id: int, data: ProductCreate, db: Session = Depends(g
     db.commit()
     db.refresh(p)
     log(user, "update", "product", p.id, f"Обновлён товар {p.name}", db=db)
-    return p
+    return _product_out(p)
 
 
 @router.delete("/products/{product_id}")
