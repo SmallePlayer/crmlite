@@ -103,10 +103,10 @@ body{background:var(--bg);color:var(--text);transition:background .3s,color .3s}
 </a>
 <div class="collapse show" id="ordersSubmenu">
 <ul class="nav flex-column" id="ordersSubmenuList">
-<li class="nav-item"><a class="nav-link sub-link active" data-tab="tab-repair" onclick="switchTab('tab-repair');updateOrderSub(this)">🔧 Ремонт</a></li>
+<li class="nav-item"><a class="nav-link sub-link active" data-tab="tab-kanban" onclick="switchTab('tab-kanban');updateOrderSub(this)">📋 Канбан</a></li>
+<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-repair" onclick="switchTab('tab-repair');updateOrderSub(this)">🔧 Ремонт</a></li>
 <li class="nav-item"><a class="nav-link sub-link" data-tab="tab-print" onclick="switchTab('tab-print');updateOrderSub(this)">🖨️ 3D Печать</a></li>
 <li class="nav-item"><a class="nav-link sub-link" data-tab="tab-archive" onclick="switchTab('tab-archive');updateOrderSub(this)">📦 Выполненные</a></li>
-<li class="nav-item"><a class="nav-link sub-link" data-tab="tab-kanban" onclick="switchTab('tab-kanban');updateOrderSub(this)">📋 Канбан</a></li>
 </ul>
 </div>
 </li>
@@ -158,8 +158,8 @@ body{background:var(--bg);color:var(--text);transition:background .3s,color .3s}
 </div>
 
 <div class="tab-page" id="tab-clients" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">👥 Клиенты</h4><div><input class="search-box" id="clientSearch" placeholder="Поиск..." oninput="filterTable('clientsBody','clientSearch')"><button class="btn btn-accent btn-sm ms-2" onclick="showClientModal()">➕ Новый клиент</button><a class="btn btn-outline-accent btn-sm ms-2" href="/api/export/clients">Excel</a></div></div>
-<div class="card"><div class="card-body"><table class="table"><thead><tr><th>ID</th><th>ФИО</th><th>Телефон</th><th>Дата</th><th></th></tr></thead><tbody id="clientsBody"></tbody></table></div></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">👥 Клиенты</h4><div><input class="search-box" id="clientSearch" placeholder="Поиск по имени, телефону..." oninput="filterClients()"><button class="btn btn-accent btn-sm ms-2" onclick="showClientModal()">➕ Новый клиент</button><a class="btn btn-outline-accent btn-sm ms-2" href="/api/export/clients">Excel</a></div></div>
+<div class="row g-3" id="clientsBody"></div>
 </div>
 
 <div class="tab-page" id="tab-services" style="display:none">
@@ -183,7 +183,7 @@ body{background:var(--bg);color:var(--text);transition:background .3s,color .3s}
 </div>
 
 <div class="tab-page" id="tab-kanban" style="display:none">
-<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📋 Канбан</h4></div>
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📋 Канбан</h4><button class="btn btn-accent btn-sm" onclick="showOrderModal()">➕ Новый заказ</button></div>
 <div class="row g-3" id="kanbanBoard" style="min-height:60vh"></div>
 </div>
 
@@ -380,7 +380,9 @@ function statusLabel(s){if(s==='active')return'<span class="status-active">В р
 function typeLabel(t){return t==='repair'?'🔧 Ремонт':'🖨️ 3D печать'}
 async function changeStatus(id,s){await fetch(`${API}/orders/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s})});if(loaded['tab-repair'])loadOrdersByType('repair');if(loaded['tab-print'])loadOrdersByType('print');if(loaded['tab-archive'])loadArchiveOrders()}
 
-async function loadClients(){const c=await(await fetch(`${API}/clients`)).json();document.getElementById('clientsBody').innerHTML=c.map(x=>`<tr><td>${x.id}</td><td>${x.full_name}</td><td>${x.phone}</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editClient(${x.id})">✎</button><button class="btn btn-sm btn-outline-danger" onclick="deleteClient(${x.id})">✕</button></td></tr>`).join('');const sel=document.getElementById('orderClientSelect');sel.innerHTML='<option value="">— выберите —</option>';c.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.full_name} (${x.phone})</option>`)}
+var allClients=[];
+function filterClients(){var q=document.getElementById('clientSearch').value.toLowerCase();document.getElementById('clientsBody').innerHTML=allClients.filter(function(x){return!q||x.full_name.toLowerCase().includes(q)||x.phone.includes(q)}).map(function(x){return'<div class="col-md-4 col-lg-3"><div class="card p-3" style="cursor:pointer" onclick="editClient('+x.id+')"><div class="d-flex justify-content-between"><div><strong>'+x.full_name+'</strong><br><span class="small text-muted">'+x.phone+'</span></div><div><span class="small text-muted">'+new Date(x.created_at).toLocaleDateString()+'</span></div></div><div class="d-flex gap-1 mt-2 pt-2" style="border-top:1px solid var(--border)"><button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();editClient('+x.id+')">✎</button><button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation();deleteClient('+x.id+')">✕</button></div></div></div>'}).join('')}
+async function loadClients(){const c=await(await fetch(`${API}/clients`)).json();allClients=c;filterClients();const sel=document.getElementById('orderClientSelect');sel.innerHTML='<option value="">— выберите —</option>';c.forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.full_name} (${x.phone})</option>`)}
 function showClientModal(d){document.getElementById('clientId').value=d?.id||'';document.getElementById('clientName').value=d?.full_name||'';document.getElementById('clientPhone').value=d?.phone||'';document.getElementById('clientModalTitle').textContent=d?'Редактировать':'Новый клиент';if(d?.id){fetch(API+'/clients/'+d.id+'/orders').then(function(r){return r.json()}).then(function(orders){var html;if(!orders.length)html='<span class="text-muted">Нет заказов</span>';else html=orders.map(function(o){var st=o.status==='active'?'В работе':o.status==='done'?'Сделан':'Выдан';return'<div style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer" onclick="bootstrap.Modal.getInstance(\'#clientModal\').hide();editOrder('+o.id+')"><strong>#'+o.id+'</strong> '+st+' — '+o.total_price.toFixed(2)+' ₽ <span class="text-muted">'+new Date(o.created_at).toLocaleDateString()+'</span></div>'}).join('');document.getElementById('clientOrdersList').innerHTML=html})}else{document.getElementById('clientOrdersList').innerHTML='<span class="text-muted">Сохраните клиента, чтобы увидеть заказы</span>'}new bootstrap.Modal('#clientModal').show()}
 function editClient(id){fetch(`${API}/clients/${id}`).then(r=>r.json()).then(d=>showClientModal(d))}
 async function saveClient(e){e.preventDefault();const id=document.getElementById('clientId').value;const b={full_name:document.getElementById('clientName').value,phone:document.getElementById('clientPhone').value};await fetch(id?`${API}/clients/${id}`:`${API}/clients`,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});bootstrap.Modal.getInstance('#clientModal').hide();loadClients()}
