@@ -52,6 +52,8 @@ class RoleCreate(BaseModel):
     can_manage_users: bool = False
     can_view_reports: bool = False
     can_edit_reports: bool = False
+    can_view_warehouse: bool = False
+    can_edit_warehouse: bool = False
 
 
 class RoleOut(BaseModel):
@@ -67,6 +69,8 @@ class RoleOut(BaseModel):
     can_manage_users: bool
     can_view_reports: bool
     can_edit_reports: bool
+    can_view_warehouse: bool
+    can_edit_warehouse: bool
 
     class Config:
         from_attributes = True

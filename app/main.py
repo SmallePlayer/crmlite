@@ -17,6 +17,7 @@ from app.routes_schedule import router as schedule_router
 from app.routes_leads import public as leads_public, protected as leads_protected
 from app.routes_audit import router as audit_router
 from app.routes_dashboard import router as dashboard_router
+from app.routes_warehouse import router as warehouse_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -90,6 +91,7 @@ app.include_router(leads_public)
 app.include_router(leads_protected)
 app.include_router(audit_router)
 app.include_router(dashboard_router)
+app.include_router(warehouse_router)
 
 
 @app.get("/")

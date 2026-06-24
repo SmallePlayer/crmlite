@@ -34,6 +34,8 @@ class Role(Base):
     can_manage_users: Mapped[bool] = mapped_column(Boolean, default=False)
     can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False)
     can_edit_reports: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_view_warehouse: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_edit_warehouse: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     users: Mapped[List["User"]] = relationship("User", back_populates="role")
@@ -176,6 +178,35 @@ class AuditLog(Base):
     entity_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    color: Mapped[str] = mapped_column(String(100), default="")
+    article: Mapped[str] = mapped_column(String(255), default="", index=True)
+    quantity: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
+class StockMovement(Base):
+    __tablename__ = "stock_movements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    user_name: Mapped[str] = mapped_column(String(255), default="")
+    type: Mapped[str] = mapped_column(String(50))  # supply / write-off
+    reason: Mapped[str] = mapped_column(String(100))  # поставка / ozon / wb / другое
+    quantity: Mapped[int] = mapped_column(Integer)  # положительное для supply, отрицательное для write-off
+    stock_before: Mapped[int] = mapped_column(Integer, default=0)
+    stock_after: Mapped[int] = mapped_column(Integer, default=0)
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    product: Mapped["Product"] = relationship("Product")
 
 
 class Lead(Base):
