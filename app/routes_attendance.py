@@ -1,5 +1,10 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+MSK = timezone(timedelta(hours=3))
+
+def now_msk():
+    return datetime.now(MSK)
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
@@ -39,8 +44,8 @@ def list_attendance(db: Session = Depends(get_db), user: User = Depends(get_curr
 
 @router.post("/checkin", response_model=AttendanceOut)
 def check_in(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    today = datetime.now().strftime("%Y-%m-%d")
-    now = datetime.now().strftime("%H:%M")
+    today = now_msk().strftime("%Y-%m-%d")
+    now = now_msk().strftime("%H:%M")
     existing = db.query(Attendance).filter(
         Attendance.user_id == user.id,
         Attendance.date == today,
@@ -58,8 +63,8 @@ def check_in(db: Session = Depends(get_db), user: User = Depends(get_current_use
 
 @router.post("/checkout", response_model=AttendanceOut)
 def check_out(data: CheckoutData, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    today = datetime.now().strftime("%Y-%m-%d")
-    now = datetime.now().strftime("%H:%M")
+    today = now_msk().strftime("%Y-%m-%d")
+    now = now_msk().strftime("%H:%M")
     record = db.query(Attendance).filter(
         Attendance.user_id == user.id,
         Attendance.date == today,
