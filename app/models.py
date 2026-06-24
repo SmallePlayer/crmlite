@@ -33,6 +33,7 @@ class Role(Base):
     can_delete_orders: Mapped[bool] = mapped_column(Boolean, default=False)
     can_manage_users: Mapped[bool] = mapped_column(Boolean, default=False)
     can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_edit_reports: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     users: Mapped[List["User"]] = relationship("User", back_populates="role")

@@ -51,6 +51,7 @@ class RoleCreate(BaseModel):
     can_delete_orders: bool = False
     can_manage_users: bool = False
     can_view_reports: bool = False
+    can_edit_reports: bool = False
 
 
 class RoleOut(BaseModel):
@@ -65,6 +66,7 @@ class RoleOut(BaseModel):
     can_delete_orders: bool
     can_manage_users: bool
     can_view_reports: bool
+    can_edit_reports: bool
 
     class Config:
         from_attributes = True

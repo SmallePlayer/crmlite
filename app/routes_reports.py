@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import WorkReport, Task, User
 from app import models as m
 from app.auth import get_current_user, require_admin
+from fastapi import status as http_status
 from app.audit import log
 
 router = APIRouter(prefix="/api/reports", tags=["reports"], dependencies=[Depends(get_current_user)])
@@ -76,8 +77,14 @@ def create_report(data: ReportCreate, db: Session = Depends(get_db), user: User 
     return _report_out(report)
 
 
+def _can_edit_reports(user: User):
+    return user.role and (user.role.name == "admin" or user.role.can_edit_reports)
+
+
 @router.put("/{report_id}", response_model=ReportOut)
-def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not _can_edit_reports(user):
+        raise HTTPException(http_status.HTTP_403_FORBIDDEN, "Недостаточно прав")
     report = db.query(WorkReport).options(
         joinedload(WorkReport.user),
         joinedload(WorkReport.task),
@@ -88,18 +95,20 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
     report.quantity = data.quantity
     db.commit()
     db.refresh(report)
-    log(_, "update", "report", report.id, f"Обновлён отчёт о работе #{report.id}", db=db)
+    log(user, "update", "report", report.id, f"Обновлён отчёт о работе #{report.id}", db=db)
     return _report_out(report)
 
 
 @router.delete("/{report_id}")
-def delete_report(report_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+def delete_report(report_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not _can_edit_reports(user):
+        raise HTTPException(http_status.HTTP_403_FORBIDDEN, "Недостаточно прав")
     report = db.query(WorkReport).get(report_id)
     if not report:
         raise HTTPException(404, "Отчёт не найден")
     db.delete(report)
     db.commit()
-    log(_, "delete", "report", report_id, f"Удалён отчёт о работе #{report_id}", db=db)
+    log(user, "delete", "report", report_id, f"Удалён отчёт о работе #{report_id}", db=db)
     return {"ok": True}
 
 
