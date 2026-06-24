@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
+from pydantic import BaseModel
 from app import models, schemas
 from app.auth import get_current_user
 from app.audit import log as audit_log
@@ -172,6 +173,41 @@ def get_order_logs(order_id: int, db: Session = Depends(get_db)):
             "created_at": log.created_at.isoformat(),
         }
         for log in logs
+    ]
+
+
+class CommentCreate(BaseModel):
+    text: str
+
+
+@router.post("/{order_id}/comments")
+def add_comment(order_id: int, data: CommentCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    order = db.query(models.Order).get(order_id)
+    if not order:
+        raise HTTPException(404, "Заказ не найден")
+    c = models.OrderComment(
+        order_id=order.id,
+        user_id=user.id,
+        user_name=user.full_name or user.username,
+        text=data.text,
+    )
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    return {"id": c.id, "user_name": c.user_name, "text": c.text, "created_at": c.created_at.isoformat()}
+
+
+@router.get("/{order_id}/comments")
+def list_comments(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(models.Order).get(order_id)
+    if not order:
+        raise HTTPException(404, "Заказ не найден")
+    comments = db.query(models.OrderComment).filter(
+        models.OrderComment.order_id == order_id
+    ).order_by(models.OrderComment.created_at.asc()).all()
+    return [
+        {"id": c.id, "user_name": c.user_name, "text": c.text, "created_at": c.created_at.isoformat()}
+        for c in comments
     ]
 
 

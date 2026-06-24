@@ -188,6 +188,7 @@ class Product(Base):
     color: Mapped[str] = mapped_column(String(100), default="")
     article: Mapped[str] = mapped_column(String(255), default="", index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=0)
+    image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
@@ -207,6 +208,35 @@ class StockMovement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     product: Mapped["Product"] = relationship("Product")
+
+
+class OrderComment(Base):
+    __tablename__ = "order_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    user_name: Mapped[str] = mapped_column(String(255), default="")
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    order: Mapped["Order"] = relationship("Order")
+
+
+class OrderTemplate(Base):
+    __tablename__ = "order_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    order_type: Mapped[str] = mapped_column(String(50))  # repair / print
+    printer: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    complaint: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    modeler: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    pickup_time: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class Lead(Base):

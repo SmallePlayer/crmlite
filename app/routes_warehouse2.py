@@ -1,0 +1,100 @@
+from typing import List, Optional
+import os, uuid
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models import Product, OrderTemplate, User
+from app.auth import get_current_user
+from app.audit import log
+
+router = APIRouter(prefix="/api", tags=["warehouse"])
+
+UPLOAD_DIR = "app/static/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def _can_edit_warehouse(user: User):
+    return user.role and (user.role.name == "admin" or user.role.can_edit_warehouse)
+
+
+# === ФОТО ТОВАРА ===
+
+@router.post("/warehouse/products/{product_id}/upload")
+def upload_product_image(product_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not _can_edit_warehouse(user):
+        raise HTTPException(403, "Нет прав")
+    p = db.query(Product).get(product_id)
+    if not p:
+        raise HTTPException(404, "Товар не найден")
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    fname = f"prod_{product_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    path = os.path.join(UPLOAD_DIR, fname)
+    with open(path, "wb") as f:
+        f.write(file.file.read())
+    p.image = f"/static/uploads/{fname}"
+    db.commit()
+    return {"image": p.image}
+
+
+# === ТЕМПЛЕЙТЫ ЗАКАЗОВ ===
+
+class TemplateCreate(BaseModel):
+    name: str
+    order_type: str = "repair"
+    printer: Optional[str] = None
+    description: Optional[str] = None
+    complaint: Optional[str] = None
+    modeler: Optional[str] = None
+    address: Optional[str] = None
+    pickup_time: Optional[str] = None
+    note: Optional[str] = None
+
+
+class TemplateOut(BaseModel):
+    id: int
+    name: str
+    order_type: str
+    printer: Optional[str] = None
+    description: Optional[str] = None
+    complaint: Optional[str] = None
+    modeler: Optional[str] = None
+    address: Optional[str] = None
+    pickup_time: Optional[str] = None
+    note: Optional[str] = None
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/templates", response_model=List[TemplateOut])
+def list_templates(db: Session = Depends(get_db)):
+    return db.query(OrderTemplate).order_by(OrderTemplate.name).all()
+
+
+@router.post("/templates", response_model=TemplateOut)
+def create_template(data: TemplateCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    role = user.role
+    if not role or (role.name != "admin" and not role.can_edit_orders):
+        raise HTTPException(403, "Нет прав")
+    t = OrderTemplate(**data.model_dump())
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+    log(user, "create", "order_template", t.id, f"Создан шаблон заказа {t.name}", db=db)
+    return t
+
+
+@router.delete("/templates/{template_id}")
+def delete_template(template_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    role = user.role
+    if not role or (role.name != "admin" and not role.can_edit_orders):
+        raise HTTPException(403, "Нет прав")
+    t = db.query(OrderTemplate).get(template_id)
+    if not t:
+        raise HTTPException(404, "Шаблон не найден")
+    db.delete(t)
+    db.commit()
+    log(user, "delete", "order_template", template_id, f"Удалён шаблон заказа {t.name}", db=db)
+    return {"ok": True}
