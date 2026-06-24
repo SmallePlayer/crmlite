@@ -23,6 +23,7 @@ class ProductOut(BaseModel):
     color: str
     article: str
     quantity: int
+    image: Optional[str] = None
     created_at: str
 
     class Config:
@@ -78,6 +79,16 @@ def create_product(data: ProductCreate, db: Session = Depends(get_db), user: Use
     db.commit()
     db.refresh(p)
     log(user, "create", "product", p.id, f"Добавлен товар {p.name} ({p.article})", db=db)
+    return p
+
+
+@router.get("/products/{product_id}", response_model=ProductOut)
+def get_product(product_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not _can_view(user):
+        raise HTTPException(403, "Нет доступа к складу")
+    p = db.query(Product).get(product_id)
+    if not p:
+        raise HTTPException(404, "Товар не найден")
     return p
 
 
