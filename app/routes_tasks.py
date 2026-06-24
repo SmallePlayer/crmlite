@@ -14,6 +14,7 @@ class TaskCreate(BaseModel):
     name: str
     price: float
     unit: str = "шт"
+    admin_controlled: bool = False
 
 
 class TaskOut(BaseModel):
@@ -21,6 +22,7 @@ class TaskOut(BaseModel):
     name: str
     price: float
     unit: str
+    admin_controlled: bool
     created_at: str
 
     class Config:
@@ -35,7 +37,7 @@ def list_tasks(db: Session = Depends(get_db)):
 
 @router.post("", response_model=TaskOut)
 def create_task(data: TaskCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
-    task = Task(name=data.name, price=data.price, unit=data.unit)
+    task = Task(name=data.name, price=data.price, unit=data.unit, admin_controlled=data.admin_controlled)
     db.add(task)
     db.commit()
     db.refresh(task)
@@ -51,6 +53,7 @@ def update_task(task_id: int, data: TaskCreate, db: Session = Depends(get_db), _
     task.name = data.name
     task.price = data.price
     task.unit = data.unit
+    task.admin_controlled = data.admin_controlled
     db.commit()
     db.refresh(task)
     log(_, "update", "task", task.id, f"Обновлена работа {task.name}", db=db)
@@ -74,5 +77,6 @@ def _task_out(t: Task) -> TaskOut:
         name=t.name,
         price=t.price,
         unit=t.unit,
+        admin_controlled=t.admin_controlled,
         created_at=t.created_at.isoformat(),
     )

@@ -104,6 +104,7 @@ class Task(Base):
     name: Mapped[str] = mapped_column(String(255))
     price: Mapped[float] = mapped_column(Float, default=0)
     unit: Mapped[str] = mapped_column(String(50), default="шт")
+    admin_controlled: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     reports: Mapped[List["WorkReport"]] = relationship("WorkReport", back_populates="task")
