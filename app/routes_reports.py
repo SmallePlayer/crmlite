@@ -46,7 +46,8 @@ def list_reports(db: Session = Depends(get_db), user: User = Depends(get_current
         joinedload(WorkReport.task),
         joinedload(WorkReport.order).joinedload(m.Order.client),
     )
-    if user.role.name != "admin":
+    can_view_all = user.role and (user.role.name == "admin" or user.role.can_view_reports)
+    if not can_view_all:
         q = q.filter(WorkReport.user_id == user.id)
     reports = q.order_by(WorkReport.created_at.desc()).all()
     return [_report_out(r) for r in reports]
