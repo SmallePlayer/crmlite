@@ -195,6 +195,7 @@ class Product(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     min_stock: Mapped[int] = mapped_column(Integer, default=0)
+    category: Mapped[str] = mapped_column(String(50), default="sale")  # repair_part / sale
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 

@@ -16,6 +16,7 @@ class ProductCreate(BaseModel):
     article: str = ""
     quantity: int = 0
     min_stock: int = 0
+    category: str = "sale"
 
 
 class ProductOut(BaseModel):
@@ -26,6 +27,7 @@ class ProductOut(BaseModel):
     quantity: int
     image: Optional[str] = None
     min_stock: int = 0
+    category: str = "sale"
     created_at: str
 
     class Config:
@@ -66,26 +68,29 @@ def _can_edit(u: User):
 
 
 @router.get("/products")
-def list_products(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_products(category: str = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not _can_view(user):
         raise HTTPException(403, "Нет доступа к складу")
-    return [_product_out(p) for p in db.query(Product).order_by(Product.name).all()]
+    q = db.query(Product)
+    if category:
+        q = q.filter(Product.category == category)
+    return [_product_out(p) for p in q.order_by(Product.name).all()]
 
 
 @router.post("/products")
 def create_product(data: ProductCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not _can_edit(user):
         raise HTTPException(403, "Нет прав")
-    p = Product(name=data.name, color=data.color, article=data.article, quantity=data.quantity, min_stock=data.min_stock)
+    p = Product(name=data.name, color=data.color, article=data.article, quantity=data.quantity, min_stock=data.min_stock, category=data.category)
     db.add(p)
     db.commit()
     db.refresh(p)
     log(user, "create", "product", p.id, f"Добавлен товар {p.name} ({p.article})", db=db)
-    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "min_stock": p.min_stock, "created_at": p.created_at.isoformat()}
+    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "min_stock": p.min_stock, "category": p.category, "created_at": p.created_at.isoformat()}
 
 
 def _product_out(p):
-    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "min_stock": p.min_stock, "created_at": p.created_at.isoformat()}
+    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "min_stock": p.min_stock, "category": p.category, "created_at": p.created_at.isoformat()}
 
 
 @router.get("/products/{product_id}")
@@ -110,6 +115,7 @@ def update_product(product_id: int, data: ProductCreate, db: Session = Depends(g
     p.article = data.article
     p.quantity = data.quantity
     p.min_stock = data.min_stock
+    p.category = data.category
     db.commit()
     db.refresh(p)
     log(user, "update", "product", p.id, f"Обновлён товар {p.name}", db=db)
