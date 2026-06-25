@@ -36,6 +36,7 @@ class Role(Base):
     can_edit_reports: Mapped[bool] = mapped_column(Boolean, default=False)
     can_view_warehouse: Mapped[bool] = mapped_column(Boolean, default=False)
     can_edit_warehouse: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_assign_tasks: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     users: Mapped[List["User"]] = relationship("User", back_populates="role")
@@ -209,6 +210,21 @@ class StockMovement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     product: Mapped["Product"] = relationship("Product")
+
+
+class TaskAssignment(Base):
+    __tablename__ = "task_assignments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    assigned_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    assigned_to: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(String(50), default="new")  # new / in_progress / done
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    assigner: Mapped["User"] = relationship("User", foreign_keys=[assigned_by])
+    assignee: Mapped["User"] = relationship("User", foreign_keys=[assigned_to])
 
 
 class OrderComment(Base):

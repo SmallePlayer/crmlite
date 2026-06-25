@@ -19,6 +19,7 @@ from app.routes_audit import router as audit_router
 from app.routes_dashboard import router as dashboard_router
 from app.routes_warehouse import router as warehouse_router
 from app.routes_warehouse2 import router as warehouse2_router
+from app.routes_assignments import router as assignments_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -94,6 +95,7 @@ app.include_router(audit_router)
 app.include_router(dashboard_router)
 app.include_router(warehouse_router)
 app.include_router(warehouse2_router)
+app.include_router(assignments_router)
 
 
 @app.get("/")
