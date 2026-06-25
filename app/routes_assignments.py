@@ -31,7 +31,7 @@ class AssignmentOut(BaseModel):
 
 
 def _can_assign(user: User):
-    return user.role and (user.role.name == "admin" or user.role.can_assign_tasks)
+    return True  # все могут назначать (и сами себе)
 
 
 @router.post("")
