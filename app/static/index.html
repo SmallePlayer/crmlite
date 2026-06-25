@@ -147,8 +147,9 @@ body{background:var(--bg);color:var(--text);transition:background .3s,color .3s}
 <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="page-title">📊 Панель управления</h4><span class="text-muted small" id="dashboardDate"></span></div>
 <div class="row g-3 mb-3" id="dashboardStats"></div>
 <div class="row g-3">
-<div class="col-md-6"><div class="card p-3 h-100"><h6 class="fw600 mb-3" style="font-size:.9rem">📋 Мои задания</h6><div id="dashboardAssignments" class="small"></div></div></div>
-<div class="col-md-6"><div class="card p-3 h-100"><h6 class="fw600 mb-3" style="font-size:.9rem">📦 Склад</h6><div id="dashboardWarehouseItems" class="small"></div></div></div>
+<div class="col-md-4"><div class="card p-3 h-100"><h6 class="fw600 mb-3" style="font-size:.9rem">⚡ Быстрые действия</h6><div class="d-flex flex-wrap gap-2"><a class="btn btn-accent btn-sm" onclick="checkIn()">✅ Отметиться</a><a class="btn btn-outline-accent btn-sm" onclick="showCheckoutModal()">🚪 Уйти</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-clients')">👥 Клиенты</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-kanban')">📋 Заказы</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-leads')">📨 Заявки</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-calc')">🧮 Калькулятор</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-warehouse')">📦 Склад</a><a class="btn btn-outline-accent btn-sm" onclick="switchTab('tab-my-reports')">📝 Мой отчёт</a></div></div></div>
+<div class="col-md-4"><div class="card p-3 h-100"><h6 class="fw600 mb-3" style="font-size:.9rem">📋 Мои задания</h6><div id="dashboardAssignments" class="small"></div></div></div>
+<div class="col-md-4"><div class="card p-3 h-100"><h6 class="fw600 mb-3" style="font-size:.9rem">📦 Склад</h6><div id="dashboardWarehouseItems" class="small"></div></div></div>
 </div>
 </div>
 
