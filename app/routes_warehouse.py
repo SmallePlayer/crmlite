@@ -167,6 +167,8 @@ def create_movement(data: MovementCreate, db: Session = Depends(get_db), user: U
 @router.get("/movements", response_model=List[MovementOut])
 def list_movements(
     product_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -175,7 +177,7 @@ def list_movements(
     q = db.query(StockMovement).options(joinedload(StockMovement.product))
     if product_id:
         q = q.filter(StockMovement.product_id == product_id)
-    records = q.order_by(StockMovement.created_at.desc()).limit(100).all()
+    records = q.order_by(StockMovement.created_at.desc()).offset(skip).limit(limit).all()
     return [_movement_out(m, m.product.name if m.product else "") for m in records]
 
 

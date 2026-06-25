@@ -7,8 +7,8 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Role
+from app.config import SECRET_KEY
 
-SECRET_KEY = "crm-secret-key-change-in-production-12345"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 

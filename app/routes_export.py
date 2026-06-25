@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session, joinedload
 from io import BytesIO
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from app.database import get_db, DATABASE_URL
-from app.models import Client, Order, Task, WorkReport, Attendance, User, Product
+from app.models import Client, Order, Task, WorkReport, Attendance, User, Product, Service
 from app.auth import get_current_user, require_admin
+from app.audit import log
+import logging
+
+logger = logging.getLogger("crm.import")
 
 router = APIRouter(prefix="/api/export", tags=["export"], dependencies=[Depends(get_current_user)])
 
@@ -90,3 +94,59 @@ def export_database(_=Depends(require_admin)):
         filename="crm_backup.db",
         headers={"Content-Disposition": "attachment; filename=crm_backup.db"},
     )
+
+
+@router.post("/import/clients")
+def import_clients(file: UploadFile = File(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
+    wb = load_workbook(file.file)
+    ws = wb.active
+    count = 0
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[0] and row[1]:
+            name, phone = str(row[0]).strip(), str(row[1]).strip()
+            existing = db.query(Client).filter(Client.full_name == name, Client.phone == phone).first()
+            if not existing:
+                db.add(Client(full_name=name, phone=phone))
+                count += 1
+    db.commit()
+    log(user, "import", "client", None, f"Импортировано клиентов: {count}", db=db)
+    return {"imported": count}
+
+
+@router.post("/import/services")
+def import_services(file: UploadFile = File(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
+    wb = load_workbook(file.file)
+    ws = wb.active
+    count = 0
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[0] and row[1]:
+            name, price, category = str(row[0]).strip(), float(row[1]), str(row[2]).strip() if row[2] else "repair"
+            existing = db.query(Service).filter(Service.name == name).first()
+            if not existing:
+                db.add(Service(name=name, price=price, category=category))
+                count += 1
+    db.commit()
+    log(user, "import", "service", None, f"Импортировано услуг: {count}", db=db)
+    return {"imported": count}
+
+
+@router.post("/import/warehouse")
+def import_warehouse(file: UploadFile = File(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
+    wb = load_workbook(file.file)
+    ws = wb.active
+    count = 0
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[0]:
+            name = str(row[0]).strip()
+            color = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+            article = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+            qty = int(row[3]) if len(row) > 3 and row[3] else 0
+            existing = db.query(Product).filter(Product.article == article).first() if article else None
+            if not existing:
+                db.add(Product(name=name, color=color, article=article, quantity=qty))
+                count += 1
+            elif article:
+                existing.quantity += qty
+    db.commit()
+    log(user, "import", "product", None, f"Импортировано товаров: {count}", db=db)
+    return {"imported": count}

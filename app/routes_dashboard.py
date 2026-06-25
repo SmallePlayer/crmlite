@@ -10,9 +10,17 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
 @router.get("")
-def get_dashboard(db: Session = Depends(get_db), user=Depends(get_current_user)):
+def get_dashboard(period: str = "month", db: Session = Depends(get_db), user=Depends(get_current_user)):
     now = datetime.now()
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if period == "today":
+        period_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        period_start = now - timedelta(days=now.weekday())
+        period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "year":
+        period_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     today_str = now.strftime("%Y-%m-%d")
     is_admin = user.role and user.role.name == "admin"
 
@@ -21,9 +29,9 @@ def get_dashboard(db: Session = Depends(get_db), user=Depends(get_current_user))
     done_orders = db.query(func.count(Order.id)).filter(Order.status == "done").scalar() or 0
     delivered_orders = db.query(func.count(Order.id)).filter(Order.status == "delivered").scalar() or 0
 
-    month_income = (
+    period_income = (
         db.query(func.coalesce(func.sum(Order.total_price), 0))
-        .filter(Order.created_at >= month_start, Order.status == "delivered")
+        .filter(Order.created_at >= period_start, Order.status == "delivered")
         .scalar()
         or 0
     )
@@ -32,7 +40,7 @@ def get_dashboard(db: Session = Depends(get_db), user=Depends(get_current_user))
         db.query(func.coalesce(func.sum(WorkReport.quantity * Task.price), 0))
         .select_from(WorkReport)
         .join(WorkReport.task)
-        .filter(WorkReport.user_id == user.id, WorkReport.created_at >= month_start)
+        .filter(WorkReport.user_id == user.id, WorkReport.created_at >= period_start)
         .scalar()
         or 0
     ) if not is_admin else 0
@@ -76,7 +84,7 @@ def get_dashboard(db: Session = Depends(get_db), user=Depends(get_current_user))
         "active_orders": active_orders,
         "done_orders": done_orders,
         "delivered_orders": delivered_orders,
-        "month_income": round(month_income, 2),
+        "month_income": round(period_income, 2),
         "user_month_income": round(user_month_income, 2),
         "total_clients": total_clients,
         "total_leads": total_leads,
@@ -84,6 +92,7 @@ def get_dashboard(db: Session = Depends(get_db), user=Depends(get_current_user))
         "total_employees": total_employees,
         "checked_in_today": checked_in_today,
         "my_reports_today": my_reports_today,
+        "period_label": {"today": "за сегодня", "week": "за неделю", "month": "за месяц", "year": "за год"}.get(period, "за месяц"),
         "recent_orders": [
             {
                 "id": o.id,

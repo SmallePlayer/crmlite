@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import Lead, User
 from app.auth import get_current_user
 from app.audit import log
+from app.routes_sse import notify_new_lead
 
 # открытый роутер — без авторизации (для сайта)
 public = APIRouter(prefix="/api/leads", tags=["leads"])
@@ -50,6 +51,7 @@ def create_lead(data: LeadIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(lead)
     log(None, "create", "lead", lead.id, f"Новая заявка от {lead.name} ({lead.phone})", db=db)
+    notify_new_lead(lead.id, lead.name, lead.phone, lead.service_type)
     return _lead_out(lead)
 
 

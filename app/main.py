@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -20,56 +21,86 @@ from app.routes_dashboard import router as dashboard_router
 from app.routes_warehouse import router as warehouse_router
 from app.routes_warehouse2 import router as warehouse2_router
 from app.routes_assignments import router as assignments_router
+from app.routes_sse import router as sse_router
+from app.config import LOG_LEVEL
 
-Base.metadata.create_all(bind=engine)
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("crm")
 
-db = SessionLocal()
+logger.info("Starting CRM application")
 
-admin_role = db.query(Role).filter(Role.name == "admin").first()
-if not admin_role:
-    admin_role = Role(
-        name="admin",
-        can_view_clients=True,
-        can_edit_clients=True,
-        can_view_services=True,
-        can_edit_services=True,
-        can_view_orders=True,
-        can_edit_orders=True,
-        can_delete_orders=True,
-        can_manage_users=True,
-    )
-    db.add(admin_role)
-    db.commit()
-    db.refresh(admin_role)
 
-manager_role = db.query(Role).filter(Role.name == "manager").first()
-if not manager_role:
-    manager_role = Role(
-        name="manager",
-        can_view_clients=True,
-        can_edit_clients=True,
-        can_view_services=True,
-        can_edit_services=False,
-        can_view_orders=True,
-        can_edit_orders=True,
-        can_manage_users=False,
-    )
-    db.add(manager_role)
-    db.commit()
-    db.refresh(manager_role)
+def seed_data():
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        admin_role = db.query(Role).filter(Role.name == "admin").first()
+        if not admin_role:
+            admin_role = Role(
+                name="admin",
+                can_view_clients=True,
+                can_edit_clients=True,
+                can_view_services=True,
+                can_edit_services=True,
+                can_view_orders=True,
+                can_edit_orders=True,
+                can_delete_orders=True,
+                can_manage_users=True,
+                can_view_reports=True,
+                can_edit_reports=True,
+                can_view_warehouse=True,
+                can_edit_warehouse=True,
+                can_assign_tasks=True,
+            )
+            db.add(admin_role)
+            db.commit()
+            db.refresh(admin_role)
 
-if not db.query(User).filter(User.username == "admin").first():
-    db.add(User(
-        username="admin",
-        hashed_password=hash_password("admin123"),
-        role_id=admin_role.id,
-        full_name="Администратор",
-    ))
-    db.commit()
+        manager_role = db.query(Role).filter(Role.name == "manager").first()
+        if not manager_role:
+            manager_role = Role(
+                name="manager",
+                can_view_clients=True,
+                can_edit_clients=True,
+                can_view_services=True,
+                can_edit_services=False,
+                can_view_orders=True,
+                can_edit_orders=True,
+                can_manage_users=False,
+            )
+            db.add(manager_role)
+            db.commit()
+            db.refresh(manager_role)
 
-db.close()
+        if not db.query(User).filter(User.username == "admin").first():
+            db.add(User(
+                username="admin",
+                hashed_password=hash_password("admin123"),
+                role_id=admin_role.id,
+                full_name="Администратор",
+            ))
+            db.commit()
+    finally:
+        db.close()
+
+
+import sys
+if "pytest" not in sys.modules:
+    seed_data()
 
 app = FastAPI(title="CRM")
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.debug(f"{request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.debug(f"{request.method} {request.url.path} -> {response.status_code}")
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -80,6 +111,7 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+logger.info(f"Static files mounted, CORS enabled for origins: *")
 app.include_router(auth_router)
 app.include_router(clients_router)
 app.include_router(services_router)
@@ -96,6 +128,7 @@ app.include_router(dashboard_router)
 app.include_router(warehouse_router)
 app.include_router(warehouse2_router)
 app.include_router(assignments_router)
+app.include_router(sse_router)
 
 
 @app.get("/")

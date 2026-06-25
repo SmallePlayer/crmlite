@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from pydantic import BaseModel
@@ -16,7 +16,7 @@ def _log(db: Session, order_id: int, user_id: int, user_name: str, action: str):
 
 
 @router.get("", response_model=List[schemas.OrderOut])
-def list_orders(client_id: int = None, status: str = None, db: Session = Depends(get_db)):
+def list_orders(client_id: int = None, status: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     q = db.query(models.Order).options(
         joinedload(models.Order.client),
         joinedload(models.Order.items).joinedload(models.OrderItem.service),
@@ -25,7 +25,8 @@ def list_orders(client_id: int = None, status: str = None, db: Session = Depends
         q = q.filter(models.Order.client_id == client_id)
     if status:
         q = q.filter(models.Order.status == status)
-    orders = q.order_by(models.Order.created_at.desc()).all()
+    total = q.count()
+    orders = q.order_by(models.Order.created_at.desc()).offset(skip).limit(limit).all()
     return [_order_to_out(o) for o in orders]
 
 
@@ -212,6 +213,51 @@ def list_comments(order_id: int, db: Session = Depends(get_db)):
         {"id": c.id, "user_name": c.user_name, "text": c.text, "created_at": c.created_at.isoformat()}
         for c in comments
     ]
+
+
+@router.get("/{order_id}/print")
+def print_order(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(models.Order).options(
+        joinedload(models.Order.client),
+        joinedload(models.Order.items).joinedload(models.OrderItem.service),
+    ).get(order_id)
+    if not order:
+        raise HTTPException(404, "Заказ не найден")
+    items_html = "".join(
+        f"<tr><td>{i.custom_name or i.service.name}</td><td>{i.quantity}</td><td>{i.price} ₽</td><td>{i.price * i.quantity} ₽</td></tr>"
+        for i in order.items
+    )
+    type_ru = "Ремонт" if order.order_type == "repair" else "3D печать"
+    status_ru = {"active": "В работе", "done": "Сделан", "delivered": "Выдан"}.get(order.status, order.status)
+    html = f"""<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Заказ #{order.id}</title>
+<style>
+body{{font-family:system-ui,sans-serif;padding:40px;color:#222}}h1{{font-size:1.4rem;margin:0}}table{{width:100%;border-collapse:collapse;margin-top:20px}}th,td{{padding:8px 12px;text-align:left;border-bottom:1px solid #ddd}}th{{background:#f5f5f5}}.meta{{margin-top:20px;line-height:1.6}}.total{{font-size:1.2rem;font-weight:700;margin-top:16px}}@media print{{body{{padding:20px}}}}
+</style></head>
+<body>
+<h1>Заказ #{order.id}</h1>
+<div class="meta">
+<strong>Клиент:</strong> {order.client_name}<br>
+<strong>Тип:</strong> {type_ru}<br>
+<strong>Статус:</strong> {status_ru}<br>
+<strong>Дата:</strong> {order.created_at.strftime("%d.%m.%Y %H:%M")}<br>
+{f"<strong>Принтер:</strong> {order.printer}<br>" if order.printer else ""}
+{f"<strong>Описание:</strong> {order.description}<br>" if order.description else ""}
+{f"<strong>Жалоба:</strong> {order.complaint}<br>" if order.complaint else ""}
+{f"<strong>Выполнено:</strong> {order.work_done}<br>" if order.work_done else ""}
+{f"<strong>Запчасти:</strong> {order.parts_replaced}<br>" if order.parts_replaced else ""}
+{f"<strong>Моделер:</strong> {order.modeler}<br>" if order.modeler else ""}
+{f"<strong>Адрес:</strong> {order.address}<br>" if order.address else ""}
+{f"<strong>Время получения:</strong> {order.pickup_time}<br>" if order.pickup_time else ""}
+{f"<strong>Примечание:</strong> {order.note}" if order.note else ""}
+</div>
+<h3 style="margin-top:24px">Услуги</h3>
+<table><thead><tr><th>Услуга</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{items_html}</tbody></table>
+<div class="total">Итого: {order.total_price:.2f} ₽</div>
+</body></html>"""
+    return Response(content=html, media_type="text/html")
+
 
 
 def _order_to_out(o: models.Order) -> schemas.OrderOut:

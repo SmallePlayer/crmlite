@@ -1,9 +1,10 @@
 from typing import List, Optional
-import os, uuid
+import os, uuid, json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app import models
 from app.models import Product, OrderTemplate, User, Order
 from app.auth import get_current_user
 from app.audit import log
@@ -39,6 +40,13 @@ def upload_product_image(product_id: int, file: UploadFile = File(...), db: Sess
 
 # === ТЕМПЛЕЙТЫ ЗАКАЗОВ ===
 
+class TemplateItem(BaseModel):
+    service_id: int = 0
+    custom_name: Optional[str] = None
+    quantity: int = 1
+    price: float = 0
+
+
 class TemplateCreate(BaseModel):
     name: str
     order_type: str = "repair"
@@ -49,6 +57,7 @@ class TemplateCreate(BaseModel):
     address: Optional[str] = None
     pickup_time: Optional[str] = None
     note: Optional[str] = None
+    items: Optional[List[TemplateItem]] = None
 
 
 class TemplateOut(BaseModel):
@@ -62,6 +71,7 @@ class TemplateOut(BaseModel):
     address: Optional[str] = None
     pickup_time: Optional[str] = None
     note: Optional[str] = None
+    items: Optional[str] = None
     created_at: str
 
     class Config:
@@ -78,7 +88,10 @@ def create_template(data: TemplateCreate, db: Session = Depends(get_db), user: U
     role = user.role
     if not role or (role.name != "admin" and not role.can_edit_orders):
         raise HTTPException(403, "Нет прав")
-    t = OrderTemplate(**data.model_dump())
+    d = data.model_dump()
+    if d.get("items"):
+        d["items"] = json.dumps(d["items"], ensure_ascii=False)
+    t = OrderTemplate(**d)
     db.add(t)
     db.commit()
     db.refresh(t)
@@ -108,6 +121,23 @@ def apply_template(template_id: int, order_id: int, db: Session = Depends(get_db
         o.pickup_time = t.pickup_time
     if t.note is not None:
         o.note = t.note
+    if t.items:
+        try:
+            items = json.loads(t.items)
+            for old_item in o.items:
+                db.delete(old_item)
+            for item in items:
+                db.add(models.OrderItem(
+                    order_id=o.id,
+                    service_id=item.get("service_id", 0),
+                    custom_name=item.get("custom_name"),
+                    quantity=item.get("quantity", 1),
+                    price=item.get("price", 0),
+                ))
+            total = sum(item.get("price", 0) * item.get("quantity", 1) for item in items)
+            o.total_price = total
+        except Exception:
+            pass
     db.commit()
     return {"ok": True}
 

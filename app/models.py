@@ -254,6 +254,7 @@ class OrderTemplate(Base):
     pickup_time: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    items: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array of {service_id, custom_name, quantity, price}
 
 
 class Lead(Base):

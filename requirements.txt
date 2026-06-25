@@ -6,3 +6,9 @@ pydantic_core==2.46.4
 python-jose==3.5.0
 SQLAlchemy==2.0.51
 uvicorn==0.49.0
+python-dotenv==1.1.0
+aiofiles==24.1.0
+pytest==8.4.0
+httpx==0.28.1
+alembic==1.15.0
+python-multipart==0.0.20
