@@ -75,6 +75,24 @@ def seed_data():
             db.commit()
             db.refresh(manager_role)
 
+        worker_role = db.query(Role).filter(Role.name == "worker").first()
+        if not worker_role:
+            worker_role = Role(
+                name="worker",
+                can_view_clients=False,
+                can_edit_clients=False,
+                can_view_services=True,
+                can_edit_services=False,
+                can_view_orders=True,
+                can_edit_orders=True,
+                can_manage_users=False,
+                can_view_reports=True,
+                can_edit_reports=True,
+            )
+            db.add(worker_role)
+            db.commit()
+            db.refresh(worker_role)
+
         if not db.query(User).filter(User.username == "admin").first():
             db.add(User(
                 username="admin",

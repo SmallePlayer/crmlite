@@ -54,6 +54,13 @@ class OrderCreate(BaseModel):
     pickup_time: Optional[str] = None
     note: Optional[str] = None
     items: List[OrderItemIn]
+    materials: Optional[str] = None
+    assigned_to: Optional[int] = None
+
+
+class MaterialIn(BaseModel):
+    product_id: int
+    quantity: int
 
 
 class OrderUpdate(BaseModel):
@@ -69,6 +76,8 @@ class OrderUpdate(BaseModel):
     pickup_time: Optional[str] = None
     note: Optional[str] = None
     items: Optional[List[OrderItemIn]] = None
+    materials: Optional[str] = None
+    assigned_to: Optional[int] = None
 
 
 class OrderItemOut(BaseModel):
@@ -99,6 +108,9 @@ class OrderOut(BaseModel):
     pickup_time: Optional[str]
     total_price: float
     note: Optional[str]
+    materials: Optional[str] = None
+    assigned_to: Optional[int] = None
+    assignee_name: Optional[str] = None
     created_at: datetime
     items: List[OrderItemOut]
 

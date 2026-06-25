@@ -84,8 +84,11 @@ class Order(Base):
     total_price: Mapped[float] = mapped_column(Float, default=0)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    materials: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array of {product_id, quantity}
+    assigned_to: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
 
     client: Mapped["Client"] = relationship("Client", back_populates="orders")
+    assignee: Mapped[Optional["User"]] = relationship("User", foreign_keys=[assigned_to])
     items: Mapped[List["OrderItem"]] = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
 
@@ -191,6 +194,7 @@ class Product(Base):
     article: Mapped[str] = mapped_column(String(255), default="", index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    min_stock: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 

@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
+import json
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
@@ -41,6 +42,39 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
     return _order_to_out(order)
 
 
+def _apply_materials(order_id: int, materials_str: Optional[str], db: Session, user: models.User):
+    if not materials_str:
+        return
+    try:
+        materials = json.loads(materials_str)
+    except Exception:
+        return
+    for m in materials:
+        product = db.query(models.Product).get(m.get("product_id"))
+        if not product:
+            continue
+        qty = int(m.get("quantity", 0))
+        if qty <= 0:
+            continue
+        if product.quantity < qty:
+            raise HTTPException(400, f"Недостаточно товара {product.name}: есть {product.quantity}, нужно {qty}")
+        stock_before = product.quantity
+        product.quantity -= qty
+        stock_after = product.quantity
+        movement = models.StockMovement(
+            product_id=product.id,
+            user_id=user.id,
+            user_name=user.full_name or user.username,
+            type="write-off",
+            reason="расход в заказе",
+            quantity=-qty,
+            stock_before=stock_before,
+            stock_after=stock_after,
+            comment=f"Списание по заказу #{order_id}",
+        )
+        db.add(movement)
+
+
 @router.post("", response_model=schemas.OrderOut)
 def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     client = db.query(models.Client).get(data.client_id)
@@ -62,6 +96,8 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db), user:
         pickup_time=data.pickup_time,
         note=data.note,
         total_price=total,
+        materials=data.materials,
+        assigned_to=data.assigned_to,
     )
     db.add(order)
     db.flush()
@@ -79,6 +115,7 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db), user:
             price=item.price,
         ))
 
+    _apply_materials(order.id, data.materials, db, user)
     db.commit()
     db.refresh(order)
     audit_log(user, "create", "order", order.id, f"Создан заказ №{order.id} ({data.order_type})", db=db)
@@ -121,6 +158,11 @@ def update_order(order_id: int, data: schemas.OrderUpdate, db: Session = Depends
         order.pickup_time = data.pickup_time
     if data.note is not None:
         order.note = data.note
+    if data.materials is not None:
+        order.materials = data.materials
+        _apply_materials(order.id, data.materials, db, user)
+    if data.assigned_to is not None:
+        order.assigned_to = data.assigned_to
 
     if data.items is not None:
         total = sum(item.price * item.quantity for item in data.items)
@@ -277,6 +319,9 @@ def _order_to_out(o: models.Order) -> schemas.OrderOut:
         pickup_time=o.pickup_time,
         total_price=o.total_price,
         note=o.note,
+        materials=o.materials,
+        assigned_to=o.assigned_to,
+        assignee_name=o.assignee.full_name if o.assignee else None,
         created_at=o.created_at,
         items=[
             schemas.OrderItemOut(

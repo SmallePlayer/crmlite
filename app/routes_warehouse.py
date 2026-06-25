@@ -15,6 +15,7 @@ class ProductCreate(BaseModel):
     color: str = ""
     article: str = ""
     quantity: int = 0
+    min_stock: int = 0
 
 
 class ProductOut(BaseModel):
@@ -24,6 +25,7 @@ class ProductOut(BaseModel):
     article: str
     quantity: int
     image: Optional[str] = None
+    min_stock: int = 0
     created_at: str
 
     class Config:
@@ -74,16 +76,16 @@ def list_products(db: Session = Depends(get_db), user: User = Depends(get_curren
 def create_product(data: ProductCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not _can_edit(user):
         raise HTTPException(403, "Нет прав")
-    p = Product(name=data.name, color=data.color, article=data.article, quantity=data.quantity)
+    p = Product(name=data.name, color=data.color, article=data.article, quantity=data.quantity, min_stock=data.min_stock)
     db.add(p)
     db.commit()
     db.refresh(p)
     log(user, "create", "product", p.id, f"Добавлен товар {p.name} ({p.article})", db=db)
-    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "created_at": p.created_at.isoformat()}
+    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "min_stock": p.min_stock, "created_at": p.created_at.isoformat()}
 
 
 def _product_out(p):
-    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "created_at": p.created_at.isoformat()}
+    return {"id": p.id, "name": p.name, "color": p.color, "article": p.article, "quantity": p.quantity, "image": p.image, "min_stock": p.min_stock, "created_at": p.created_at.isoformat()}
 
 
 @router.get("/products/{product_id}")
@@ -107,6 +109,7 @@ def update_product(product_id: int, data: ProductCreate, db: Session = Depends(g
     p.color = data.color
     p.article = data.article
     p.quantity = data.quantity
+    p.min_stock = data.min_stock
     db.commit()
     db.refresh(p)
     log(user, "update", "product", p.id, f"Обновлён товар {p.name}", db=db)

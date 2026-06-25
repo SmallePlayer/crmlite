@@ -10,13 +10,25 @@ from app.audit import log
 router = APIRouter(prefix="/api/clients", tags=["clients"], dependencies=[Depends(get_current_user)])
 
 
+def _can_view_clients(user):
+    return user.role and (user.role.name == "admin" or user.role.can_view_clients)
+
+
+def _can_edit_clients(user):
+    return user.role and (user.role.name == "admin" or user.role.can_edit_clients)
+
+
 @router.get("", response_model=List[schemas.ClientOut])
-def list_clients(db: Session = Depends(get_db)):
+def list_clients(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    if not _can_view_clients(user):
+        raise HTTPException(403, "Нет доступа к клиентам")
     return db.query(models.Client).order_by(models.Client.created_at.desc()).all()
 
 
 @router.post("", response_model=schemas.ClientOut)
 def create_client(data: schemas.ClientCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    if not _can_edit_clients(user):
+        raise HTTPException(403, "Нет прав на создание клиентов")
     client = models.Client(**data.model_dump())
     db.add(client)
     db.commit()
@@ -26,7 +38,9 @@ def create_client(data: schemas.ClientCreate, db: Session = Depends(get_db), use
 
 
 @router.get("/{client_id}", response_model=schemas.ClientOut)
-def get_client(client_id: int, db: Session = Depends(get_db)):
+def get_client(client_id: int, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    if not _can_view_clients(user):
+        raise HTTPException(403, "Нет доступа к клиентам")
     client = db.query(models.Client).get(client_id)
     if not client:
         raise HTTPException(404, "Клиент не найден")
@@ -35,6 +49,8 @@ def get_client(client_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{client_id}", response_model=schemas.ClientOut)
 def update_client(client_id: int, data: schemas.ClientCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    if not _can_edit_clients(user):
+        raise HTTPException(403, "Нет прав на редактирование клиентов")
     client = db.query(models.Client).get(client_id)
     if not client:
         raise HTTPException(404, "Клиент не найден")
@@ -69,6 +85,8 @@ def get_client_orders(client_id: int, db: Session = Depends(get_db)):
 
 @router.delete("/{client_id}")
 def delete_client(client_id: int, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    if not _can_edit_clients(user):
+        raise HTTPException(403, "Нет прав на удаление клиентов")
     client = db.query(models.Client).get(client_id)
     if not client:
         raise HTTPException(404, "Клиент не найден")
