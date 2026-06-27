@@ -1,0 +1,67 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/uvicorn/__main__.py", line 4, in <module>
+    uvicorn.main()
+    ~~~~~~~~~~~~^^
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/click/core.py", line 1524, in __call__
+    return self.main(*args, **kwargs)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/click/core.py", line 1445, in main
+    rv = self.invoke(ctx)
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/click/core.py", line 1308, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/click/core.py", line 877, in invoke
+    return callback(*args, **kwargs)
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/uvicorn/main.py", line 441, in main
+    run(
+    ~~~^
+        app,
+        ^^^^
+    ...<48 lines>...
+        reset_contextvars=reset_contextvars,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/uvicorn/main.py", line 609, in run
+    config.load_app()
+    ~~~~~~~~~~~~~~~^^
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/uvicorn/config.py", line 415, in load_app
+    return import_from_string(self.app)
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1398, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 759, in exec_module
+  File "<frozen importlib._bootstrap>", line 491, in _call_with_frames_removed
+  File "/Users/pes/code/crm/app/main.py", line 2, in <module>
+    from fastapi import FastAPI, Request
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/fastapi/__init__.py", line 7, in <module>
+    from .applications import FastAPI as FastAPI
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/fastapi/applications.py", line 7, in <module>
+    from fastapi import routing
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/fastapi/routing.py", line 43, in <module>
+    from fastapi import params
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/fastapi/params.py", line 7, in <module>
+    from fastapi.exceptions import FastAPIDeprecationWarning
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/fastapi/exceptions.py", line 5, in <module>
+    from pydantic import BaseModel, create_model
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic/__init__.py", line 5, in <module>
+    from ._migration import getattr_migration
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic/_migration.py", line 4, in <module>
+    from pydantic.warnings import PydanticDeprecatedSince20
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic/warnings.py", line 5, in <module>
+    from .version import version_short
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic/version.py", line 7, in <module>
+    from pydantic_core import __version__ as __pydantic_core_version__
+  File "/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic_core/__init__.py", line 8, in <module>
+    from ._pydantic_core import (
+    ...<21 lines>...
+    )
+ImportError: dlopen(/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic_core/_pydantic_core.cpython-314-darwin.so, 0x0002): tried: '/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic_core/_pydantic_core.cpython-314-darwin.so' (mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64e' or 'arm64e.v1' or 'arm64' or 'arm64')), '/System/Volumes/Preboot/Cryptexes/OS/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic_core/_pydantic_core.cpython-314-darwin.so' (no such file), '/Users/pes/code/crm/venv/lib/python3.14/site-packages/pydantic_core/_pydantic_core.cpython-314-darwin.so' (mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64e' or 'arm64e.v1' or 'arm64' or 'arm64'))
