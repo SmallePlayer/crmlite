@@ -6,11 +6,11 @@
   <h4 class="mb-0">Календарь ремонтов</h4>
   <div class="d-flex gap-2">
     <a href="/calendar?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-chevron-left"></i> {{ prev_month.strftime('%B %Y') }}
+      <i class="bi bi-chevron-left"></i> {{ prev_month | month_ru }} {{ dt.year if dt else '' }}
     </a>
-    <span class="btn btn-sm btn-primary disabled">{{ base_month.strftime('%B %Y') }}</span>
+    <span class="btn btn-sm btn-primary disabled">{{ base_month | month_ru }} {{ dt.year if dt else '' }}</span>
     <a href="/calendar?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary">
-      {{ next_month.strftime('%B %Y') }} <i class="bi bi-chevron-right"></i>
+      {{ next_month | month_ru }} {{ dt.year if dt else '' }} <i class="bi bi-chevron-right"></i>
     </a>
   </div>
 </div>

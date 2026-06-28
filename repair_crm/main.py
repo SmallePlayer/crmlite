@@ -254,6 +254,8 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 templates.env.filters["money"] = lambda x: f"{x:,.0f}".replace(",", " ") + " ₽"
 templates.env.filters["dt"] = lambda x: x.strftime("%d.%m.%Y %H:%M") if x else "—"
 templates.env.filters["int"] = lambda x: f"{x:,}".replace(",", " ") if x else "0"
+_MONTHS_RU = ["","январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"]
+templates.env.filters["month_ru"] = lambda dt: _MONTHS_RU[dt.month] if dt else "—"
 
 UPLOADS_DIR = BASE_DIR / "static" / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
