@@ -215,6 +215,20 @@ class OrderPart(Base):
     price: Mapped[float] = mapped_column(Float, default=0)
 
 
+class Task(Base):
+    __tablename__ = "tasks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    creator = relationship("User", foreign_keys=[created_by])
+    assigned_to: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    assignee = relationship("User", foreign_keys=[assigned_to])
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
+
+
 # ══════════════════════════════════════════════════════════════════
 #  App Setup
 # ══════════════════════════════════════════════════════════════════
@@ -521,9 +535,6 @@ def _recalc_total(session: Session, order_id: int):
         session.commit()
 
 
-import json
-
-
 # ══════════════════════════════════════════════════════════════════
 #  Auth Routes
 # ══════════════════════════════════════════════════════════════════
@@ -571,6 +582,7 @@ def logout():
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
     active = session.execute(
         select(func.count(Order.id)).where(Order.status == "in_progress")
     ).scalar() or 0
@@ -594,9 +606,21 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         select(func.count(Part.id))
         .where(Part.quantity <= Part.min_stock, Part.min_stock > 0)
     ).scalar() or 0
+    my_tasks = session.execute(
+        select(func.count(Task.id))
+        .where(Task.assigned_to == u.id, Task.status == "pending")
+    ).scalar() or 0
+    total_tasks = session.execute(
+        select(func.count(Task.id)).where(Task.status == "pending")
+    ).scalar() or 0
     recent = session.execute(
         select(Order).options(joinedload(Order.client))
         .order_by(desc(Order.created_at)).limit(15)
+    ).unique().scalars().all()
+    my_recent_tasks = session.execute(
+        select(Task).options(joinedload(Task.creator), joinedload(Task.assignee))
+        .where(Task.assigned_to == u.id, Task.status == "pending")
+        .order_by(desc(Task.created_at)).limit(5)
     ).unique().scalars().all()
     return templates.TemplateResponse(request, "index.html", {
         **_user_context(request),
@@ -604,6 +628,8 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         "total_clients": total_clients, "total_services": total_services,
         "total_parts": total_parts, "total_products": total_products,
         "low_stock": low_stock, "overdue": overdue, "due_soon": due_soon,
+        "my_tasks": my_tasks, "total_tasks": total_tasks,
+        "my_recent_tasks": my_recent_tasks,
         "recent_orders": recent,
         "ORDER_STATUSES": ORDER_STATUSES, "datetime": datetime,
         "last_backup": (datetime.fromtimestamp((BASE_DIR / "repair_crm.db").stat().st_mtime)
@@ -1802,48 +1828,6 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...),
 
 
 # ══════════════════════════════════════════════════════════════════
-#  Calendar
-# ══════════════════════════════════════════════════════════════════
-
-@app.get("/calendar", response_class=HTMLResponse)
-def calendar_page(request: Request, month: str = Query(""), session: Session = Depends(get_db)):
-    today = datetime.now()
-    if month:
-        try:
-            year, mon = map(int, month.split("-"))
-            base = datetime(year, mon, 1)
-        except (ValueError, TypeError):
-            base = today.replace(day=1)
-    else:
-        base = today.replace(day=1)
-
-    next_month = (base.replace(day=28) + timedelta(days=4)).replace(day=1)
-    prev_month = (base - timedelta(days=1)).replace(day=1)
-
-    orders = session.execute(
-        select(Order).options(joinedload(Order.client), joinedload(Order.assignee))
-        .where(Order.created_at >= base, Order.created_at < next_month)
-        .order_by(Order.created_at)
-    ).unique().scalars().all()
-
-    by_date = {}
-    for o in orders:
-        d = o.created_at.strftime("%Y-%m-%d")
-        by_date.setdefault(d, []).append(o)
-
-    users = session.execute(
-        select(User).where(User.is_active == True).order_by(User.full_name)
-    ).scalars().all()
-
-    return templates.TemplateResponse(request, "calendar.html", {
-        **_user_context(request),
-        "orders_by_date": by_date, "base_month": base, "next_month": next_month,
-        "prev_month": prev_month, "users": users,
-        "ORDER_STATUSES": ORDER_STATUSES, "timedelta": timedelta,
-    })
-
-
-# ══════════════════════════════════════════════════════════════════
 #  Chat
 # ══════════════════════════════════════════════════════════════════
 
@@ -2006,6 +1990,115 @@ def delete_schedule(sched_id: int, request: Request, session: Session = Depends(
 
 
 # ══════════════════════════════════════════════════════════════════
+#  Tasks
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/tasks", response_class=HTMLResponse)
+def tasks_page(
+    request: Request,
+    filter: str = Query("all"),
+    session: Session = Depends(get_db),
+):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+
+    users = session.execute(
+        select(User).where(User.is_active == True).order_by(User.full_name)
+    ).scalars().all()
+
+    q = select(Task).options(
+        joinedload(Task.creator), joinedload(Task.assignee),
+    )
+    if filter == "my":
+        q = q.where(Task.assigned_to == u.id)
+    elif filter == "assigned":
+        q = q.where(Task.created_by == u.id, Task.assigned_to != u.id)
+    elif filter == "done":
+        q = q.where(Task.status == "done")
+    elif filter == "pending":
+        q = q.where(Task.status == "pending")
+    q = q.order_by(desc(Task.created_at))
+
+    tasks = session.execute(q).unique().scalars().all()
+
+    counts = {}
+    for f_val, f_label, f_cond in [
+        ("all", "Все", True),
+        ("my", "Мои", Task.assigned_to == u.id),
+        ("assigned", "Назначил", (Task.created_by == u.id) & (Task.assigned_to != u.id)),
+        ("pending", "Активные", Task.status == "pending"),
+        ("done", "Выполнены", Task.status == "done"),
+    ]:
+        cnt_q = select(func.count(Task.id))
+        if f_cond is not True:
+            cnt_q = cnt_q.where(f_cond)
+        counts[f_val] = session.execute(cnt_q).scalar() or 0
+
+    return templates.TemplateResponse(request, "tasks.html", {
+        **_user_context(request),
+        "tasks": tasks, "users": users, "filter": filter, "counts": counts,
+    })
+
+
+@app.post("/tasks")
+def create_task(
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(""),
+    assigned_to: int = Form(...),
+    session: Session = Depends(get_db),
+):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    target = session.get(User, assigned_to)
+    if not target:
+        raise HTTPException(400, "Пользователь не найден")
+    task = Task(
+        title=title.strip(),
+        description=description.strip(),
+        created_by=u.id,
+        assigned_to=assigned_to,
+    )
+    session.add(task)
+    session.commit()
+    _audit("create", "task", task.id, f"«{task.title}» → {target.full_name}", u, session)
+    return RedirectResponse("/tasks", status_code=303)
+
+
+@app.post("/tasks/{task_id}/done")
+def mark_task_done(task_id: int, request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(404)
+    task.status = "done"
+    task.completed_at = datetime.now()
+    session.commit()
+    _audit("done", "task", task.id, f"«{task.title}» выполнена", u, session)
+    return RedirectResponse("/tasks", status_code=303)
+
+
+@app.post("/tasks/{task_id}/delete")
+def delete_task(task_id: int, request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(404)
+    if task.created_by != u.id and u.role.name != "admin":
+        raise HTTPException(403, "Удалить может только автор или администратор")
+    session.delete(task)
+    session.commit()
+    _audit("delete", "task", task_id, f"«{task.title}»", u, session)
+    return RedirectResponse("/tasks", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
 #  API stubs (silence old CRM polling)
 # ══════════════════════════════════════════════════════════════════
 
@@ -2020,8 +2113,20 @@ async def _dashboard_stub():
 
 
 @app.get("/api/task-assignments/my")
-async def _tasks_stub():
-    return JSONResponse([])
+async def _tasks_api(request: Request, session: Session = Depends(get_db)):
+    u = _get_user_from_request(request)
+    if not u:
+        return JSONResponse([])
+    tasks = session.execute(
+        select(Task).options(joinedload(Task.creator), joinedload(Task.assignee))
+        .where(Task.assigned_to == u.id, Task.status == "pending")
+        .order_by(desc(Task.created_at))
+    ).unique().scalars().all()
+    return JSONResponse([{
+        "id": t.id, "title": t.title, "description": t.description,
+        "created_by": t.creator.full_name, "assigned_to": t.assignee.full_name,
+        "status": t.status, "created_at": t.created_at.isoformat(),
+    } for t in tasks])
 
 
 @app.get("/api/warehouse/products")

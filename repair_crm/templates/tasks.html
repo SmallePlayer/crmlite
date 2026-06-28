@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% set current_page = "tasks" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Задачи</h4>
+  <button class="btn btn-primary" onclick="openTaskModal()">
+    <i class="bi bi-plus-lg me-1"></i>Новая задача
+  </button>
+</div>
+
+{% set tabs = [
+  ('all',     'Все'),
+  ('my',      'Мои'),
+  ('assigned','Назначил'),
+  ('pending', 'Активные'),
+  ('done',    'Выполнены'),
+] %}
+<ul class="nav nav-tabs mb-3">
+  {% for tab, label in tabs %}
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if filter == tab }}"
+       href="/tasks?filter={{ tab }}">
+      {{ label }}
+      <span class="badge bg-secondary ms-1">{{ counts.get(tab, 0) }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if tasks %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Задача</th>
+        <th>Кому</th>
+        <th>От кого</th>
+        <th>Создана</th>
+        <th style="width:80px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr class="{{ 'table-success bg-opacity-25' if t.status == 'done' }}">
+        <td>
+          <div class="d-flex align-items-center gap-2">
+            {% if t.status == 'done' %}
+            <i class="bi bi-check-circle-fill text-success fs-5" title="Выполнена"></i>
+            <span class="text-decoration-line-through text-muted">{{ t.title }}</span>
+            {% else %}
+            <i class="bi bi-circle text-warning fs-5" title="Ожидает"></i>
+            <span>{{ t.title }}</span>
+            {% endif %}
+          </div>
+          {% if t.description %}
+          <small class="text-muted d-block ms-4">{{ t.description[:100] }}</small>
+          {% endif %}
+        </td>
+        <td><span class="badge bg-info">{{ t.assignee.full_name }}</span></td>
+        <td><small class="text-muted">{{ t.creator.full_name }}</small></td>
+        <td><small class="text-muted">{{ t.created_at | dt }}</small></td>
+        <td>
+          <div class="d-flex gap-1">
+            {% if t.status == 'pending' %}
+            <form method="post" action="/tasks/{{ t.id }}/done" class="d-inline">
+              <button class="btn btn-sm btn-outline-success" title="Выполнено">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </form>
+            {% endif %}
+            {% if t.created_by == user.id or is_admin %}
+            <form method="post" action="/tasks/{{ t.id }}/delete" class="d-inline"
+                  data-confirm="Удалить задачу «{{ t.title }}»?">
+              <button class="btn btn-sm btn-outline-danger" title="Удалить">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-check2-square fs-1"></i>
+  <p class="mt-2">Задач пока нет. Нажмите «Новая задача» чтобы создать.</p>
+</div>
+{% endif %}
+
+{# New Task Modal #}
+<div class="modal fade" id="taskModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="/tasks">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-square me-1"></i>Новая задача</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Заголовок</label>
+          <input type="text" name="title" class="form-control" required
+                 placeholder="Что нужно сделать?">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Описание</label>
+          <textarea name="description" class="form-control" rows="3"
+                    placeholder="Подробности (необязательно)"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Кому</label>
+          <select name="assigned_to" class="form-select" required>
+            <option value="{{ user.id }}" selected>{{ user.full_name }} (себе)</option>
+            {% for u in users if u.id != user.id %}
+            <option value="{{ u.id }}">{{ u.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Создать задачу</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openTaskModal() {
+  new bootstrap.Modal(document.getElementById('taskModal')).show();
+}
+</script>
+{% endblock %}
