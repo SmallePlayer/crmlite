@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% set current_page = "warehouse" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Склад запчастей <span class="text-muted fs-6">({{ parts | length }})</span></h4>
+  <button class="btn btn-success" id="receiveBtn">
+    <i class="bi bi-box-arrow-in-down"></i> Приход
+  </button>
+</div>
+
+{% if parts %}
+<div class="table-responsive mb-4">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Название</th>
+        <th>Артикул</th>
+        <th>Цена закупки</th>
+        <th>На складе</th>
+        <th style="width:90px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in parts %}
+      <tr>
+        <td><strong>{{ p.name }}</strong></td>
+        <td><code>{{ p.article }}</code></td>
+        <td>{{ p.purchase_price | money }}</td>
+        <td>
+          {% if p.quantity <= 0 %}
+          <span class="badge bg-danger">0</span>
+          {% elif p.min_stock > 0 and p.quantity <= p.min_stock %}
+          <span class="badge bg-warning text-dark">{{ p.quantity | int }}</span>
+          {% else %}
+          <span class="badge bg-success">{{ p.quantity | int }}</span>
+          {% endif %}
+          {% if p.min_stock > 0 %}
+          <small class="text-muted">мин. {{ p.min_stock }}</small>
+          {% endif %}
+        </td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary me-1 edit-part-btn" data-id="{{ p.id }}">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <form method="post" action="/warehouse/{{ p.id }}/delete" class="d-inline"
+                data-confirm="Удалить запчасть «{{ p.name }}» ({{ p.article }})?">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-box-seam fs-1"></i>
+  <p class="mt-2">Склад пуст. Нажмите «Приход» чтобы добавить запчасти.</p>
+</div>
+{% endif %}
+
+{% if movements %}
+<h5 class="mb-3">Последние движения</h5>
+<div class="table-responsive">
+  <table class="table table-sm table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>Дата</th>
+        <th>Запчасть</th>
+        <th>Тип</th>
+        <th>Кол-во</th>
+        <th>Цена</th>
+        <th>Причина</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movements %}
+      <tr>
+        <td class="text-muted">{{ m.created_at | dt }}</td>
+        <td>{{ m.part.name }} <code class="ms-1">{{ m.part.article }}</code></td>
+        <td>
+          {% if m.type == "in" %}
+          <span class="badge bg-success">Приход</span>
+          {% else %}
+          <span class="badge bg-warning text-dark">Расход</span>
+          {% endif %}
+        </td>
+        <td>{{ m.quantity | int }}</td>
+        <td>{{ m.price_per_unit | money }}</td>
+        <td class="text-muted">{{ m.reason or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# Batch Receive Modal #}
+<div class="modal fade" id="receiveModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-box-arrow-in-down me-1"></i>Приход запчастей</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="mb-2 text-muted small">
+          <i class="bi bi-info-circle me-1"></i>Выберите запчасть из списка. Если нужной нет — выберите «Новая позиция» и введите данные вручную.
+        </div>
+        <table class="table table-sm align-middle mb-2">
+          <thead class="table-light">
+            <tr>
+              <th style="width:30%">Запчасть</th>
+              <th>Название</th>
+              <th>Артикул</th>
+              <th style="width:100px">Цена зак.</th>
+              <th style="width:80px">Кол-во</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="receiveRows"></tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addReceiveRow()">
+          <i class="bi bi-plus"></i> Добавить строку
+        </button>
+      </div>
+      <div class="modal-footer">
+        <span id="receiveError" class="text-danger me-auto small"></span>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-success" onclick="submitReceive()">
+          <i class="bi bi-check-lg"></i> Сохранить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Edit Part Modal #}
+<div class="modal fade" id="partModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="partForm" method="post">
+      <div class="modal-header">
+        <h5 class="modal-title" id="partModalLabel">Редактировать запчасть</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Название <span class="text-danger">*</span></label>
+          <input type="text" name="name" id="part_name" class="form-control"
+                 maxlength="200" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Артикул</label>
+          <input type="text" id="part_article" class="form-control" readonly disabled>
+          <div class="form-text">Артикул изменить нельзя</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Цена закупки (₽)</label>
+          <input type="number" name="purchase_price" id="part_price" class="form-control"
+                 step="0.01" min="0" value="0" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Мин. остаток</label>
+          <input type="number" name="min_stock" id="part_min" class="form-control"
+                 min="0" value="0">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var PARTS = {{ parts_data | tojson }};
+var _rowIdx = 0;
+
+function addReceiveRow() {
+  var tbody = document.getElementById('receiveRows');
+  var tr = document.createElement('tr');
+  var opts = '<option value="">+ Новая позиция</option>';
+  PARTS.forEach(function(p) {
+    opts += '<option value="' + p.id + '" data-name="' + p.name + '" data-article="' + p.article +
+      '" data-price="' + p.purchase_price + '" data-stock="' + p.quantity + '">' +
+      p.name + ' (' + p.article + ') — склад: ' + p.quantity + '</option>';
+  });
+  tr.innerHTML =
+    '<td><select class="form-select form-select-sm part-select" onchange="onPartSelect(this)">' + opts + '</select></td>' +
+    '<td><input class="form-control form-control-sm name-input" maxlength="200" required autocomplete="off" placeholder="Название"></td>' +
+    '<td><input class="form-control form-control-sm article-input" maxlength="100" required autocomplete="off" placeholder="Артикул"></td>' +
+    '<td><input type="number" step="0.01" min="0" value="0" class="form-control form-control-sm price-input" required></td>' +
+    '<td><input type="number" min="1" value="1" class="form-control form-control-sm qty-input" required></td>' +
+    '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
+  tbody.appendChild(tr);
+  _rowIdx++;
+}
+
+function onPartSelect(sel) {
+  var row = sel.closest('tr');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    row.querySelector('.name-input').value = opt.dataset.name || '';
+    row.querySelector('.article-input').value = opt.dataset.article || '';
+    row.querySelector('.price-input').value = opt.dataset.price || '0';
+    row.querySelector('.name-input').style.background = '#e9ecef';
+    row.querySelector('.article-input').style.background = '#e9ecef';
+  } else {
+    row.querySelector('.name-input').value = '';
+    row.querySelector('.article-input').value = '';
+    row.querySelector('.name-input').style.background = '';
+    row.querySelector('.article-input').style.background = '';
+  }
+}
+
+function submitReceive() {
+  var rows = [];
+  document.querySelectorAll('#receiveRows tr').forEach(function(tr) {
+    var name = tr.querySelector('.name-input').value.trim();
+    var article = tr.querySelector('.article-input').value.trim();
+    var price = parseFloat(tr.querySelector('.price-input').value) || 0;
+    var qty = parseInt(tr.querySelector('.qty-input').value) || 0;
+    if (!name || !article || qty <= 0) return;
+    rows.push({name: name, article: article, purchase_price: price, quantity: qty});
+  });
+  if (rows.length === 0) {
+    document.getElementById('receiveError').textContent = 'Добавьте хотя бы одну позицию';
+    return;
+  }
+  document.getElementById('receiveError').textContent = '';
+  fetch('/warehouse/receive', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(rows)
+  }).then(function(r) {
+    if (r.ok) { window.location.reload(); }
+    else { r.text().then(function(t) { document.getElementById('receiveError').textContent = 'Ошибка: ' + t; }); }
+  });
+}
+
+document.getElementById('receiveBtn').addEventListener('click', function() {
+  document.getElementById('receiveRows').innerHTML = '';
+  _rowIdx = 0;
+  addReceiveRow();
+  new bootstrap.Modal(document.getElementById('receiveModal')).show();
+});
+
+function openPartModal(partId) {
+  var p = PARTS.find(function(x) { return x.id === partId; });
+  if (!p) return;
+  document.getElementById('partModalLabel').textContent = 'Редактировать: ' + p.name;
+  document.getElementById('partForm').action = '/warehouse/' + p.id + '/edit';
+  document.getElementById('part_name').value = p.name;
+  document.getElementById('part_article').value = p.article;
+  document.getElementById('part_price').value = p.purchase_price;
+  document.getElementById('part_min').value = p.min_stock;
+  new bootstrap.Modal(document.getElementById('partModal')).show();
+}
+
+document.querySelectorAll('.edit-part-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    openPartModal(parseInt(this.dataset.id));
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Квитанция — Заказ #{{ order.id }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @media print {
+      body { font-size: 13px; }
+      .no-print { display: none !important; }
+      .card { border: 1px solid #000 !important; box-shadow: none !important; }
+    }
+    body { padding: 20px; background: #fff; }
+    .receipt { max-width: 700px; margin: 0 auto; }
+    .receipt-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+    .receipt-footer { border-top: 2px solid #000; padding-top: 10px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+<div class="receipt">
+  <div class="d-flex justify-content-between align-items-end receipt-header">
+    <div>
+      <h4 class="mb-0">Квитанция №{{ order.id }}</h4>
+      <small class="text-muted">от {{ order.created_at.strftime('%d.%m.%Y') }}</small>
+    </div>
+    <div class="text-end no-print">
+      <a href="/orders/{{ order.id }}/receipt?format=html" class="btn btn-outline-secondary btn-sm me-1">
+        <i class="bi bi-eye"></i> HTML
+      </a>
+      <a href="/orders/{{ order.id }}/receipt?format=pdf" class="btn btn-outline-primary btn-sm me-1">
+        <i class="bi bi-download"></i> Скачать PDF
+      </a>
+      <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+        <i class="bi bi-printer"></i> Печать
+      </button>
+    </div>
+  </div>
+
+  <table class="table table-sm mb-3">
+    <tr><td style="width:120px"><strong>Клиент:</strong></td><td>{{ order.client.full_name }}</td></tr>
+    <tr><td><strong>Телефон:</strong></td><td>{{ order.client.phone }}</td></tr>
+    <tr><td><strong>Принтер:</strong></td><td>{{ order.printer }}</td></tr>
+    <tr><td><strong>Дефект:</strong></td><td>{{ order.defect }}</td></tr>
+    {% if order.assignee %}
+    <tr><td><strong>Мастер:</strong></td><td>{{ order.assignee.full_name }}
+      {% if order.assignee.inn %}<br><small class="text-muted">ИНН {{ order.assignee.inn }}</small>{% endif %}
+    </td></tr>
+    {% endif %}
+  </table>
+
+  <table class="table table-sm table-bordered">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Наименование</th>
+        <th style="width:60px">Кол.</th>
+        <th style="width:90px">Цена</th>
+        <th style="width:100px">Сумма</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in range(line_items|length) %}
+      {% set item = line_items[i] %}
+      <tr>
+        <td>{{ i + 1 }}</td>
+        <td>{{ item[0] }}</td>
+        <td class="text-center">{{ item[1] }}</td>
+        <td class="text-end">{{ '{:,.0f}'.format(item[2]).replace(',', ' ') }} ₽</td>
+        <td class="text-end"><strong>{{ '{:,.0f}'.format(item[3]).replace(',', ' ') }} ₽</strong></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot class="table-active">
+      <tr>
+        <td colspan="4" class="text-end"><strong>ИТОГО:</strong></td>
+        <td class="text-end"><strong class="fs-5">{{ '{:,.0f}'.format(order.total_price).replace(',', ' ') }} ₽</strong></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  {% if order.closed_at %}
+  <p class="text-muted">Выполнен: {{ order.closed_at.strftime('%d.%m.%Y %H:%M') }}</p>
+  {% endif %}
+
+  <div class="receipt-footer">
+    <div class="row">
+      <div class="col-6">
+        <p class="mb-1">Мастер:
+          {% if order.assignee %}
+          <strong>{{ order.assignee.full_name }}</strong>
+          {% if order.assignee.inn %}<br><small>ИНН {{ order.assignee.inn }}</small>{% endif %}
+          {% else %}
+          _______________
+          {% endif %}
+        </p>
+        <p class="text-muted small">_________________________ (подпись)</p>
+      </div>
+      <div class="col-6 text-end">
+        <p class="mb-1">Клиент: _______________</p>
+        <p class="text-muted small">_________________________ (подпись)</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

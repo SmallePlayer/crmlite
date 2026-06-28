@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+{% set current_page = "products" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Склад товаров <span class="text-muted fs-6">({{ products | length }})</span></h4>
+  <div class="d-flex gap-2">
+    <button class="btn btn-success" id="receiveBtn">
+      <i class="bi bi-box-arrow-in-down"></i> Приход
+    </button>
+  </div>
+</div>
+
+{% if products %}
+<div class="table-responsive mb-4">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th></th>
+        <th>Название</th>
+        <th>Артикул</th>
+        <th>Цвет</th>
+        <th>Кол-во</th>
+        <th style="width:160px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td style="width:50px">
+          {% if p.image %}
+          <img src="/static/uploads/{{ p.image }}" width="40" height="40"
+               style="object-fit:cover; border-radius:4px; cursor:pointer"
+               onclick="showImage('/static/uploads/{{ p.image }}')">
+          {% else %}
+          <span class="text-muted" style="width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;
+                       background:#f0f0f0;border-radius:4px;font-size:12px">—</span>
+          {% endif %}
+        </td>
+        <td><strong>{{ p.name }}</strong></td>
+        <td><code>{{ p.article }}</code></td>
+        <td>{{ p.color or '—' }}</td>
+        <td>
+          {% if p.quantity <= 0 %}
+          <span class="badge bg-danger">0</span>
+          {% else %}
+          <span class="badge bg-success">{{ p.quantity | int }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
+                class="d-inline" id="imgForm_{{ p.id }}">
+            <input type="file" name="file" accept="image/*" class="d-none"
+                   id="imgInput_{{ p.id }}" onchange="document.getElementById('imgForm_{{ p.id }}').submit()">
+            <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+                    onclick="document.getElementById('imgInput_{{ p.id }}').click()"
+                    title="Загрузить фото">
+              <i class="bi bi-camera"></i>
+            </button>
+          </form>
+          <button class="btn btn-sm btn-warning me-1" onclick="openStockOutModal({{ p.id }})">
+            <i class="bi bi-box-arrow-up"></i> Расход
+          </button>
+          <button class="btn btn-sm btn-outline-secondary me-1 edit-product-btn" data-id="{{ p.id }}">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <form method="post" action="/products/{{ p.id }}/delete" class="d-inline"
+                data-confirm="Удалить товар «{{ p.name }}» ({{ p.article }})?">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-boxes fs-1"></i>
+  <p class="mt-2">Товаров пока нет. Нажмите «Приход» чтобы добавить.</p>
+</div>
+{% endif %}
+
+{% if movements %}
+<h5 class="mb-3">Последние движения</h5>
+<div class="table-responsive">
+  <table class="table table-sm table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>Дата</th>
+        <th>Товар</th>
+        <th>Тип</th>
+        <th>Кол-во</th>
+        <th>Куда</th>
+        <th>Причина</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movements %}
+      <tr>
+        <td class="text-muted">{{ m.created_at | dt }}</td>
+        <td>{{ m.product.name }} <code class="ms-1">{{ m.product.article }}</code></td>
+        <td>
+          {% if m.type == "in" %}
+          <span class="badge bg-success">Приход</span>
+          {% else %}
+          <span class="badge bg-warning text-dark">Расход</span>
+          {% endif %}
+        </td>
+        <td>{{ m.quantity | int }}</td>
+        <td>{{ m.destination or '—' }}</td>
+        <td class="text-muted">{{ m.reason or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# Batch Receive Modal #}
+<div class="modal fade" id="receiveModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-box-arrow-in-down me-1"></i>Приход товаров</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="mb-2 text-muted small">
+          <i class="bi bi-info-circle me-1"></i>Выберите товар из списка. Если нужного нет — выберите «Новая позиция» и введите данные вручную.
+        </div>
+        <table class="table table-sm align-middle mb-2">
+          <thead class="table-light">
+            <tr>
+              <th style="width:30%">Товар</th>
+              <th>Название</th>
+              <th>Артикул</th>
+              <th style="width:100px">Цвет</th>
+              <th style="width:80px">Кол-во</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="receiveRows"></tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addReceiveRow()">
+          <i class="bi bi-plus"></i> Добавить строку
+        </button>
+      </div>
+      <div class="modal-footer">
+        <span id="receiveError" class="text-danger me-auto small"></span>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-success" onclick="submitReceive()">
+          <i class="bi bi-check-lg"></i> Сохранить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Stock Out Modal #}
+<div class="modal fade" id="stockOutModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <form class="modal-content" id="stockOutForm" method="post">
+      <div class="modal-header">
+        <h5 class="modal-title" id="stockOutLabel">Расход товара</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Количество <span class="text-danger">*</span></label>
+          <input type="number" name="quantity" id="so_qty" class="form-control" min="1" value="1" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Куда отправлено</label>
+          <select name="destination" class="form-select">
+            <option value="">— Выбрать —</option>
+            <option value="Ozon">Ozon</option>
+            <option value="WB">Wildberries</option>
+            <option value="Розница">Розница</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Примечание</label>
+          <input type="text" name="reason" class="form-control" maxlength="500" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Edit Modal #}
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="editForm" method="post">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editModalLabel">Редактировать</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Название <span class="text-danger">*</span></label>
+          <input type="text" name="name" id="edit_name" class="form-control" maxlength="200" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Цвет</label>
+          <input type="text" name="color" id="edit_color" class="form-control" maxlength="100" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var PDATA = {{ products_data | tojson }};
+var _rowIdx = 0;
+
+function showImage(src) {
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  modal.onclick = function() { modal.remove(); };
+  var img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px';
+  modal.appendChild(img);
+  document.body.appendChild(modal);
+}
+
+function addReceiveRow() {
+  var tbody = document.getElementById('receiveRows');
+  var tr = document.createElement('tr');
+  var opts = '<option value="">+ Новая позиция</option>';
+  PDATA.forEach(function(p) {
+    opts += '<option value="' + p.id + '" data-name="' + p.name + '" data-article="' + p.article +
+      '" data-color="' + (p.color || '') + '" data-stock="' + p.quantity + '">' +
+      p.name + ' (' + p.article + ') — склад: ' + p.quantity + '</option>';
+  });
+  tr.innerHTML =
+    '<td><select class="form-select form-select-sm prod-select" onchange="onProdSelect(this)">' + opts + '</select></td>' +
+    '<td><input class="form-control form-control-sm name-input" maxlength="200" required autocomplete="off" placeholder="Название"></td>' +
+    '<td><input class="form-control form-control-sm article-input" maxlength="100" required autocomplete="off" placeholder="Артикул"></td>' +
+    '<td><input class="form-control form-control-sm color-input" maxlength="100" autocomplete="off" placeholder="Цвет"></td>' +
+    '<td><input type="number" min="1" value="1" class="form-control form-control-sm qty-input" required></td>' +
+    '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
+  tbody.appendChild(tr);
+  _rowIdx++;
+}
+
+function onProdSelect(sel) {
+  var row = sel.closest('tr');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    row.querySelector('.name-input').value = opt.dataset.name || '';
+    row.querySelector('.article-input').value = opt.dataset.article || '';
+    row.querySelector('.color-input').value = opt.dataset.color || '';
+    row.querySelector('.name-input').style.background = '#e9ecef';
+    row.querySelector('.article-input').style.background = '#e9ecef';
+  } else {
+    row.querySelector('.name-input').value = '';
+    row.querySelector('.article-input').value = '';
+    row.querySelector('.color-input').value = '';
+    row.querySelector('.name-input').style.background = '';
+    row.querySelector('.article-input').style.background = '';
+  }
+}
+
+function submitReceive() {
+  var rows = [];
+  document.querySelectorAll('#receiveRows tr').forEach(function(tr) {
+    var name = tr.querySelector('.name-input').value.trim();
+    var article = tr.querySelector('.article-input').value.trim();
+    var color = tr.querySelector('.color-input').value.trim();
+    var qty = parseInt(tr.querySelector('.qty-input').value) || 0;
+    if (!name || !article || qty <= 0) return;
+    rows.push({name: name, article: article, color: color, quantity: qty});
+  });
+  if (rows.length === 0) {
+    document.getElementById('receiveError').textContent = 'Добавьте хотя бы одну позицию';
+    return;
+  }
+  document.getElementById('receiveError').textContent = '';
+  fetch('/products/receive', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(rows)
+  }).then(function(r) {
+    if (r.ok) { window.location.reload(); }
+    else { r.text().then(function(t) { document.getElementById('receiveError').textContent = 'Ошибка: ' + t; }); }
+  });
+}
+
+document.getElementById('receiveBtn').addEventListener('click', function() {
+  document.getElementById('receiveRows').innerHTML = '';
+  _rowIdx = 0;
+  addReceiveRow();
+  new bootstrap.Modal(document.getElementById('receiveModal')).show();
+});
+
+function openStockOutModal(productId) {
+  var p = PDATA.find(function(x) { return x.id === productId; });
+  if (!p) return;
+  document.getElementById('stockOutLabel').textContent = 'Расход: ' + p.name + ' (на складе: ' + p.quantity + ')';
+  document.getElementById('stockOutForm').action = '/products/' + p.id + '/stock-out';
+  document.getElementById('so_qty').value = 1;
+  document.getElementById('so_qty').max = p.quantity;
+  new bootstrap.Modal(document.getElementById('stockOutModal')).show();
+}
+
+function openEditModal(productId) {
+  var p = PDATA.find(function(x) { return x.id === productId; });
+  if (!p) return;
+  document.getElementById('editModalLabel').textContent = 'Редактировать: ' + p.name;
+  document.getElementById('editForm').action = '/products/' + p.id + '/edit';
+  document.getElementById('edit_name').value = p.name;
+  document.getElementById('edit_color').value = p.color || '';
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    openEditModal(parseInt(this.dataset.id));
+  });
+});
+</script>
+{% endblock %}

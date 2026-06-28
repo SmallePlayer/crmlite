@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% set current_page = "index" %}
+
+{% block content %}
+<h4 class="mb-4">Панель управления</h4>
+
+<div class="row g-3 mb-4">
+  {% set cards = [
+    (active_orders, 'Заказов в работе', 'tools', 'primary'),
+    (closed_orders,  'Закрыто заказов','check-circle',  'success'),
+    (total_clients,  'Клиентов',       'people',        'info'),
+    (total_services, 'Услуг',          'gear',          'warning'),
+  ] %}
+  {% for count, label, icon, color in cards %}
+  <div class="col-md-3 col-6">
+    <div class="card border-{{ color }} shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <small class="text-muted">{{ label }}</small>
+            <h3 class="mb-0">{{ count }}</h3>
+          </div>
+          <i class="bi bi-{{ icon }} text-{{ color }} fs-1 opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  {% if overdue > 0 or due_soon > 0 %}
+  <div class="col-md-6">
+    <div class="card border-danger shadow-sm">
+      <div class="card-body py-2">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
+          <div class="flex-grow-1">
+            <strong class="text-danger">Сроки!</strong>
+            {% if overdue > 0 %}<span class="badge bg-danger me-1">{{ overdue }} просрочено</span>{% endif %}
+            {% if due_soon > 0 %}<span class="badge bg-warning text-dark">{{ due_soon }} до 3 дней</span>{% endif %}
+          </div>
+          <a href="/orders" class="btn btn-sm btn-outline-danger">Проверить</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if low_stock > 0 %}
+  <div class="col-md-6">
+    <div class="card border-danger shadow-sm">
+      <div class="card-body py-2">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
+          <div>
+            <strong class="text-danger">Склад!</strong>
+            <span class="text-muted small ms-1">{{ low_stock }} позиций ниже мин. остатка.</span>
+          </div>
+          <a href="/warehouse" class="btn btn-sm btn-outline-danger ms-auto">Проверить</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if is_admin and backup_days > 7 %}
+  <div class="col-md-6">
+    <div class="card border-warning shadow-sm">
+      <div class="card-body py-2">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-cloud-upload text-warning fs-4"></i>
+          <div>
+            <strong class="text-warning">Бэкап!</strong>
+            <span class="text-muted small ms-1">Последний {{ backup_days }} дн. назад.</span>
+          </div>
+          <a href="/export/db" class="btn btn-sm btn-outline-warning ms-auto">Скачать</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-header"><strong><i class="bi bi-graph-up me-1"></i>Выручка по месяцам</strong></div>
+      <div class="card-body"><canvas id="revenueChart" height="200"></canvas></div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-header"><strong><i class="bi bi-bar-chart me-1"></i>Топ услуг</strong></div>
+      <div class="card-body"><canvas id="servicesChart" height="200"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<h5>Последние заказы</h5>
+{% if recent_orders %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr><th>#</th><th>Клиент</th><th>Принтер</th><th>Статус</th><th>Срок</th><th>Сумма</th><th>Создан</th></tr>
+    </thead>
+    <tbody>
+      {% for o in recent_orders %}
+      <tr class="clickable" onclick="location.href='/orders/{{ o.id }}'">
+        <td><strong>{{ o.id }}</strong></td>
+        <td>{{ o.client.full_name }}</td>
+        <td class="text-truncate-cell">{{ o.printer }}</td>
+        <td><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
+        <td>
+          {% if o.deadline %}
+          <span class="badge bg-{{ 'danger' if o.deadline < datetime.now() else 'warning' if (o.deadline - datetime.now()).days < 3 else 'success' }}">
+            {{ o.deadline.strftime('%d.%m') }}
+          </span>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td>{{ o.total_price | money }}</td>
+        <td class="text-muted">{{ o.created_at | dt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-4 text-muted">Заказов пока нет</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+fetch('/api/charts/revenue').then(r => r.json()).then(data => {
+  new Chart(document.getElementById('revenueChart'), {
+    type: 'bar', data: { labels: data.map(d => d.month), datasets: [{ label: 'Выручка (₽)', data: data.map(d => d.total), backgroundColor: 'rgba(13,110,253,0.7)', borderRadius: 4 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => (v/1000).toFixed(0) + 'k ₽' } } } }
+  });
+});
+fetch('/api/charts/top-services').then(r => r.json()).then(data => {
+  var colors = ['#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545','#fd7e14','#ffc107','#198754'];
+  new Chart(document.getElementById('servicesChart'), {
+    type: 'doughnut', data: { labels: data.map(d => d.name), datasets: [{ data: data.map(d => d.total), backgroundColor: colors.slice(0, data.length) }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } }
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% set current_page = "search" %}
+
+{% block content %}
+<h4 class="mb-3">Поиск{% if q %} — «{{ q }}»{% endif %}</h4>
+
+<form class="row g-2 mb-4" action="/search" method="get">
+  <div class="col-md-8">
+    <input type="text" name="q" class="form-control form-control-lg"
+           placeholder="Поиск по клиентам, заказам, запчастям, товарам, услугам..."
+           value="{{ q }}" autofocus autocomplete="off">
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-primary btn-lg w-100">
+      <i class="bi bi-search"></i> Найти
+    </button>
+  </div>
+</form>
+
+{% if q %}
+<p class="text-muted mb-3">Найдено: {{ total }}</p>
+
+{% if results.clients %}
+<h5><i class="bi bi-people me-1"></i>Клиенты ({{ results.clients|length }})</h5>
+<div class="table-responsive mb-4">
+  <table class="table table-sm table-hover">
+    <thead class="table-light"><tr><th>ФИО</th><th>Телефон</th><th>Комментарий</th></tr></thead>
+    <tbody>
+      {% for c in results.clients %}
+      <tr class="clickable" onclick="location.href='/clients'">
+        <td><strong>{{ c.full_name }}</strong></td><td>{{ c.phone }}</td><td class="text-muted">{{ c.comment or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if results.orders %}
+<h5><i class="bi bi-clipboard-check me-1"></i>Заказы ({{ results.orders|length }})</h5>
+<div class="table-responsive mb-4">
+  <table class="table table-sm table-hover">
+    <thead class="table-light"><tr><th>#</th><th>Клиент</th><th>Принтер</th><th>Статус</th><th>Сумма</th></tr></thead>
+    <tbody>
+      {% for o in results.orders %}
+      <tr class="clickable" onclick="location.href='/orders/{{ o.id }}'">
+        <td>{{ o.id }}</td><td>{{ o.client.full_name }}</td><td>{{ o.printer }}</td>
+        <td><span class="badge bg-{{ 'warning text-dark' if o.status=='active' else 'success' }}">{{ 'В работе' if o.status=='active' else 'Закрыт' }}</span></td>
+        <td>{{ o.total_price|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if results.services %}
+<h5><i class="bi bi-tools me-1"></i>Услуги ({{ results.services|length }})</h5>
+<div class="table-responsive mb-4">
+  <table class="table table-sm table-hover">
+    <thead class="table-light"><tr><th>Название</th><th>Цена</th></tr></thead>
+    <tbody>
+      {% for s in results.services %}
+      <tr><td>{{ s.name }}</td><td>{{ s.price|money }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if results.parts %}
+<h5><i class="bi bi-box-seam me-1"></i>Запчасти ({{ results.parts|length }})</h5>
+<div class="table-responsive mb-4">
+  <table class="table table-sm table-hover">
+    <thead class="table-light"><tr><th>Название</th><th>Артикул</th><th>Цена</th><th>На складе</th></tr></thead>
+    <tbody>
+      {% for p in results.parts %}
+      <tr class="clickable" onclick="location.href='/warehouse'">
+        <td>{{ p.name }}</td><td><code>{{ p.article }}</code></td>
+        <td>{{ p.purchase_price|money }}</td><td>{{ p.quantity|int }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if results.products %}
+<h5><i class="bi bi-boxes me-1"></i>Товары ({{ results.products|length }})</h5>
+<div class="table-responsive mb-4">
+  <table class="table table-sm table-hover">
+    <thead class="table-light"><tr><th>Название</th><th>Артикул</th><th>Цвет</th><th>Кол-во</th></tr></thead>
+    <tbody>
+      {% for p in results.products %}
+      <tr class="clickable" onclick="location.href='/products'">
+        <td>{{ p.name }}</td><td><code>{{ p.article }}</code></td><td>{{ p.color or '—' }}</td><td>{{ p.quantity|int }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if total == 0 %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-search fs-1"></i>
+  <p class="mt-2">Ничего не найдено.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% set current_page = "orders" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Заказы</h4>
+  <a href="/orders/new" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Новый заказ
+  </a>
+</div>
+
+<ul class="nav nav-tabs nav-tabs-bordered mb-0">
+  {% set tabs = [("", "Все", "list-ul", "bg-dark"), ("in_progress", "В работе", "tools", "bg-warning text-dark"),
+                 ("waiting_parts", "Ожидает запчастей", "hourglass-split", "bg-info text-dark"),
+                 ("ready", "Готов к выдаче", "check-circle", "bg-primary"), ("closed", "Архив", "archive", "bg-secondary")] %}
+  {% for s_val, s_label, s_icon, s_cls in tabs %}
+  <li class="nav-item">
+    <a class="nav-link {{ 'active fw-semibold' if current_status == s_val and not (not s_val and date_from or client_filter) }}"
+       href="/orders{% if s_val %}?status={{ s_val }}{% endif %}">
+      <i class="bi bi-{{ s_icon }} me-1"></i>{{ s_label }}
+      <span class="badge {{ s_cls }} ms-1">{{ counts[s_val] if s_val else counts.values()|sum }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+
+<form class="row g-2 mt-0 mb-3 bg-light p-2 rounded" action="/orders" method="get">
+  {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+  <div class="col-md-2">
+    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}" title="С даты">
+  </div>
+  <div class="col-md-2">
+    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}" title="По дату">
+  </div>
+  <div class="col-md-3">
+    <input type="text" name="client" class="form-control form-control-sm" value="{{ client_filter }}" placeholder="Поиск по клиенту..." autocomplete="off">
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-sm btn-outline-primary w-100">Применить</button>
+  </div>
+  {% if date_from or date_to or client_filter %}
+  <div class="col-md-3">
+    <a href="/orders{% if current_status %}?status={{ current_status }}{% endif %}" class="btn btn-sm btn-outline-secondary w-100">Сбросить</a>
+  </div>
+  {% endif %}
+</form>
+
+{% if orders %}
+{# Batch actions bar #}
+<div class="d-flex align-items-center gap-2 mb-2" id="batchBar" style="display:none">
+  <small class="text-muted">Выбрано: <span id="batchCount">0</span></small>
+  <form method="post" action="/orders/batch-close" id="batchCloseForm" class="d-inline"
+        data-confirm="Закрыть выбранные заказы?">
+    <input type="hidden" name="ids" id="batchCloseIds">
+    <button class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Закрыть</button>
+  </form>
+  <form method="post" action="/orders/batch-delete" id="batchDelForm" class="d-inline"
+        data-confirm="Удалить выбранные заказы? Запчасти вернутся на склад.">
+    <input type="hidden" name="ids" id="batchDelIds">
+    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Удалить</button>
+  </form>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width:30px"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"></th>
+        <th>#</th>
+        <th>Клиент</th>
+        <th>Принтер</th>
+        <th>Дефект</th>
+        <th>Статус</th>
+        <th>Срок</th>
+        <th>Сумма</th>
+        <th>Создан</th>
+        <th style="width:120px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()"></td>
+        <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a></td>
+        <td>{{ o.client.full_name }}</td>
+        <td class="text-truncate-cell">{{ o.printer }}</td>
+        <td class="text-muted text-truncate-cell">{{ o.defect }}</td>
+        <td><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
+        <td>
+          {% if o.deadline %}
+          <span class="badge bg-{{ 'danger' if o.deadline < now else 'warning text-dark' if (o.deadline - now).days < 3 else 'success' }}">{{ o.deadline.strftime('%d.%m') }}</span>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td><strong>{{ o.total_price | money }}</strong></td>
+        <td class="text-muted">{{ o.created_at | dt }}</td>
+        <td>
+          <a href="/orders/{{ o.id }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+          {% if o.status == "closed" %}
+          <form method="post" action="/orders/{{ o.id }}/reopen" class="d-inline"
+                data-confirm="Вернуть заказ #{{ o.id }} в работу?">
+            <button class="btn btn-sm btn-outline-warning"><i class="bi bi-arrow-repeat"></i></button>
+          </form>
+          {% endif %}
+          <form method="post" action="/orders/{{ o.id }}/delete" class="d-inline"
+                data-confirm="Удалить заказ #{{ o.id }}?{% if o.parts %} Все запчасти вернутся на склад.{% endif %}">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# Pagination #}
+{% if pages > 1 %}
+<nav class="d-flex justify-content-between align-items-center">
+  <small class="text-muted">{{ total }} заказов</small>
+  <ul class="pagination pagination-sm mb-0">
+    <li class="page-item {{ 'disabled' if page <= 1 }}"><a class="page-link" href="{{ request.url.include_query_params(page=page-1) }}">←</a></li>
+    {% for pg in range(1, pages+1) %}
+    <li class="page-item {{ 'active' if pg == page }}"><a class="page-link" href="{{ request.url.include_query_params(page=pg) }}">{{ pg }}</a></li>
+    {% endfor %}
+    <li class="page-item {{ 'disabled' if page >= pages }}"><a class="page-link" href="{{ request.url.include_query_params(page=page+1) }}">→</a></li>
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-clipboard-check fs-1"></i>
+  <p class="mt-2">Заказов в этом разделе пока нет.</p>
+  <a href="/orders/new" class="btn btn-primary">Создать заказ</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAll(cb) {
+  document.querySelectorAll('.order-check').forEach(function(c) { c.checked = cb.checked; });
+  updateBatch();
+}
+function updateBatch() {
+  var ids = [];
+  document.querySelectorAll('.order-check:checked').forEach(function(c) { ids.push(c.value); });
+  var bar = document.getElementById('batchBar');
+  var visible = ids.length > 0;
+  bar.style.display = visible ? '' : 'none';
+  document.getElementById('batchCount').textContent = ids.length;
+  document.getElementById('batchCloseIds').value = ids.join(',');
+  document.getElementById('batchDelIds').value = ids.join(',');
+}
+</script>
+{% endblock %}

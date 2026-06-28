@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% set current_page = "services" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Услуги <span class="text-muted fs-6">({{ services | length }})</span></h4>
+  <button class="btn btn-primary" id="addServiceBtn">
+    <i class="bi bi-plus-lg"></i> Добавить услугу
+  </button>
+</div>
+
+{% if services %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Название</th>
+        <th>Цена</th>
+        <th>Описание</th>
+        <th style="width:110px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in services %}
+      <tr>
+        <td><strong>{{ s.name }}</strong></td>
+        <td>{{ s.price | money }}</td>
+        <td class="text-muted text-truncate-cell">{{ s.description or '—' }}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary me-1 edit-service-btn" data-id="{{ s.id }}">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <form method="post" action="/services/{{ s.id }}/delete" class="d-inline"
+                data-confirm="Удалить услугу «{{ s.name }}»?">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-tools fs-1"></i>
+  <p class="mt-2">Услуг пока нет. Добавьте первую услугу.</p>
+</div>
+{% endif %}
+
+<div class="modal fade" id="serviceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="serviceForm" method="post" action="/services">
+      <div class="modal-header">
+        <h5 class="modal-title" id="serviceModalLabel">Новая услуга</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Название <span class="text-danger">*</span></label>
+          <input type="text" name="name" id="service_name" class="form-control"
+                 maxlength="200" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Цена (₽)</label>
+          <input type="number" name="price" id="service_price" class="form-control"
+                 step="0.01" min="0" value="0" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Описание</label>
+          <textarea name="description" id="service_description" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SERVICES = {{ services_data | tojson }};
+
+function openServiceModal(serviceId) {
+  var m = document.getElementById('serviceModalLabel');
+  var f = document.getElementById('serviceForm');
+  if (serviceId) {
+    var s = SERVICES.find(function(x) { return x.id === serviceId; });
+    if (!s) return;
+    m.textContent = 'Редактировать услугу';
+    f.action = '/services/' + s.id + '/edit';
+    document.getElementById('service_name').value = s.name;
+    document.getElementById('service_price').value = s.price;
+    document.getElementById('service_description').value = s.description;
+  } else {
+    m.textContent = 'Новая услуга';
+    f.action = '/services';
+    document.getElementById('service_name').value = '';
+    document.getElementById('service_price').value = '0';
+    document.getElementById('service_description').value = '';
+  }
+  new bootstrap.Modal(document.getElementById('serviceModal')).show();
+}
+
+document.getElementById('addServiceBtn').addEventListener('click', function() {
+  openServiceModal();
+});
+
+document.querySelectorAll('.edit-service-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    openServiceModal(parseInt(this.dataset.id));
+  });
+});
+</script>
+{% endblock %}

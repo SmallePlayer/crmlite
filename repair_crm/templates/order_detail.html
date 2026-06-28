@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% set current_page = "orders" %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+  <a href="/orders" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Назад</a>
+  <h4 class="mb-0">Заказ #{{ order.id }}</h4>
+  <span class="badge bg-{{ ORDER_STATUSES[order.status][1] }}">{{ ORDER_STATUSES[order.status][0] }}</span>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Информация о заказе</strong>
+        <div class="d-flex gap-1">
+          <a href="/orders/{{ order.id }}/receipt" class="btn btn-outline-secondary btn-sm"
+             title="Квитанция" target="_blank">
+            <i class="bi bi-receipt"></i>
+          </a>
+          <button class="btn btn-outline-secondary btn-sm" onclick="openEmailModal()"
+                  title="Отправить на почту">
+            <i class="bi bi-envelope"></i>
+          </button>
+          {% if order.status == "closed" %}
+          <form method="post" action="/orders/{{ order.id }}/reopen" class="d-inline"
+                data-confirm="Вернуть заказ #{{ order.id }} в работу?">
+            <button class="btn btn-warning btn-sm"><i class="bi bi-arrow-repeat"></i> В работу</button>
+          </form>
+          {% else %}
+          <form method="post" action="/orders/{{ order.id }}/close" class="d-inline"
+                data-confirm="Закрыть заказ #{{ order.id }}? Итоговая сумма: {{ order.total_price | money }}">
+            <button class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Закрыть заказ</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        {% if order.status != "closed" %}
+        <div class="mb-3">
+          <small class="text-muted d-block mb-1">Переключить этап:</small>
+          <div class="d-flex gap-1 flex-wrap">
+            {% for next_status in ORDER_FLOW[order.status] %}
+            {% if next_status != "closed" %}
+            <form method="post" action="/orders/{{ order.id }}/status" class="d-inline">
+              <input type="hidden" name="new_status" value="{{ next_status }}">
+              <button class="btn btn-sm btn-outline-{{ ORDER_STATUSES[next_status][1].split()[0] if ' ' in ORDER_STATUSES[next_status][1] else ORDER_STATUSES[next_status][1] }}">
+                <i class="bi bi-arrow-right"></i> {{ ORDER_STATUSES[next_status][0] }}
+              </button>
+            </form>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        <table class="table table-sm mb-0">
+          <tr><td class="text-muted" style="width:100px">Клиент</td><td><strong>{{ order.client.full_name }}</strong>
+            <br><small class="text-muted">{{ order.client.phone }}</small></td></tr>
+          <tr><td class="text-muted">Принтер</td><td>{{ order.printer }}</td></tr>
+          <tr><td class="text-muted">Дефект</td><td>{{ order.defect }}</td></tr>
+          {% if order.assignee %}
+          <tr><td class="text-muted">Мастер</td><td>{{ order.assignee.full_name }}</td></tr>
+          {% endif %}
+          <tr><td class="text-muted">Создан</td><td>{{ order.created_at | dt }}</td></tr>
+          {% if order.deadline %}
+          <tr><td class="text-muted">Срок</td><td>
+            <span class="badge bg-{{ 'danger' if order.deadline < now() else 'warning text-dark' if (order.deadline - now()).days < 3 else 'success' }}">
+              {{ order.deadline.strftime('%d.%m.%Y') }}
+              ({{ 'просрочен' if order.deadline < now() else 'осталось ' ~ (order.deadline - now()).days|string ~ ' дн.' if (order.deadline - now()).days < 3 else '' }})
+            </span>
+          </td></tr>
+          {% endif %}
+          {% if order.closed_at %}
+          <tr><td class="text-muted">Закрыт</td><td>{{ order.closed_at | dt }}</td></tr>
+          {% endif %}
+          <tr class="table-active">
+            <td class="text-muted">Итого</td>
+            <td><strong class="fs-5">{{ order.total_price | money }}</strong></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    {# Services card #}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header"><strong>Выполненные услуги</strong></div>
+      <div class="card-body">
+        {% if order.items %}
+        <table class="table table-sm align-middle mb-3">
+          <thead class="table-light">
+            <tr><th>Услуга</th><th style="width:120px">Цена</th><th style="width:50px"></th></tr>
+          </thead>
+          <tbody>
+            {% for item in order.items %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.price | money }}</td>
+              <td>
+                {% if order.status != "closed" %}
+                <form method="post" action="/orders/{{ order.id }}/items/{{ item.id }}/delete" class="d-inline"
+                      data-confirm="Удалить услугу «{{ item.name | e }}»?">
+                  <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-3">Услуги ещё не добавлены.</p>
+        {% endif %}
+
+        {% if order.status != "closed" %}
+        <hr>
+        <form method="post" action="/orders/{{ order.id }}/items" class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label small">Выбрать из услуг</label>
+            <select class="form-select form-select-sm" id="serviceSelect" onchange="fillFromService()">
+              <option value="">— Ввести вручную —</option>
+              {% for s in services %}
+              <option value="{{ s.id }}" data-name="{{ s.name | e }}" data-price="{{ s.price }}">
+                {{ s.name }} — {{ s.price | money }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Название <span class="text-danger">*</span></label>
+            <input type="text" name="name" id="itemName" class="form-control form-control-sm"
+                   maxlength="300" required autocomplete="off">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Цена <span class="text-danger">*</span></label>
+            <input type="number" name="price" id="itemPrice" class="form-control form-control-sm"
+                   step="0.01" min="0" value="0" required>
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+              <i class="bi bi-plus"></i> Добавить
+            </button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Parts card #}
+    <div class="card shadow-sm">
+      <div class="card-header"><strong>Использованные запчасти</strong></div>
+      <div class="card-body">
+        {% if order.parts %}
+        <table class="table table-sm align-middle mb-3">
+          <thead class="table-light">
+            <tr>
+              <th>Запчасть</th>
+              <th>Артикул</th>
+              <th style="width:70px">Кол-во</th>
+              <th style="width:110px">Цена</th>
+              <th style="width:110px">Сумма</th>
+              <th style="width:50px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for op in order.parts %}
+            <tr>
+              <td>{{ op.part.name }}</td>
+              <td><code>{{ op.part.article }}</code></td>
+              <td>{{ op.quantity | int }}</td>
+              <td>{{ op.price | money }}</td>
+              <td><strong>{{ (op.quantity * op.price) | money }}</strong></td>
+              <td>
+                {% if order.status != "closed" %}
+                <form method="post" action="/orders/{{ order.id }}/parts/{{ op.id }}/delete" class="d-inline"
+                      data-confirm="Убрать запчасть «{{ op.part.name | e }}»? Остаток вернётся на склад.">
+                  <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-3">Запчасти не использованы.</p>
+        {% endif %}
+
+        {% if order.status != "closed" and parts %}
+        <hr>
+        <form method="post" action="/orders/{{ order.id }}/parts" class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label small">Запчасть <span class="text-danger">*</span></label>
+            <select name="part_id" class="form-select form-select-sm" required
+                    onchange="fillPartPrice(this)">
+              <option value="">— Выбрать —</option>
+              {% for p in parts %}
+              <option value="{{ p.id }}" data-price="{{ p.purchase_price }}"
+                      data-stock="{{ p.quantity }}">
+                {{ p.name }} ({{ p.article }}) — на складе: {{ p.quantity }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Кол-во</label>
+            <input type="number" name="quantity" id="partQty" class="form-control form-control-sm"
+                   min="1" value="1" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Цена за шт.</label>
+            <input type="number" name="price" id="partPrice" class="form-control form-control-sm"
+                   step="0.01" min="0" value="0" required>
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+              <i class="bi bi-plus"></i> Добавить запчасть
+            </button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Email receipt modal #}
+<div class="modal fade" id="emailModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <form class="modal-content" method="post" action="/orders/{{ order.id }}/send-receipt">
+      <div class="modal-header">
+        <h5 class="modal-title">Отправить квитанцию</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Email клиента <span class="text-danger">*</span></label>
+          <input type="email" name="email_to" class="form-control" required
+                 placeholder="client@example.com" autocomplete="off">
+        </div>
+        <div class="form-text">
+          SMTP настраивается в переменных окружения: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i> Отправить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var SRV = {{ services_data | tojson }};
+
+function openEmailModal() {
+  new bootstrap.Modal(document.getElementById('emailModal')).show();
+}
+
+function fillFromService() {
+  var sel = document.getElementById('serviceSelect');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    document.getElementById('itemName').value = opt.dataset.name;
+    document.getElementById('itemPrice').value = opt.dataset.price;
+  }
+}
+
+function fillPartPrice(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    document.getElementById('partPrice').value = opt.dataset.price;
+  }
+}
+</script>
+{% endblock %}

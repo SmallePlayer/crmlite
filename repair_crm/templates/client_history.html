@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set current_page = "clients" %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+  <a href="/clients" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Назад</a>
+  <h4 class="mb-0">{{ client.full_name }}</h4>
+  <small class="text-muted">{{ client.phone }}</small>
+</div>
+
+{% if client.comment %}
+<p class="text-muted mb-3">{{ client.comment }}</p>
+{% endif %}
+
+<h5 class="mb-3">История заказов ({{ orders|length }})</h5>
+
+{% if orders %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Принтер</th>
+        <th>Дефект</th>
+        <th>Статус</th>
+        <th>Услуг</th>
+        <th>Сумма</th>
+        <th>Создан</th>
+        <th>Закрыт</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr class="clickable" onclick="location.href='/orders/{{ o.id }}'">
+        <td><strong>{{ o.id }}</strong></td>
+        <td>{{ o.printer }}</td>
+        <td class="text-muted text-truncate-cell">{{ o.defect }}</td>
+        <td><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
+        <td>{{ o.items|length }}</td>
+        <td><strong>{{ o.total_price|money }}</strong></td>
+        <td class="text-muted">{{ o.created_at|dt }}</td>
+        <td class="text-muted">{{ o.closed_at|dt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% set total_spent = orders|sum(attribute='total_price') %}
+<div class="text-end mt-2">
+  <strong>Всего потрачено: {{ total_spent|money }}</strong>
+</div>
+{% else %}
+<div class="text-center py-4 text-muted">Заказов пока нет.</div>
+{% endif %}
+{% endblock %}

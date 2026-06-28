@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333">
+  <h3 style="border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:12px">
+    Квитанция №{{ order.id }} от {{ order.created_at.strftime('%d.%m.%Y') }}
+  </h3>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px">
+    <tr><td style="padding:4px 8px;color:#666;width:100px">Клиент:</td><td style="padding:4px 8px"><strong>{{ order.client.full_name }}</strong></td></tr>
+    <tr><td style="padding:4px 8px;color:#666">Телефон:</td><td style="padding:4px 8px">{{ order.client.phone }}</td></tr>
+    <tr><td style="padding:4px 8px;color:#666">Принтер:</td><td style="padding:4px 8px">{{ order.printer }}</td></tr>
+    {% if order.assignee %}
+    <tr><td style="padding:4px 8px;color:#666">Мастер:</td><td style="padding:4px 8px">{{ order.assignee.full_name }}{% if order.assignee.inn %} (ИНН {{ order.assignee.inn }}){% endif %}</td></tr>
+    {% endif %}
+  </table>
+  <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;margin-bottom:12px">
+    <thead style="background:#f5f5f5">
+      <tr><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #ddd">#</th>
+          <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #ddd">Наименование</th>
+          <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #ddd">Кол.</th>
+          <th style="padding:6px 8px;text-align:right;border-bottom:1px solid #ddd">Цена</th>
+          <th style="padding:6px 8px;text-align:right;border-bottom:1px solid #ddd">Сумма</th></tr>
+    </thead>
+    <tbody>
+      {% for i in range(line_items|length) %}{% set item = line_items[i] %}
+      <tr><td style="padding:4px 8px">{{ i+1 }}</td>
+          <td style="padding:4px 8px">{{ item[0] }}</td>
+          <td style="padding:4px 8px;text-align:center">{{ item[1] }}</td>
+          <td style="padding:4px 8px;text-align:right">{{ '{:,.0f}'.format(item[2]).replace(',',' ') }} ₽</td>
+          <td style="padding:4px 8px;text-align:right"><strong>{{ '{:,.0f}'.format(item[3]).replace(',',' ') }} ₽</strong></td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr style="background:#f5f5f5;font-weight:bold">
+      <td colspan="4" style="padding:6px 8px;text-align:right">ИТОГО:</td>
+      <td style="padding:6px 8px;text-align:right;font-size:16px">{{ '{:,.0f}'.format(order.total_price).replace(',',' ') }} ₽</td></tr></tfoot>
+  </table>
+  <p style="color:#999;font-size:12px;margin-top:16px;border-top:1px solid #eee;padding-top:8px">
+    Сформировано автоматически. CRM Ремонт 3D принтеров.
+  </p>
+</body>
+</html>

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% set current_page = "orders" %}
+
+{% block content %}
+<h4 class="mb-4">Новый заказ на ремонт</h4>
+
+<div class="row">
+  <div class="col-lg-7">
+    <form method="post" action="/orders" class="card shadow-sm">
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Клиент <span class="text-danger">*</span></label>
+          <input type="text" id="clientFilter" class="form-control mb-2"
+                 placeholder="Поиск по имени или телефону..."
+                 onkeyup="filterClients()" autocomplete="off">
+          <select name="client_id" id="clientSelect" class="form-select" size="8" required>
+            {% for c in clients %}
+            <option value="{{ c.id }}">{{ c.full_name }} — {{ c.phone }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">
+            Нет в списке? <a href="/clients" target="_blank">Создать клиента</a>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Принтер <span class="text-danger">*</span></label>
+          <input type="text" name="printer" class="form-control"
+                 placeholder="Например: Ender 3 V2" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Описание дефекта <span class="text-danger">*</span></label>
+          <textarea name="defect" class="form-control" rows="4"
+                    placeholder="Опишите неисправность..."
+                    required></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Мастер</label>
+          <select name="assigned_to" class="form-select">
+            <option value="0">— Не назначен —</option>
+            {% for u in users %}
+            <option value="{{ u.id }}" {% if u.id == user.id %}selected{% endif %}>{{ u.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Срок сдачи</label>
+          <input type="date" name="deadline" class="form-control">
+          <div class="form-text">Оставьте пустым если срок не определён</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Создать заказ
+          </button>
+          <a href="/orders" class="btn btn-outline-secondary">Отмена</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterClients() {
+  var q = document.getElementById('clientFilter').value.toLowerCase();
+  document.querySelectorAll('#clientSelect option').forEach(function(o) {
+    o.style.display = o.textContent.toLowerCase().indexOf(q) >= 0 ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

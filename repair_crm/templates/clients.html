@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% set current_page = "clients" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Клиенты <span class="text-muted fs-6">({{ clients | length }})</span></h4>
+  <button class="btn btn-primary" id="addClientBtn">
+    <i class="bi bi-plus-lg"></i> Добавить клиента
+  </button>
+</div>
+
+{% if clients %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>ФИО</th>
+        <th>Телефон</th>
+        <th>Комментарий</th>
+        <th style="width:110px">Заказов</th>
+        <th style="width:110px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in clients %}
+      <tr>
+        <td>
+          <a href="/clients/{{ c.id }}/orders" class="text-decoration-none"><strong>{{ c.full_name }}</strong></a>
+        </td>
+        <td>{{ c.phone }}</td>
+        <td class="text-muted text-truncate-cell">{{ c.comment or '—' }}</td>
+        <td>
+          {% set n = c.orders | length %}
+          {% if n %}<a href="/orders?status=active" class="badge bg-secondary text-decoration-none">{{ n }}</a>{% else %}<span class="text-muted">0</span>{% endif %}
+        </td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary me-1 edit-client-btn" data-id="{{ c.id }}">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <form method="post" action="/clients/{{ c.id }}/delete" class="d-inline"
+                data-confirm="Удалить клиента «{{ c.full_name }}»? При этом удалятся все его заказы.">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-people fs-1"></i>
+  <p class="mt-2">Клиентов пока нет. Добавьте первого клиента.</p>
+</div>
+{% endif %}
+
+<div class="modal fade" id="clientModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="clientForm" method="post" action="/clients">
+      <div class="modal-header">
+        <h5 class="modal-title" id="clientModalLabel">Новый клиент</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">ФИО <span class="text-danger">*</span></label>
+          <input type="text" name="full_name" id="client_name" class="form-control"
+                 maxlength="200" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Телефон <span class="text-danger">*</span></label>
+          <input type="tel" name="phone" id="client_phone" class="form-control"
+                 maxlength="50" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Комментарий</label>
+          <textarea name="comment" id="client_comment" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CLIENTS = {{ clients_data | tojson }};
+
+function openClientModal(clientId) {
+  var m = document.getElementById('clientModalLabel');
+  var f = document.getElementById('clientForm');
+  if (clientId) {
+    var c = CLIENTS.find(function(x) { return x.id === clientId; });
+    if (!c) return;
+    m.textContent = 'Редактировать клиента';
+    f.action = '/clients/' + c.id + '/edit';
+    document.getElementById('client_name').value = c.full_name;
+    document.getElementById('client_phone').value = c.phone;
+    document.getElementById('client_comment').value = c.comment;
+  } else {
+    m.textContent = 'Новый клиент';
+    f.action = '/clients';
+    document.getElementById('client_name').value = '';
+    document.getElementById('client_phone').value = '';
+    document.getElementById('client_comment').value = '';
+  }
+  new bootstrap.Modal(document.getElementById('clientModal')).show();
+}
+
+document.getElementById('addClientBtn').addEventListener('click', function() {
+  openClientModal();
+});
+
+document.querySelectorAll('.edit-client-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    openClientModal(parseInt(this.dataset.id));
+  });
+});
+</script>
+{% endblock %}

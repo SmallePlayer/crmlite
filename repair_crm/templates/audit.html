@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set current_page = "audit" %}
+
+{% block content %}
+<h4 class="mb-4">Аудит действий</h4>
+
+{% if logs %}
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Дата</th>
+        <th>Пользователь</th>
+        <th>Действие</th>
+        <th>Тип</th>
+        <th>ID</th>
+        <th>Детали</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in logs %}
+      <tr>
+        <td class="text-muted text-nowrap">{{ l.created_at | dt }}</td>
+        <td>{{ l.user_name or '—' }}</td>
+        <td>
+          {% set act = l.action %}
+          {% if act == 'create' %}<span class="badge bg-success">создание</span>
+          {% elif act == 'update' %}<span class="badge bg-info">изменение</span>
+          {% elif act == 'delete' %}<span class="badge bg-danger">удаление</span>
+          {% elif act == 'login' %}<span class="badge bg-primary">вход</span>
+          {% elif act == 'receive' %}<span class="badge bg-success">приход</span>
+          {% elif act == 'stock_out' %}<span class="badge bg-warning text-dark">расход</span>
+          {% elif 'item' in act or 'part' in act %}<span class="badge bg-secondary">{{ act }}</span>
+          {% elif act in ('close','reopen') %}<span class="badge bg-dark">{{ act }}</span>
+          {% else %}<span class="badge bg-light text-dark">{{ act }}</span>
+          {% endif %}
+        </td>
+        <td><small>{{ l.entity_type }}</small></td>
+        <td>{{ l.entity_id or '' }}</td>
+        <td class="text-muted">{{ l.details }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-journal fs-1"></i>
+  <p class="mt-2">Логов пока нет.</p>
+</div>
+{% endif %}
+{% endblock %}

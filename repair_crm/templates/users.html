@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% set current_page = "users" %}
+
+{% block content %}
+<h4 class="mb-4">Пользователи и роли</h4>
+
+<ul class="nav nav-tabs nav-tabs-bordered mb-3" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-users" type="button">
+      <i class="bi bi-people me-1"></i>Пользователи
+      <span class="badge bg-primary ms-1">{{ users | length }}</span>
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-roles" type="button">
+      <i class="bi bi-shield-lock me-1"></i>Роли
+      <span class="badge bg-secondary ms-1">{{ roles | length }}</span>
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+{# ── Users tab ── #}
+<div class="tab-pane fade show active" id="tab-users">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <span></span>
+    <button class="btn btn-primary" onclick="openUserModal()">
+      <i class="bi bi-plus-lg"></i> Добавить пользователя
+    </button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Логин</th>
+          <th>ФИО</th>
+          <th>Роль</th>
+          <th>Статус</th>
+          <th style="width:150px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><strong>{{ u.username }}</strong></td>
+          <td>{{ u.full_name }}</td>
+          <td><span class="badge bg-secondary">{{ u.role.name }}</span></td>
+          <td>
+            {% if u.is_active %}
+            <span class="badge bg-success">Активен</span>
+            {% else %}
+            <span class="badge bg-danger">Отключён</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary me-1" onclick="openUserModal({{ u.id }})">
+              <i class="bi bi-pencil"></i>
+            </button>
+            {% if u.username != 'admin' and u.id != user.id %}
+            <form method="post" action="/users/{{ u.id }}/toggle" class="d-inline">
+              <button class="btn btn-sm btn-outline-warning" title="Вкл/Выкл">
+                <i class="bi bi-power"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── Roles tab ── #}
+<div class="tab-pane fade" id="tab-roles">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <span></span>
+    <button class="btn btn-primary" onclick="openRoleModal()">
+      <i class="bi bi-plus-lg"></i> Добавить роль
+    </button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Название</th>
+          <th>Права</th>
+          <th style="width:120px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in roles %}
+        <tr>
+          <td><strong>{{ r.name }}</strong></td>
+          <td>
+            {% if r.name == 'admin' %}
+            <span class="badge bg-danger">Полный доступ</span>
+            {% else %}
+            {% set perms = r.permissions | tojson | safe %}
+            {% for pk, pl in [("manage_users","Польз."),("manage_clients","Клиенты"),("manage_services","Услуги"),
+                               ("manage_orders","Заказы"),("manage_warehouse","Склад запч."),
+                               ("manage_products","Склад тов."),("view_audit","Аудит")] %}
+            {% if pk in perms %}<span class="badge bg-info me-1">{{ pl }}</span>{% endif %}
+            {% endfor %}
+            {% endif %}
+          </td>
+          <td>
+            {% if r.name != 'admin' %}
+            <button class="btn btn-sm btn-outline-secondary me-1" onclick="openRoleModal({{ r.id }})">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <form method="post" action="/roles/{{ r.id }}/delete" class="d-inline"
+                  data-confirm="Удалить роль «{{ r.name }}»?">
+              <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+
+{# ── User Modal ── #}
+<div class="modal fade" id="userModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="userForm" method="post" action="/users/create">
+      <div class="modal-header">
+        <h5 class="modal-title" id="userModalLabel">Новый пользователь</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Логин <span class="text-danger">*</span></label>
+          <input type="text" name="username" id="user_username" class="form-control"
+                 maxlength="100" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Пароль <span class="text-danger">*</span></label>
+          <input type="password" name="password" id="user_password" class="form-control">
+          <div class="form-text" id="passHelp">Оставьте пустым чтобы не менять</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">ФИО <span class="text-danger">*</span></label>
+          <input type="text" name="full_name" id="user_fullname" class="form-control"
+                 maxlength="200" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Роль <span class="text-danger">*</span></label>
+          <select name="role_id" id="user_role" class="form-select" required>
+            {% for r in roles %}
+            <option value="{{ r.id }}">{{ r.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">ИНН</label>
+            <input type="text" name="inn" id="user_inn" class="form-control"
+                   maxlength="20" placeholder="000000000000">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Должность</label>
+            <input type="text" name="position" id="user_position" class="form-control"
+                   maxlength="100" placeholder="Мастер">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Role Modal ── #}
+<div class="modal fade" id="roleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="roleForm" method="post" action="/roles">
+      <div class="modal-header">
+        <h5 class="modal-title" id="roleModalLabel">Новая роль</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Название <span class="text-danger">*</span></label>
+          <input type="text" name="name" id="role_name" class="form-control"
+                 maxlength="100" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Права доступа</label>
+          <div id="rolePerms">
+            {% for pk, pl in [
+              ("manage_users","Управление пользователями"),
+              ("manage_clients","Управление клиентами"),
+              ("manage_services","Управление услугами"),
+              ("manage_orders","Управление заказами"),
+              ("manage_warehouse","Управление складом запчастей"),
+              ("manage_products","Управление складом товаров"),
+              ("view_audit","Просмотр аудита"),
+            ] %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="perm_{{ pk }}" value="1" id="perm_{{ pk }}">
+              <label class="form-check-label" for="perm_{{ pk }}">{{ pl }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var UDATA = {{ user_data | tojson }};
+var RDATA = {{ roles_data | tojson }};
+
+function openUserModal(userId) {
+  var m = document.getElementById('userModalLabel');
+  var f = document.getElementById('userForm');
+  var ph = document.getElementById('passHelp');
+  var pw = document.getElementById('user_password');
+  if (userId) {
+    var u = UDATA.find(function(x) { return x.id === userId; });
+    if (!u) return;
+    m.textContent = 'Редактировать: ' + u.username;
+    f.action = '/users/' + u.id + '/edit';
+    document.getElementById('user_username').value = u.username;
+    document.getElementById('user_username').readOnly = true;
+    pw.required = false;
+    pw.value = '';
+    ph.style.display = '';
+    document.getElementById('user_fullname').value = u.full_name;
+    document.getElementById('user_inn').value = u.inn || '';
+    document.getElementById('user_position').value = u.position || '';
+    document.getElementById('user_role').value =
+      RDATA.find(function(r) { return r.name === u.role_name; }).id;
+  } else {
+    m.textContent = 'Новый пользователь';
+    f.action = '/users/create';
+    document.getElementById('user_username').value = '';
+    document.getElementById('user_username').readOnly = false;
+    pw.required = true;
+    pw.value = '';
+    ph.style.display = 'none';
+    document.getElementById('user_fullname').value = '';
+    document.getElementById('user_inn').value = '';
+    document.getElementById('user_position').value = '';
+    document.getElementById('user_role').value = RDATA[0].id;
+  }
+  new bootstrap.Modal(document.getElementById('userModal')).show();
+}
+
+function openRoleModal(roleId) {
+  var m = document.getElementById('roleModalLabel');
+  var f = document.getElementById('roleForm');
+  document.querySelectorAll('#rolePerms input').forEach(function(cb) { cb.checked = false; });
+  if (roleId) {
+    var r = RDATA.find(function(x) { return x.id === roleId; });
+    if (!r) return;
+    m.textContent = 'Редактировать роль';
+    f.action = '/roles/' + r.id + '/edit';
+    document.getElementById('role_name').value = r.name;
+    var perms = JSON.parse(r.permissions || '[]');
+    perms.forEach(function(p) {
+      var cb = document.getElementById('perm_' + p);
+      if (cb) cb.checked = true;
+    });
+  } else {
+    m.textContent = 'Новая роль';
+    f.action = '/roles';
+    document.getElementById('role_name').value = '';
+  }
+  new bootstrap.Modal(document.getElementById('roleModal')).show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set current_page = "profile" %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-6">
+    <h4 class="mb-4">Мой профиль</h4>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post" action="/profile/edit">
+          <div class="mb-3">
+            <label class="form-label">Логин</label>
+            <input type="text" class="form-control" value="{{ profile.username }}" readonly disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">ФИО <span class="text-danger">*</span></label>
+            <input type="text" name="full_name" class="form-control"
+                   value="{{ profile.full_name }}" maxlength="200" required>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">ИНН</label>
+              <input type="text" name="inn" class="form-control"
+                     value="{{ profile.inn or '' }}" maxlength="20" placeholder="000000000000">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Должность</label>
+              <input type="text" name="position" class="form-control"
+                     value="{{ profile.position or '' }}" maxlength="100" placeholder="Мастер">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Новый пароль</label>
+            <input type="password" name="password" class="form-control" placeholder="Оставьте пустым чтобы не менять">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Роль</label>
+            <input type="text" class="form-control" value="{{ profile.role.name }}" readonly disabled>
+          </div>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

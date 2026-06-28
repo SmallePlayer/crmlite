@@ -1,0 +1,1876 @@
+import hashlib
+import io
+import math
+import os
+import secrets
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta
+import json
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fpdf import FPDF
+
+import openpyxl
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, Body, UploadFile, File
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from jose import jwt
+from sqlalchemy import (
+    create_engine, String, Float, Text, DateTime, Integer, Boolean, ForeignKey,
+    func, select, desc, event, or_,
+)
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, relationship,
+    Session, joinedload,
+)
+
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
+DB_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'repair_crm.db'}")
+if DB_URL.startswith("sqlite:///"):
+    DB_URL = f"sqlite:///{BASE_DIR / DB_URL.replace('sqlite:///', '')}"
+SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-change-me")
+TOKEN_EXPIRY = 30 * 24 * 3600
+
+engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+
+
+@event.listens_for(engine, "connect")
+def _set_wal(dbapi_connection, _connection_record):
+    dbapi_connection.execute("PRAGMA journal_mode=WAL")
+
+
+def get_db():
+    with Session(engine) as s:
+        yield s
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Models
+# ══════════════════════════════════════════════════════════════════
+
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(100), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(200))
+    full_name: Mapped[str] = mapped_column(String(200))
+    role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
+    role = relationship("Role")
+    inn: Mapped[str] = mapped_column(String(20), default="")
+    position: Mapped[str] = mapped_column(String(100), default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Role(Base):
+    __tablename__ = "roles"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    permissions: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    user_name: Mapped[str] = mapped_column(String(200), default="")
+    action: Mapped[str] = mapped_column(String(100))
+    entity_type: Mapped[str] = mapped_column(String(50))
+    entity_id: Mapped[int | None] = mapped_column(nullable=True)
+    details: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Client(Base):
+    __tablename__ = "clients"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    full_name: Mapped[str] = mapped_column(String(200))
+    phone: Mapped[str] = mapped_column(String(50))
+    comment: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    orders = relationship("Order", back_populates="client", cascade="all, delete-orphan")
+
+
+class Service(Base):
+    __tablename__ = "services"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    price: Mapped[float] = mapped_column(Float, default=0)
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Part(Base):
+    __tablename__ = "parts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    article: Mapped[str] = mapped_column(String(100), unique=True)
+    purchase_price: Mapped[float] = mapped_column(Float, default=0)
+    quantity: Mapped[int] = mapped_column(Integer, default=0)
+    min_stock: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    movements = relationship("StockMovement", back_populates="part", cascade="all, delete-orphan",
+                             order_by="StockMovement.id")
+
+
+class StockMovement(Base):
+    __tablename__ = "stock_movements"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id"))
+    part = relationship("Part", back_populates="movements")
+    type: Mapped[str] = mapped_column(String(10))
+    quantity: Mapped[int] = mapped_column(Integer, default=0)
+    price_per_unit: Mapped[float] = mapped_column(Float, default=0)
+    reason: Mapped[str] = mapped_column(String(500), default="")
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Product(Base):
+    __tablename__ = "products"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    article: Mapped[str] = mapped_column(String(100), unique=True)
+    color: Mapped[str] = mapped_column(String(100), default="")
+    quantity: Mapped[int] = mapped_column(Integer, default=0)
+    image: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    movements = relationship("ProductMovement", back_populates="product",
+                             cascade="all, delete-orphan", order_by="ProductMovement.id")
+
+
+class ProductMovement(Base):
+    __tablename__ = "product_movements"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    product = relationship("Product", back_populates="movements")
+    type: Mapped[str] = mapped_column(String(10))
+    quantity: Mapped[int] = mapped_column(Integer, default=0)
+    destination: Mapped[str] = mapped_column(String(50), default="")
+    reason: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    from_user = relationship("User", foreign_keys=[from_user_id])
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Order(Base):
+    __tablename__ = "orders"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    client = relationship("Client", back_populates="orders")
+    printer: Mapped[str] = mapped_column(String(200))
+    defect: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="in_progress")
+    total_price: Mapped[float] = mapped_column(Float, default=0)
+    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    assignee = relationship("User")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
+    items = relationship(
+        "OrderItem", back_populates="order",
+        cascade="all, delete-orphan", order_by="OrderItem.id",
+    )
+    parts = relationship(
+        "OrderPart", back_populates="order",
+        cascade="all, delete-orphan", order_by="OrderPart.id",
+    )
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    order = relationship("Order", back_populates="items")
+    name: Mapped[str] = mapped_column(String(300))
+    price: Mapped[float] = mapped_column(Float, default=0)
+
+
+class OrderPart(Base):
+    __tablename__ = "order_parts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    order = relationship("Order", back_populates="parts")
+    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id"))
+    part = relationship("Part")
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    price: Mapped[float] = mapped_column(Float, default=0)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  App Setup
+# ══════════════════════════════════════════════════════════════════
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    _seed_data()
+    yield
+
+
+app = FastAPI(title="CRM — Ремонт 3D принтеров", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+templates.env.filters["money"] = lambda x: f"{x:,.0f}".replace(",", " ") + " ₽"
+templates.env.filters["dt"] = lambda x: x.strftime("%d.%m.%Y %H:%M") if x else "—"
+templates.env.filters["int"] = lambda x: f"{x:,}".replace(",", " ") if x else "0"
+
+UPLOADS_DIR = BASE_DIR / "static" / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Auth Helpers
+# ══════════════════════════════════════════════════════════════════
+
+def _hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+    return salt + ":" + dk.hex()
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    salt, dk_hex = stored.split(":", 1)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+    return dk.hex() == dk_hex
+
+
+def _create_token(user_id: int) -> str:
+    return jwt.encode(
+        {"sub": str(user_id), "exp": datetime.utcnow().timestamp() + TOKEN_EXPIRY},
+        SECRET_KEY, algorithm="HS256",
+    )
+
+
+def _get_user_from_request(request: Request) -> User | None:
+    token = request.cookies.get("token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = int(payload["sub"])
+    except Exception:
+        return None
+    with Session(engine) as s:
+        return s.execute(
+            select(User).options(joinedload(User.role)).where(User.id == user_id)
+        ).unique().scalar_one_or_none()
+
+
+def _has_permission(user: User | None, perm: str) -> bool:
+    if not user or not user.is_active:
+        return False
+    if user.role.name == "admin":
+        return True
+    perms = json.loads(user.role.permissions) if user.role.permissions else []
+    return perm in perms
+
+
+def _check_perm(request: Request, perm: str):
+    if not _has_permission(request.state.user, perm):
+        raise HTTPException(403, "Недостаточно прав")
+
+
+def _validate_password(pw: str) -> str:
+    pw = pw.strip()
+    if " " in pw:
+        raise HTTPException(400, "Пароль не должен содержать пробелы")
+    if len(pw) < 4:
+        raise HTTPException(400, "Пароль должен быть не короче 4 символов")
+    return pw
+
+
+def _audit(action: str, entity_type: str, entity_id: int | None = None,
+           details: str = "", user: User | None = None, session: Session | None = None):
+    a = AuditLog(
+        user_id=user.id if user else None,
+        user_name=user.full_name if user else "Система",
+        action=action, entity_type=entity_type,
+        entity_id=entity_id, details=details,
+    )
+    if session is not None:
+        session.add(a)
+    else:
+        with Session(engine) as s:
+            s.add(a)
+            s.commit()
+
+
+def _seed_data():
+    with Session(engine) as s:
+        if s.execute(select(func.count(User.id))).scalar() > 0:
+            return
+        admin_role = Role(name="admin", permissions='["*"]')
+        manager_role = Role(name="manager", permissions=json.dumps([
+            "manage_clients", "manage_services", "manage_orders",
+            "manage_warehouse", "manage_products",
+        ]))
+        worker_role = Role(name="worker", permissions=json.dumps([
+            "manage_orders", "manage_warehouse", "manage_products",
+        ]))
+        s.add_all([admin_role, manager_role, worker_role])
+        s.flush()
+        s.add(User(
+            username="admin", password_hash=_hash_password("admin"),
+            full_name="Администратор", role_id=admin_role.id,
+            inn="770000000000", position="Старший мастер",
+        ))
+        # Test clients
+        clients = [
+            Client(full_name="Иван Петров", phone="+7 (999) 123-45-67", comment="Постоянный клиент"),
+            Client(full_name="Сергей Иванов", phone="+7 (916) 555-33-22", comment=""),
+            Client(full_name="Анна Смирнова", phone="+7 (903) 777-88-99", comment="Студия 3D-печати"),
+            Client(full_name="ООО «Прототип»", phone="+7 (495) 111-22-33", comment="Юр. лицо, договор №12"),
+            Client(full_name="Дмитрий Козлов", phone="+7 (926) 444-55-66", comment="Срочные ремонты"),
+        ]
+        s.add_all(clients)
+        # Test services
+        services = [
+            Service(name="Диагностика", price=500, description="Полная проверка принтера"),
+            Service(name="Замена хотэнда", price=1500, description="Замена нагревательного блока"),
+            Service(name="Чистка сопла", price=300, description="Механическая чистка засора"),
+            Service(name="Замена терморезистора", price=800, description="NTC 100K"),
+            Service(name="Ремонт платы управления", price=3500, description="Диагностика и пайка"),
+            Service(name="Калибровка стола", price=600, description="Ручная + авто"),
+            Service(name="Замена ремня осей", price=1200, description="GT2 6мм"),
+            Service(name="Прошивка Marlin", price=1000, description="Обновление прошивки"),
+        ]
+        s.add_all(services)
+        # Test parts
+        parts = [
+            Part(name="Хотэнд Ender 3", article="HT-E3-V2", purchase_price=450, quantity=15, min_stock=3),
+            Part(name="Термистор NTC 100K", article="NTC-100K", purchase_price=120, quantity=30, min_stock=5),
+            Part(name="Сопло 0.4мм", article="NOZ-04-BR", purchase_price=80, quantity=50, min_stock=10),
+            Part(name="Ремень GT2 6мм", article="GT2-6MM", purchase_price=250, quantity=8, min_stock=2),
+            Part(name="Вентилятор 40x40x10", article="FAN-4010", purchase_price=180, quantity=20, min_stock=5),
+            Part(name="Нагревательный картридж", article="HTR-24V40", purchase_price=350, quantity=12, min_stock=3),
+        ]
+        s.add_all(parts)
+        # Test products
+        products = [
+            Product(name="PLA пластик красный", article="PLA-RED-1KG", color="Красный", quantity=25),
+            Product(name="PLA пластик чёрный", article="PLA-BLK-1KG", color="Чёрный", quantity=40),
+            Product(name="PETG прозрачный", article="PETG-CLR-1KG", color="Прозрачный", quantity=15),
+            Product(name="ABS белый", article="ABS-WHT-1KG", color="Белый", quantity=10),
+        ]
+        s.add_all(products)
+        s.flush()
+        # Stock in for parts
+        for p in parts:
+            s.add(StockMovement(part_id=p.id, type="in", quantity=p.quantity,
+                                price_per_unit=p.purchase_price, reason="Начальный остаток"))
+        for p in products:
+            s.add(ProductMovement(product_id=p.id, type="in", quantity=p.quantity,
+                                  destination="", reason="Начальный остаток"))
+        s.commit()
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Auth Middleware
+# ══════════════════════════════════════════════════════════════════
+
+PUBLIC_PATHS = {"/login", "/api/sse/events", "/api/dashboard",
+                "/api/task-assignments", "/api/warehouse/products"}
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if path in PUBLIC_PATHS or path.startswith("/api/") or path.startswith("/static/") or path == "/favicon.ico":
+        return await call_next(request)
+
+    user = _get_user_from_request(request)
+    request.state.user = user
+
+    if not user and path != "/login":
+        return RedirectResponse("/login", status_code=303)
+
+    return await call_next(request)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Exception Handlers
+# ══════════════════════════════════════════════════════════════════
+
+@app.exception_handler(404)
+async def not_found(request: Request, _):
+    return templates.TemplateResponse(request, "404.html", {
+        "user": getattr(request.state, "user", None),
+    }, status_code=404)
+
+
+@app.exception_handler(400)
+async def bad_request(request: Request, exc: HTTPException):
+    return templates.TemplateResponse(request, "error.html", {
+        "title": "Ошибка", "message": exc.detail or "Некорректный запрос",
+        "user": getattr(request.state, "user", None),
+    }, status_code=400)
+
+
+@app.exception_handler(403)
+async def forbidden(request: Request, _):
+    return templates.TemplateResponse(request, "error.html", {
+        "title": "Доступ запрещён", "message": "У вас нет прав для этого действия",
+        "user": getattr(request.state, "user", None),
+    }, status_code=403)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Helpers
+# ══════════════════════════════════════════════════════════════════
+
+def _user_context(request: Request) -> dict:
+    u = getattr(request.state, "user", None)
+    if not u:
+        return {"user": None, "is_admin": False, "can_manage_users": False}
+    return {
+        "user": u,
+        "is_admin": u.role.name == "admin",
+        "can_manage_users": _has_permission(u, "manage_users"),
+        "can_manage_clients": _has_permission(u, "manage_clients"),
+        "can_manage_orders": _has_permission(u, "manage_orders"),
+        "can_manage_warehouse": _has_permission(u, "manage_warehouse"),
+        "can_manage_products": _has_permission(u, "manage_products"),
+    }
+
+
+ORDER_STATUSES = {
+    "in_progress": ("В работе", "warning text-dark"),
+    "waiting_parts": ("Ожидает запчастей", "info"),
+    "ready": ("Готов к выдаче", "primary"),
+    "closed": ("Закрыт", "success"),
+}
+ORDER_FLOW = {
+    "in_progress": ["waiting_parts", "ready", "closed"],
+    "waiting_parts": ["in_progress", "ready", "closed"],
+    "ready": ["in_progress", "closed"],
+    "closed": ["in_progress"],
+}
+
+PER_PAGE = 20
+
+
+def _paginate(session, q, page: int):
+    # Count without joins/options for performance
+    count_q = select(func.count()).select_from(q.subquery())
+    total = session.execute(count_q).scalar() or 0
+    pages = max(1, math.ceil(total / PER_PAGE))
+    page = max(1, min(page, pages))
+    items = session.execute(q.offset((page - 1) * PER_PAGE).limit(PER_PAGE)).unique().scalars().all()
+    return items, page, pages, total
+
+
+def _client_dict(c: Client) -> dict:
+    return {"id": c.id, "full_name": c.full_name, "phone": c.phone, "comment": c.comment or ""}
+
+
+def _recalc_total(session: Session, order_id: int):
+    items_sum = session.execute(
+        select(func.coalesce(func.sum(OrderItem.price), 0))
+        .where(OrderItem.order_id == order_id)
+    ).scalar() or 0.0
+    parts_sum = session.execute(
+        select(func.coalesce(func.sum(OrderPart.quantity * OrderPart.price), 0))
+        .where(OrderPart.order_id == order_id)
+    ).scalar() or 0.0
+    order = session.get(Order, order_id)
+    if order:
+        order.total_price = float(items_sum) + float(parts_sum)
+        session.commit()
+
+
+import json
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Auth Routes
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html", {"user": None})
+
+
+@app.post("/login")
+def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    session: Session = Depends(get_db),
+):
+    user = session.execute(
+        select(User).where(User.username == username.strip())
+    ).scalar_one_or_none()
+    if not user or not _verify_password(password, user.password_hash):
+        return templates.TemplateResponse(request, "login.html", {
+            "user": None, "error": "Неверный логин или пароль",
+        }, status_code=401)
+    if not user.is_active:
+        return templates.TemplateResponse(request, "login.html", {
+            "user": None, "error": "Учётная запись отключена",
+        }, status_code=403)
+    token = _create_token(user.id)
+    response = RedirectResponse("/", status_code=303)
+    response.set_cookie("token", token, max_age=TOKEN_EXPIRY, httponly=True)
+    _audit("login", "user", user.id, user.full_name, user, session)
+    return response
+
+
+@app.get("/logout")
+def logout():
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie("token")
+    return response
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Pages
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard(request: Request, session: Session = Depends(get_db)):
+    active = session.execute(
+        select(func.count(Order.id)).where(Order.status == "in_progress")
+    ).scalar() or 0
+    closed = session.execute(
+        select(func.count(Order.id)).where(Order.status == "closed")
+    ).scalar() or 0
+    total_clients = session.execute(select(func.count(Client.id))).scalar() or 0
+    total_services = session.execute(select(func.count(Service.id))).scalar() or 0
+    total_parts = session.execute(select(func.count(Part.id))).scalar() or 0
+    total_products = session.execute(select(func.count(Product.id))).scalar() or 0
+    overdue = session.execute(
+        select(func.count(Order.id))
+        .where(Order.status != "closed", Order.deadline.isnot(None), Order.deadline < func.now())
+    ).scalar() or 0
+    due_soon = session.execute(
+        select(func.count(Order.id))
+        .where(Order.status != "closed", Order.deadline.isnot(None),
+               Order.deadline >= func.now(), Order.deadline < func.now() + timedelta(days=3))
+    ).scalar() or 0
+    low_stock = session.execute(
+        select(func.count(Part.id))
+        .where(Part.quantity <= Part.min_stock, Part.min_stock > 0)
+    ).scalar() or 0
+    recent = session.execute(
+        select(Order).options(joinedload(Order.client))
+        .order_by(desc(Order.created_at)).limit(15)
+    ).unique().scalars().all()
+    return templates.TemplateResponse(request, "index.html", {
+        **_user_context(request),
+        "active_orders": active, "closed_orders": closed,
+        "total_clients": total_clients, "total_services": total_services,
+        "total_parts": total_parts, "total_products": total_products,
+        "low_stock": low_stock, "overdue": overdue, "due_soon": due_soon,
+        "recent_orders": recent,
+        "ORDER_STATUSES": ORDER_STATUSES, "datetime": datetime,
+        "last_backup": (datetime.fromtimestamp((BASE_DIR / "repair_crm.db").stat().st_mtime)
+                        if (BASE_DIR / "repair_crm.db").exists() else None),
+        "backup_days": ((datetime.now() - datetime.fromtimestamp((BASE_DIR / "repair_crm.db").stat().st_mtime)).days
+                        if (BASE_DIR / "repair_crm.db").exists() else 0),
+    })
+
+
+@app.get("/clients", response_class=HTMLResponse)
+def clients_page(request: Request, session: Session = Depends(get_db)):
+    clients = session.execute(
+        select(Client).order_by(desc(Client.created_at))
+    ).scalars().all()
+    return templates.TemplateResponse(request, "clients.html", {
+        **_user_context(request),
+        "clients": clients,
+        "clients_data": [_client_dict(c) for c in clients],
+    })
+
+
+@app.get("/services", response_class=HTMLResponse)
+def services_page(request: Request, session: Session = Depends(get_db)):
+    services = session.execute(
+        select(Service).order_by(Service.name)
+    ).scalars().all()
+    return templates.TemplateResponse(request, "services.html", {
+        **_user_context(request),
+        "services": services,
+        "services_data": [{
+            "id": s.id, "name": s.name, "price": s.price,
+            "description": s.description or "",
+        } for s in services],
+    })
+
+
+@app.get("/warehouse", response_class=HTMLResponse)
+def warehouse_page(request: Request, session: Session = Depends(get_db)):
+    parts = session.execute(
+        select(Part).order_by(Part.name, Part.article)
+    ).scalars().all()
+    movements = session.execute(
+        select(StockMovement).options(joinedload(StockMovement.part))
+        .order_by(desc(StockMovement.created_at)).limit(40)
+    ).unique().scalars().all()
+    return templates.TemplateResponse(request, "warehouse.html", {
+        **_user_context(request),
+        "parts": parts, "movements": movements,
+        "parts_data": [{
+            "id": p.id, "name": p.name, "article": p.article,
+            "purchase_price": p.purchase_price, "quantity": p.quantity,
+            "min_stock": p.min_stock,
+        } for p in parts],
+    })
+
+
+@app.get("/products", response_class=HTMLResponse)
+def products_page(request: Request, session: Session = Depends(get_db)):
+    products = session.execute(
+        select(Product).order_by(Product.name, Product.article)
+    ).scalars().all()
+    movements = session.execute(
+        select(ProductMovement).options(joinedload(ProductMovement.product))
+        .order_by(desc(ProductMovement.created_at)).limit(40)
+    ).unique().scalars().all()
+    return templates.TemplateResponse(request, "products.html", {
+        **_user_context(request),
+        "products": products, "movements": movements,
+        "products_data": [{
+            "id": p.id, "name": p.name, "article": p.article,
+            "color": p.color or "", "quantity": p.quantity,
+            "image": p.image or "",
+        } for p in products],
+    })
+
+
+@app.get("/orders", response_class=HTMLResponse)
+def orders_page(
+    request: Request,
+    status: str = Query(""),
+    date_from: str = Query(""),
+    date_to: str = Query(""),
+    client: str = Query(""),
+    page: int = Query(1),
+    session: Session = Depends(get_db),
+):
+    base_q = select(Order).options(
+        joinedload(Order.client), joinedload(Order.items),
+        joinedload(Order.parts), joinedload(Order.assignee),
+    )
+    if status:
+        base_q = base_q.where(Order.status == status)
+    else:
+        base_q = base_q.where(Order.status != "closed")
+    if date_from:
+        try:
+            df = datetime.strptime(date_from, "%Y-%m-%d")
+            base_q = base_q.where(Order.created_at >= df)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt = datetime.strptime(date_to, "%Y-%m-%d")
+            base_q = base_q.where(Order.created_at < dt + timedelta(days=1))
+        except ValueError:
+            pass
+    if client.strip():
+        like = f"%{client.strip()}%"
+        base_q = base_q.where(Order.client.has(Client.full_name.ilike(like)))
+
+    q = base_q.order_by(desc(Order.created_at))
+    orders, page, pages, total = _paginate(session, q, page)
+
+    counts = {}
+    for s_val in ["in_progress", "waiting_parts", "ready", "closed"]:
+        counts[s_val] = session.execute(
+            select(func.count(Order.id)).where(Order.status == s_val)
+        ).scalar() or 0
+
+    return templates.TemplateResponse(request, "orders.html", {
+        **_user_context(request),
+        "orders": orders, "current_status": status,
+        "counts": counts, "page": page, "pages": pages, "total": total,
+        "date_from": date_from, "date_to": date_to, "client_filter": client.strip(),
+        "timedelta": timedelta,
+    })
+
+
+@app.get("/orders/new", response_class=HTMLResponse)
+def order_create_page(request: Request, session: Session = Depends(get_db)):
+    clients = session.execute(
+        select(Client).order_by(Client.full_name)
+    ).scalars().all()
+    users = session.execute(
+        select(User).where(User.is_active == True).order_by(User.full_name)
+    ).scalars().all()
+    return templates.TemplateResponse(request, "order_create.html", {
+        **_user_context(request), "clients": clients, "users": users,
+    })
+
+
+@app.get("/orders/{order_id}", response_class=HTMLResponse)
+def order_detail_page(order_id: int, request: Request, session: Session = Depends(get_db)):
+    order = session.execute(
+        select(Order)
+        .options(joinedload(Order.client), joinedload(Order.items),
+                 joinedload(Order.parts).joinedload(OrderPart.part),
+                 joinedload(Order.assignee))
+        .where(Order.id == order_id)
+    ).unique().scalar_one_or_none()
+    if not order:
+        raise HTTPException(404, "Заказ не найден")
+    services = session.execute(
+        select(Service).order_by(Service.name)
+    ).scalars().all()
+    parts = session.execute(
+        select(Part).order_by(Part.name, Part.article)
+    ).scalars().all()
+    return templates.TemplateResponse(request, "order_detail.html", {
+        **_user_context(request),
+        "order": order, "services": services, "parts": parts,
+        "ORDER_STATUSES": ORDER_STATUSES, "ORDER_FLOW": ORDER_FLOW, "now": lambda: datetime.now(),
+        "services_data": [{
+            "id": s.id, "name": s.name, "price": s.price,
+        } for s in services],
+    })
+
+
+@app.get("/users", response_class=HTMLResponse)
+def users_page(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u or u.role.name != "admin":
+        raise HTTPException(403)
+    users = session.execute(
+        select(User).options(joinedload(User.role)).order_by(User.username)
+    ).unique().scalars().all()
+    roles = session.execute(select(Role).order_by(Role.name)).scalars().all()
+    return templates.TemplateResponse(request, "users.html", {
+        **_user_context(request),
+        "users": users, "roles": roles,
+        "user_data": [{"id": x.id, "username": x.username, "full_name": x.full_name,
+                       "role_name": x.role.name, "is_active": x.is_active,
+                       "inn": x.inn or "", "position": x.position or ""} for x in users],
+        "roles_data": [{"id": r.id, "name": r.name, "permissions": r.permissions} for r in roles],
+    })
+
+
+@app.get("/audit", response_class=HTMLResponse)
+def audit_page(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u or u.role.name != "admin":
+        raise HTTPException(403)
+    logs = session.execute(
+        select(AuditLog).order_by(desc(AuditLog.created_at)).limit(200)
+    ).scalars().all()
+    return templates.TemplateResponse(request, "audit.html", {
+        **_user_context(request),
+        "logs": logs,
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Clients API
+# ══════════════════════════════════════════════════════════════════
+
+@app.post("/clients")
+def create_client(
+    request: Request,
+    full_name: str = Form(...),
+    phone: str = Form(...),
+    comment: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    c = Client(full_name=full_name.strip(), phone=phone.strip(), comment=comment.strip())
+    session.add(c)
+    session.commit()
+    _audit("create", "client", c.id, c.full_name, request.state.user, session)
+    return RedirectResponse("/clients", status_code=303)
+
+
+@app.post("/clients/{client_id}/edit")
+def update_client(
+    client_id: int, request: Request,
+    full_name: str = Form(...),
+    phone: str = Form(...),
+    comment: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    c = session.get(Client, client_id)
+    if not c:
+        raise HTTPException(404)
+    c.full_name = full_name.strip()
+    c.phone = phone.strip()
+    c.comment = comment.strip()
+    session.commit()
+    _audit("update", "client", c.id, c.full_name, request.state.user, session)
+    return RedirectResponse("/clients", status_code=303)
+
+
+@app.post("/clients/{client_id}/delete")
+def delete_client(client_id: int, request: Request, session: Session = Depends(get_db)):
+    c = session.get(Client, client_id)
+    if not c:
+        raise HTTPException(404)
+    session.delete(c)
+    session.commit()
+    _audit("delete", "client", client_id, c.full_name, request.state.user, session)
+    return RedirectResponse("/clients", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Services API
+# ══════════════════════════════════════════════════════════════════
+
+@app.post("/services")
+def create_service(
+    request: Request,
+    name: str = Form(...),
+    price: float = Form(0),
+    description: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    s = Service(name=name.strip(), price=price, description=description.strip())
+    session.add(s)
+    session.commit()
+    _audit("create", "service", s.id, s.name, request.state.user, session)
+    return RedirectResponse("/services", status_code=303)
+
+
+@app.post("/services/{service_id}/edit")
+def update_service(
+    service_id: int, request: Request,
+    name: str = Form(...),
+    price: float = Form(0),
+    description: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    s = session.get(Service, service_id)
+    if not s:
+        raise HTTPException(404)
+    s.name = name.strip()
+    s.price = price
+    s.description = description.strip()
+    session.commit()
+    _audit("update", "service", s.id, s.name, request.state.user, session)
+    return RedirectResponse("/services", status_code=303)
+
+
+@app.post("/services/{service_id}/delete")
+def delete_service(service_id: int, request: Request, session: Session = Depends(get_db)):
+    s = session.get(Service, service_id)
+    if not s:
+        raise HTTPException(404)
+    session.delete(s)
+    session.commit()
+    _audit("delete", "service", service_id, s.name, request.state.user, session)
+    return RedirectResponse("/services", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Warehouse API (Parts)
+# ══════════════════════════════════════════════════════════════════
+
+@app.post("/warehouse/receive")
+async def receive_parts(request: Request, session: Session = Depends(get_db)):
+    data = await request.json()
+    for row in data:
+        name = row.get("name", "").strip()
+        article = row.get("article", "").strip()
+        price = float(row.get("purchase_price", 0))
+        qty = int(row.get("quantity", 0))
+        if not name or not article or qty <= 0:
+            continue
+        existing = session.execute(
+            select(Part).where(Part.article == article)
+        ).scalar_one_or_none()
+        if existing:
+            existing.quantity += qty
+            if price > 0:
+                existing.purchase_price = price
+            part = existing
+        else:
+            part = Part(name=name, article=article, purchase_price=price, quantity=qty)
+            session.add(part)
+            session.flush()
+        session.add(StockMovement(
+            part_id=part.id, type="in", quantity=qty,
+            price_per_unit=price or part.purchase_price,
+            reason="Приход",
+        ))
+        _audit("receive", "part", part.id, f"+{qty} {part.name}", request.state.user, session)
+    session.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.post("/warehouse/{part_id}/edit")
+def update_part(
+    part_id: int, request: Request,
+    name: str = Form(...),
+    purchase_price: float = Form(0),
+    min_stock: int = Form(0),
+    session: Session = Depends(get_db),
+):
+    p = session.get(Part, part_id)
+    if not p:
+        raise HTTPException(404)
+    p.name = name.strip()
+    p.purchase_price = purchase_price
+    p.min_stock = min_stock
+    session.commit()
+    _audit("update", "part", p.id, p.name, request.state.user, session)
+    return RedirectResponse("/warehouse", status_code=303)
+
+
+@app.post("/warehouse/{part_id}/delete")
+def delete_part(part_id: int, request: Request, session: Session = Depends(get_db)):
+    p = session.get(Part, part_id)
+    if not p:
+        raise HTTPException(404)
+    session.delete(p)
+    session.commit()
+    _audit("delete", "part", part_id, p.name, request.state.user, session)
+    return RedirectResponse("/warehouse", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Product Warehouse API
+# ══════════════════════════════════════════════════════════════════
+
+@app.post("/products/receive")
+async def receive_products(request: Request, session: Session = Depends(get_db)):
+    data = await request.json()
+    for row in data:
+        name = row.get("name", "").strip()
+        article = row.get("article", "").strip()
+        color = row.get("color", "").strip()
+        qty = int(row.get("quantity", 0))
+        if not name or not article or qty <= 0:
+            continue
+        existing = session.execute(
+            select(Product).where(Product.article == article)
+        ).scalar_one_or_none()
+        if existing:
+            existing.quantity += qty
+            if color:
+                existing.color = color
+            product = existing
+        else:
+            product = Product(name=name, article=article, color=color, quantity=qty)
+            session.add(product)
+            session.flush()
+        session.add(ProductMovement(
+            product_id=product.id, type="in", quantity=qty,
+            destination="", reason="Приход",
+        ))
+        _audit("receive", "product", product.id, f"+{qty} {product.name}", request.state.user, session)
+    session.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.post("/products/{product_id}/stock-out")
+def product_stock_out(
+    product_id: int, request: Request,
+    quantity: int = Form(...),
+    destination: str = Form(""),
+    reason: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    p = session.get(Product, product_id)
+    if not p:
+        raise HTTPException(404)
+    if p.quantity < quantity:
+        raise HTTPException(400, f"Недостаточно на складе: {p.quantity} шт.")
+    p.quantity -= quantity
+    session.add(ProductMovement(
+        product_id=product_id, type="out", quantity=quantity,
+        destination=destination.strip(), reason=reason.strip(),
+    ))
+    session.commit()
+    _audit("stock_out", "product", p.id,
+           f"-{quantity} {p.name} → {destination}", request.state.user, session)
+    return RedirectResponse("/products", status_code=303)
+
+
+@app.post("/products/{product_id}/edit")
+def update_product(
+    product_id: int, request: Request,
+    name: str = Form(...),
+    color: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    p = session.get(Product, product_id)
+    if not p:
+        raise HTTPException(404)
+    p.name = name.strip()
+    p.color = color.strip()
+    session.commit()
+    _audit("update", "product", p.id, p.name, request.state.user, session)
+    return RedirectResponse("/products", status_code=303)
+
+
+@app.post("/products/{product_id}/delete")
+def delete_product(product_id: int, request: Request, session: Session = Depends(get_db)):
+    p = session.get(Product, product_id)
+    if not p:
+        raise HTTPException(404)
+    session.delete(p)
+    session.commit()
+    _audit("delete", "product", product_id, p.name, request.state.user, session)
+    return RedirectResponse("/products", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Users & Roles API (Admin)
+# ══════════════════════════════════════════════════════════════════
+
+AVAILABLE_PERMISSIONS = [
+    ("manage_users", "Управление пользователями"),
+    ("manage_clients", "Управление клиентами"),
+    ("manage_services", "Управление услугами"),
+    ("manage_orders", "Управление заказами"),
+    ("manage_warehouse", "Управление складом запчастей"),
+    ("manage_products", "Управление складом товаров"),
+    ("view_audit", "Просмотр аудита"),
+]
+
+
+@app.post("/roles")
+async def create_role(
+    request: Request,
+    name: str = Form(...),
+    session: Session = Depends(get_db),
+):
+    if request.state.user.role.name != "admin":
+        raise HTTPException(403)
+    form = await request.form()
+    perms = []
+    for perm_key, _ in AVAILABLE_PERMISSIONS:
+        if form.get(f"perm_{perm_key}") == "1":
+            perms.append(perm_key)
+    role = Role(name=name.strip(), permissions=json.dumps(perms))
+    session.add(role)
+    session.commit()
+    _audit("create", "role", role.id, role.name, request.state.user, session)
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/roles/{role_id}/edit")
+async def update_role(
+    role_id: int, request: Request,
+    name: str = Form(...),
+    session: Session = Depends(get_db),
+):
+    if request.state.user.role.name != "admin":
+        raise HTTPException(403)
+    role = session.get(Role, role_id)
+    if not role:
+        raise HTTPException(404)
+    if role.name == "admin":
+        raise HTTPException(400, "Нельзя редактировать роль admin")
+    form = await request.form()
+    perms = []
+    for perm_key, _ in AVAILABLE_PERMISSIONS:
+        if form.get(f"perm_{perm_key}") == "1":
+            perms.append(perm_key)
+    role.name = name.strip()
+    role.permissions = json.dumps(perms)
+    session.commit()
+    _audit("update", "role", role.id, role.name, request.state.user, session)
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/roles/{role_id}/delete")
+def delete_role(role_id: int, request: Request, session: Session = Depends(get_db)):
+    if request.state.user.role.name != "admin":
+        raise HTTPException(403)
+    role = session.get(Role, role_id)
+    if not role:
+        raise HTTPException(404)
+    if role.name == "admin":
+        raise HTTPException(400, "Нельзя удалить роль admin")
+    # Check no users use this role
+    count = session.execute(
+        select(func.count(User.id)).where(User.role_id == role_id)
+    ).scalar()
+    if count > 0:
+        raise HTTPException(400, f"Роль используется {count} пользователями")
+    session.delete(role)
+    session.commit()
+    _audit("delete", "role", role_id, role.name, request.state.user, session)
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/create")
+def create_user(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    full_name: str = Form(...),
+    role_id: int = Form(...),
+    inn: str = Form(""),
+    position: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    if request.state.user.role.name != "admin":
+        raise HTTPException(403)
+    existing = session.execute(
+        select(User).where(User.username == username.strip())
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, "Пользователь с таким логином уже существует")
+    pw = _validate_password(password)
+    session.add(User(
+        username=username.strip(),
+        password_hash=_hash_password(pw),
+        full_name=full_name.strip(),
+        role_id=role_id,
+        inn=inn.strip(),
+        position=position.strip(),
+    ))
+    session.commit()
+    _audit("create", "user", None, full_name.strip(), request.state.user, session)
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/{user_id}/edit")
+def update_user(
+    user_id: int, request: Request,
+    full_name: str = Form(...),
+    role_id: int = Form(...),
+    inn: str = Form(""),
+    position: str = Form(""),
+    password: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    if request.state.user.role.name != "admin":
+        raise HTTPException(403)
+    u = session.get(User, user_id)
+    if not u:
+        raise HTTPException(404)
+    u.full_name = full_name.strip()
+    u.role_id = role_id
+    u.inn = inn.strip()
+    u.position = position.strip()
+    if password.strip():
+        pw = _validate_password(password)
+        u.password_hash = _hash_password(pw)
+    session.commit()
+    _audit("update", "user", u.id, u.full_name, request.state.user, session)
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/{user_id}/toggle")
+def toggle_user(user_id: int, request: Request, session: Session = Depends(get_db)):
+    if request.state.user.role.name != "admin":
+        raise HTTPException(403)
+    u = session.get(User, user_id)
+    if not u or u.username == "admin":
+        raise HTTPException(400)
+    u.is_active = not u.is_active
+    session.commit()
+    _audit("toggle", "user", u.id, f"{u.full_name} → {'active' if u.is_active else 'inactive'}", request.state.user, session)
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.get("/profile", response_class=HTMLResponse)
+def profile_page(request: Request, session: Session = Depends(get_db)):
+    current = request.state.user
+    if not current:
+        raise HTTPException(403)
+    u = session.get(User, current.id)
+    return templates.TemplateResponse(request, "profile.html", {
+        **_user_context(request),
+        "profile": u,
+    })
+
+
+@app.post("/profile/edit")
+def profile_edit(
+    request: Request,
+    full_name: str = Form(...),
+    inn: str = Form(""),
+    position: str = Form(""),
+    password: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    current = request.state.user
+    if not current:
+        raise HTTPException(403)
+    u = session.get(User, current.id)
+    u.full_name = full_name.strip()
+    u.inn = inn.strip()
+    u.position = position.strip()
+    if password.strip():
+        pw = _validate_password(password)
+        u.password_hash = _hash_password(pw)
+    session.commit()
+    _audit("update_profile", "user", u.id, u.full_name, u, session)
+    return RedirectResponse("/profile", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Orders API
+# ══════════════════════════════════════════════════════════════════
+
+@app.post("/orders")
+def create_order(
+    request: Request,
+    client_id: int = Form(...),
+    printer: str = Form(...),
+    defect: str = Form(...),
+    assigned_to: int = Form(0),
+    deadline: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    if not session.get(Client, client_id):
+        raise HTTPException(400, "Клиент не найден")
+    deadline_val = None
+    if deadline.strip():
+        try:
+            deadline_val = datetime.strptime(deadline.strip(), "%Y-%m-%d")
+        except ValueError:
+            pass
+    order = Order(
+        client_id=client_id,
+        printer=printer.strip(),
+        defect=defect.strip(),
+        assigned_to=assigned_to if assigned_to > 0 else None,
+        deadline=deadline_val,
+    )
+    session.add(order)
+    session.commit()
+    _audit("create", "order", order.id, f"#{order.id} {printer.strip()}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order.id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/items")
+def add_order_item(
+    request: Request, order_id: int,
+    name: str = Form(...),
+    price: float = Form(0),
+    session: Session = Depends(get_db),
+):
+    order = session.get(Order, order_id)
+    if not order or order.status == "closed":
+        raise HTTPException(400, "Нельзя добавить услугу в закрытый заказ")
+    item = OrderItem(order_id=order_id, name=name.strip(), price=price)
+    session.add(item)
+    session.commit()
+    _recalc_total(session, order_id)
+    _audit("add_item", "order", order_id, f"+{name.strip()} {price}₽", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/items/{item_id}/delete")
+def delete_order_item(
+    request: Request, order_id: int, item_id: int,
+    session: Session = Depends(get_db),
+):
+    order = session.get(Order, order_id)
+    if not order or order.status == "closed":
+        raise HTTPException(400)
+    item = session.get(OrderItem, item_id)
+    if not item or item.order_id != order_id:
+        raise HTTPException(404)
+    session.delete(item)
+    session.commit()
+    _recalc_total(session, order_id)
+    _audit("remove_item", "order", order_id, f"-{item.name}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/parts")
+def add_order_part(
+    request: Request, order_id: int,
+    part_id: int = Form(...),
+    quantity: int = Form(1),
+    price: float = Form(0),
+    session: Session = Depends(get_db),
+):
+    order = session.get(Order, order_id)
+    if not order or order.status == "closed":
+        raise HTTPException(400, "Нельзя добавить запчасть в закрытый заказ")
+    part = session.execute(
+        select(Part).where(Part.id == part_id).with_for_update()
+    ).scalar_one_or_none()
+    if not part:
+        raise HTTPException(400, "Запчасть не найдена")
+    if part.quantity < quantity:
+        raise HTTPException(400, f"Недостаточно на складе: {part.quantity} шт.")
+    part.quantity -= quantity
+    session.add(StockMovement(
+        part_id=part_id, type="out", quantity=quantity,
+        price_per_unit=price or part.purchase_price,
+        reason=f"Заказ #{order_id}",
+        order_id=order_id,
+    ))
+    session.add(OrderPart(
+        order_id=order_id, part_id=part_id,
+        quantity=quantity, price=price or part.purchase_price,
+    ))
+    session.commit()
+    _recalc_total(session, order_id)
+    _audit("add_part", "order", order_id, f"+{part.name} x{quantity}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/parts/{op_id}/delete")
+def delete_order_part(
+    request: Request, order_id: int, op_id: int,
+    session: Session = Depends(get_db),
+):
+    order = session.get(Order, order_id)
+    if not order or order.status == "closed":
+        raise HTTPException(400)
+    op = session.get(OrderPart, op_id)
+    if not op or op.order_id != order_id:
+        raise HTTPException(404)
+    part = session.get(Part, op.part_id)
+    if part:
+        part.quantity += op.quantity
+        session.add(StockMovement(
+            part_id=op.part_id, type="in", quantity=op.quantity,
+            price_per_unit=op.price,
+            reason=f"Возврат из заказа #{order_id}",
+            order_id=order_id,
+        ))
+    session.delete(op)
+    session.commit()
+    _recalc_total(session, order_id)
+    _audit("remove_part", "order", order_id, f"-{part.name} x{op.quantity}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/close")
+def close_order(order_id: int, request: Request, session: Session = Depends(get_db)):
+    order = session.get(Order, order_id)
+    if not order or order.status == "closed":
+        raise HTTPException(400)
+    order.status = "closed"
+    order.closed_at = datetime.now()
+    session.commit()
+    _audit("close", "order", order_id, f"#{order_id} total={order.total_price}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/status")
+def change_order_status(order_id: int, request: Request,
+                        new_status: str = Form(...),
+                        session: Session = Depends(get_db)):
+    order = session.get(Order, order_id)
+    if not order or order.status == "closed" or new_status == order.status:
+        raise HTTPException(400)
+    if new_status not in ORDER_FLOW.get(order.status, []):
+        raise HTTPException(400, f"Нельзя переключить с «{ORDER_STATUSES[order.status][0]}» на «{ORDER_STATUSES[new_status][0]}»")
+    order.status = new_status
+    session.commit()
+    _audit("change_status", "order", order_id,
+           f"#{order_id} → {ORDER_STATUSES[new_status][0]}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/reopen")
+def reopen_order(order_id: int, request: Request, session: Session = Depends(get_db)):
+    order = session.get(Order, order_id)
+    if not order or order.status != "closed":
+        raise HTTPException(400)
+    order.status = "in_progress"
+    order.closed_at = None
+    session.commit()
+    _audit("reopen", "order", order_id, f"#{order_id}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/batch-close")
+def batch_close_orders(request: Request, ids: str = Form(""), session: Session = Depends(get_db)):
+    for oid in [int(x) for x in ids.split(",") if x.strip().isdigit()]:
+        order = session.get(Order, oid)
+        if order and order.status != "closed":
+            order.status = "closed"
+            order.closed_at = datetime.now()
+            _audit("close", "order", oid, f"#{oid} (batch)", request.state.user, session)
+    session.commit()
+    return RedirectResponse("/orders", status_code=303)
+
+
+@app.post("/orders/batch-delete")
+def batch_delete_orders(request: Request, ids: str = Form(""), session: Session = Depends(get_db)):
+    for oid in [int(x) for x in ids.split(",") if x.strip().isdigit()]:
+        order = session.get(Order, oid)
+        if order:
+            for op in order.parts:
+                part = session.get(Part, op.part_id)
+                if part:
+                    part.quantity += op.quantity
+            session.delete(order)
+            _audit("delete", "order", oid, f"#{oid} (batch)", request.state.user, session)
+    session.commit()
+    return RedirectResponse("/orders", status_code=303)
+
+
+@app.get("/clients/{client_id}/orders", response_class=HTMLResponse)
+def client_history(client_id: int, request: Request, session: Session = Depends(get_db)):
+    client = session.get(Client, client_id)
+    if not client:
+        raise HTTPException(404)
+    orders = session.execute(
+        select(Order).options(joinedload(Order.items), joinedload(Order.parts))
+        .where(Order.client_id == client_id)
+        .order_by(desc(Order.created_at))
+    ).unique().scalars().all()
+    return templates.TemplateResponse(request, "client_history.html", {
+        **_user_context(request), "client": client, "orders": orders,
+        "ORDER_STATUSES": ORDER_STATUSES, "timedelta": timedelta,
+    })
+
+
+@app.post("/orders/{order_id}/delete")
+def delete_order(order_id: int, request: Request, session: Session = Depends(get_db)):
+    order = session.get(Order, order_id)
+    if not order:
+        raise HTTPException(404)
+    for op in order.parts:
+        part = session.get(Part, op.part_id)
+        if part:
+            part.quantity += op.quantity
+            session.add(StockMovement(
+                part_id=op.part_id, type="in", quantity=op.quantity,
+                price_per_unit=op.price,
+                reason=f"Возврат: удаление заказа #{order_id}",
+            ))
+    session.delete(order)
+    session.commit()
+    _audit("delete", "order", order_id, f"#{order_id}", request.state.user, session)
+    return RedirectResponse("/orders", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Export
+# ══════════════════════════════════════════════════════════════════
+
+def _make_excel(headers: list[str], rows: list[list], filename: str) -> StreamingResponse:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(headers)
+    for row in rows:
+        ws.append(row)
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@app.get("/export/db")
+def export_db(request: Request):
+    if request.state.user.role.name != "admin":
+        raise HTTPException(403)
+    return FileResponse(BASE_DIR / "repair_crm.db", filename="repair_crm_backup.db")
+
+
+@app.get("/export/clients")
+def export_clients(request: Request, session: Session = Depends(get_db)):
+    clients = session.execute(select(Client).order_by(Client.full_name)).scalars().all()
+    rows = [[c.id, c.full_name, c.phone, c.comment, str(c.created_at)] for c in clients]
+    return _make_excel(["ID", "ФИО", "Телефон", "Комментарий", "Создан"], rows, "clients.xlsx")
+
+
+@app.get("/export/orders")
+def export_orders(request: Request, session: Session = Depends(get_db)):
+    orders = session.execute(
+        select(Order).options(joinedload(Order.client))
+        .order_by(desc(Order.created_at))
+    ).unique().scalars().all()
+    rows = [[o.id, o.client.full_name, o.printer, o.defect, o.status,
+             o.total_price, str(o.created_at), str(o.closed_at or "")] for o in orders]
+    return _make_excel(["ID", "Клиент", "Принтер", "Дефект", "Статус", "Сумма", "Создан", "Закрыт"],
+                       rows, "orders.xlsx")
+
+
+@app.get("/export/services")
+def export_services(request: Request, session: Session = Depends(get_db)):
+    services = session.execute(select(Service).order_by(Service.name)).scalars().all()
+    rows = [[s.id, s.name, s.price, s.description] for s in services]
+    return _make_excel(["ID", "Название", "Цена", "Описание"], rows, "services.xlsx")
+
+
+@app.get("/export/parts")
+def export_parts(request: Request, session: Session = Depends(get_db)):
+    parts = session.execute(select(Part).order_by(Part.name)).scalars().all()
+    rows = [[p.id, p.name, p.article, p.purchase_price, p.quantity, p.min_stock] for p in parts]
+    return _make_excel(["ID", "Название", "Артикул", "Цена закупки", "Кол-во", "Мин. остаток"],
+                       rows, "parts.xlsx")
+
+
+@app.get("/export/products")
+def export_products(request: Request, session: Session = Depends(get_db)):
+    products = session.execute(select(Product).order_by(Product.name)).scalars().all()
+    rows = [[p.id, p.name, p.article, p.color, p.quantity] for p in products]
+    return _make_excel(["ID", "Название", "Артикул", "Цвет", "Кол-во"], rows, "products.xlsx")
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Search
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/search", response_class=HTMLResponse)
+def search_page(request: Request, q: str = Query(""), session: Session = Depends(get_db)):
+    results = {"clients": [], "orders": [], "parts": [], "products": [], "services": []}
+    if q:
+        like = f"%{q.strip()}%"
+        results["clients"] = session.execute(
+            select(Client).where(or_(Client.full_name.ilike(like), Client.phone.ilike(like)))
+            .limit(20)
+        ).scalars().all()
+        results["orders"] = session.execute(
+            select(Order).options(joinedload(Order.client))
+            .where(or_(Order.printer.ilike(like), Order.defect.ilike(like),
+                       Order.client.has(Client.full_name.ilike(like))))
+            .order_by(desc(Order.created_at)).limit(20)
+        ).unique().scalars().all()
+        results["parts"] = session.execute(
+            select(Part).where(or_(Part.name.ilike(like), Part.article.ilike(like))).limit(20)
+        ).scalars().all()
+        results["products"] = session.execute(
+            select(Product).where(or_(Product.name.ilike(like), Product.article.ilike(like))).limit(20)
+        ).scalars().all()
+        results["services"] = session.execute(
+            select(Service).where(Service.name.ilike(like)).limit(20)
+        ).scalars().all()
+    return templates.TemplateResponse(request, "search.html", {
+        **_user_context(request), "q": q.strip(), "results": results,
+        "total": sum(len(v) for v in results.values()),
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Receipt
+# ══════════════════════════════════════════════════════════════════
+
+def _build_receipt_pdf(order, line_items) -> bytes:
+    from fpdf.enums import XPos, YPos
+    font_paths = [
+        BASE_DIR / "arial.ttf",
+        Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        Path("/usr/share/fonts/TTF/DejaVuSans.ttf"),
+    ]
+    font_file = None
+    for fp in font_paths:
+        if fp.exists():
+            font_file = str(fp)
+            break
+
+    pdf = FPDF()
+    pdf.add_page()
+    if font_file:
+        pdf.add_font("ArialU", "", font_file)
+        pdf.add_font("ArialU", "B", font_file)
+        font_name = "ArialU"
+    else:
+        font_name = "Helvetica"
+
+    def money(v): return f"{v:,.0f}".replace(",", " ") + " руб."
+
+    pdf.set_font(font_name, "B", 16)
+    pdf.cell(0, 10, f"Квитанция №{order.id}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font(font_name, "", 10)
+    pdf.cell(0, 6, f"от {order.created_at.strftime('%d.%m.%Y')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(4)
+
+    pdf.set_font(font_name, "", 10)
+    details = [
+        ("Клиент:", order.client.full_name),
+        ("Телефон:", order.client.phone),
+        ("Принтер:", order.printer),
+        ("Дефект:", order.defect[:80]),
+    ]
+    if order.assignee:
+        extra = f" (ИНН {order.assignee.inn})" if order.assignee.inn else ""
+        details.append(("Мастер:", f"{order.assignee.full_name}{extra}"))
+    for label, value in details:
+        pdf.set_font(font_name, "B", 10)
+        pdf.cell(28, 6, label)
+        pdf.set_font(font_name, "", 10)
+        pdf.cell(0, 6, value, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(4)
+
+    col_w = [10, 78, 14, 32, 38]
+    headers = ["#", "Наименование", "Кол.", "Цена", "Сумма"]
+    pdf.set_font(font_name, "B", 9)
+    pdf.set_fill_color(230, 230, 230)
+    for i, h in enumerate(headers):
+        pdf.cell(col_w[i], 7, h, border=1, fill=True, align="C" if i > 0 else "C")
+    pdf.ln()
+
+    pdf.set_font(font_name, "", 9)
+    for idx, (name, qty, price, line_total) in enumerate(line_items, 1):
+        pdf.cell(col_w[0], 6, str(idx), border=1, align="C")
+        pdf.cell(col_w[1], 6, name[:50], border=1)
+        pdf.cell(col_w[2], 6, str(qty), border=1, align="C")
+        pdf.cell(col_w[3], 6, money(price), border=1, align="R")
+        pdf.cell(col_w[4], 6, money(line_total), border=1, align="R")
+        pdf.ln()
+
+    pdf.set_font(font_name, "B", 10)
+    pdf.cell(sum(col_w[:4]), 7, "ИТОГО:", border=1, align="R")
+    pdf.cell(col_w[4], 7, money(order.total_price), border=1, align="R")
+    pdf.ln(10)
+
+    if order.closed_at:
+        pdf.set_font(font_name, "", 9)
+        pdf.cell(0, 6, f"Выполнен: {order.closed_at.strftime('%d.%m.%Y %H:%M')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(4)
+
+    pdf.set_font(font_name, "", 9)
+    pdf.cell(85, 6, "Мастер: _________________________")
+    pdf.cell(85, 6, "Клиент: _________________________", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
+    pdf.set_font(font_name, "", 8)
+    pdf.cell(85, 5, "(подпись)")
+    pdf.cell(85, 5, "(подпись)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    return pdf.output()
+
+
+@app.get("/orders/{order_id}/receipt", response_class=HTMLResponse)
+def order_receipt(order_id: int, request: Request, format: str = Query("html"),
+                  session: Session = Depends(get_db)):
+    order = session.execute(
+        select(Order)
+        .options(joinedload(Order.client), joinedload(Order.items),
+                 joinedload(Order.parts).joinedload(OrderPart.part),
+                 joinedload(Order.assignee))
+        .where(Order.id == order_id)
+    ).unique().scalar_one_or_none()
+    if not order:
+        raise HTTPException(404)
+    line_items = []
+    for item in order.items:
+        line_items.append((item.name, 1, item.price, item.price))
+    for op in order.parts:
+        line_items.append((f"{op.part.name} ({op.part.article})", op.quantity, op.price, op.quantity * op.price))
+
+    html = templates.env.get_template("receipt.html").render(
+        order=order, line_items=line_items, user=None)
+
+    if format == "pdf":
+        pdf = _build_receipt_pdf(order, line_items)
+        return StreamingResponse(io.BytesIO(pdf),
+                                 media_type="application/pdf",
+                                 headers={"Content-Disposition": f"attachment; filename=receipt_{order.id}.pdf"})
+
+    resp = HTMLResponse(html)
+    return resp
+
+
+@app.post("/orders/{order_id}/send-receipt")
+def send_receipt(order_id: int, request: Request, email_to: str = Form(...),
+                 session: Session = Depends(get_db)):
+    order = session.execute(
+        select(Order)
+        .options(joinedload(Order.client), joinedload(Order.items),
+                 joinedload(Order.parts).joinedload(OrderPart.part),
+                 joinedload(Order.assignee))
+        .where(Order.id == order_id)
+    ).unique().scalar_one_or_none()
+    if not order:
+        raise HTTPException(404)
+
+    line_items = []
+    for item in order.items:
+        line_items.append((item.name, 1, item.price, item.price))
+    for op in order.parts:
+        line_items.append((f"{op.part.name} ({op.part.article})", op.quantity, op.price, op.quantity * op.price))
+
+    body = templates.env.get_template("receipt_email.html").render(
+        order=order, line_items=line_items)
+    subject = f"Квитанция №{order.id} — Ремонт 3D принтера"
+
+    smtp_host = os.getenv("SMTP_HOST", "")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_pass = os.getenv("SMTP_PASS", "")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user)
+
+    if not smtp_host:
+        raise HTTPException(400, "SMTP не настроен. Укажите SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS в .env")
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = smtp_from
+    msg["To"] = email_to.strip()
+    msg.attach(MIMEText(body, "html", "utf-8"))
+
+    try:
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(smtp_from, [email_to.strip()], msg.as_string())
+        server.quit()
+    except Exception as e:
+        raise HTTPException(400, f"Ошибка отправки: {str(e)}")
+
+    _audit("send_receipt", "order", order_id, f"→ {email_to.strip()}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Charts API
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/api/charts/revenue")
+def chart_revenue(session: Session = Depends(get_db)):
+    from datetime import date, timedelta
+    today = date.today()
+    months = [(today.replace(day=1) - timedelta(days=i*30)).replace(day=1) for i in range(5, -1, -1)]
+    data = []
+    for m in months:
+        next_m = (m.replace(day=28) + timedelta(days=4)).replace(day=1)
+        total = session.execute(
+            select(func.coalesce(func.sum(Order.total_price), 0))
+            .where(Order.status == "closed", Order.closed_at >= m, Order.closed_at < next_m)
+        ).scalar() or 0
+        data.append({"month": m.strftime("%b %Y"), "total": float(total)})
+    return JSONResponse(data)
+
+
+@app.get("/api/charts/top-services")
+def chart_top_services(session: Session = Depends(get_db)):
+    items = session.execute(
+        select(OrderItem.name, func.count(OrderItem.id), func.sum(OrderItem.price))
+        .group_by(OrderItem.name).order_by(desc(func.sum(OrderItem.price))).limit(8)
+    ).all()
+    return JSONResponse([{"name": r[0], "count": r[1], "total": float(r[2] or 0)} for r in items])
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Product image upload
+# ══════════════════════════════════════════════════════════════════
+
+@app.post("/products/{product_id}/upload-image")
+async def upload_product_image(product_id: int, file: UploadFile = File(...),
+                               session: Session = Depends(get_db)):
+    p = session.get(Product, product_id)
+    if not p:
+        raise HTTPException(404)
+    ext = Path(file.filename).suffix or ".jpg"
+    safe_name = f"prod_{product_id}_{secrets.token_hex(4)}{ext}"
+    filepath = UPLOADS_DIR / safe_name
+    content = await file.read()
+    filepath.write_bytes(content)
+    p.image = safe_name
+    session.commit()
+    return RedirectResponse("/products", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Calendar
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/calendar", response_class=HTMLResponse)
+def calendar_page(request: Request, month: str = Query(""), session: Session = Depends(get_db)):
+    today = datetime.now()
+    if month:
+        try:
+            year, mon = map(int, month.split("-"))
+            base = datetime(year, mon, 1)
+        except (ValueError, TypeError):
+            base = today.replace(day=1)
+    else:
+        base = today.replace(day=1)
+
+    next_month = (base.replace(day=28) + timedelta(days=4)).replace(day=1)
+    prev_month = (base - timedelta(days=1)).replace(day=1)
+
+    orders = session.execute(
+        select(Order).options(joinedload(Order.client), joinedload(Order.assignee))
+        .where(Order.created_at >= base, Order.created_at < next_month)
+        .order_by(Order.created_at)
+    ).unique().scalars().all()
+
+    by_date = {}
+    for o in orders:
+        d = o.created_at.strftime("%Y-%m-%d")
+        by_date.setdefault(d, []).append(o)
+
+    users = session.execute(
+        select(User).where(User.is_active == True).order_by(User.full_name)
+    ).scalars().all()
+
+    return templates.TemplateResponse(request, "calendar.html", {
+        **_user_context(request),
+        "orders_by_date": by_date, "base_month": base, "next_month": next_month,
+        "prev_month": prev_month, "users": users,
+        "ORDER_STATUSES": ORDER_STATUSES, "timedelta": timedelta,
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Chat
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/chat", response_class=HTMLResponse)
+def chat_page(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    users = session.execute(
+        select(User).where(User.is_active == True, User.id != u.id).order_by(User.full_name)
+    ).scalars().all()
+    messages = session.execute(
+        select(ChatMessage).options(joinedload(ChatMessage.from_user))
+        .order_by(desc(ChatMessage.created_at)).limit(50)
+    ).unique().scalars().all()
+    return templates.TemplateResponse(request, "chat.html", {
+        **_user_context(request),
+        "messages": list(reversed(messages)), "users": users,
+        "current_user_id": u.id,
+    })
+
+
+@app.post("/chat/send")
+def chat_send(request: Request, text: str = Form(...), session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u or not text.strip():
+        raise HTTPException(403)
+    session.add(ChatMessage(from_user_id=u.id, text=text.strip()))
+    session.commit()
+    return RedirectResponse("/chat", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  API stubs (silence old CRM polling)
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/api/sse/events")
+async def _sse_stub():
+    return JSONResponse({"events": []})
+
+
+@app.get("/api/dashboard")
+async def _dashboard_stub():
+    return JSONResponse({})
+
+
+@app.get("/api/task-assignments/my")
+async def _tasks_stub():
+    return JSONResponse([])
+
+
+@app.get("/api/warehouse/products")
+async def _wh_products_stub():
+    return JSONResponse([])
