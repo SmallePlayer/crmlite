@@ -1281,6 +1281,48 @@ def toggle_user(user_id: int, request: Request, session: Session = Depends(get_d
     return RedirectResponse("/users", status_code=303)
 
 
+@app.post("/users/{user_id}/delete")
+def delete_user(user_id: int, request: Request, session: Session = Depends(get_db)):
+    if request.state.user.role.name != "admin":
+        raise HTTPException(403)
+    current = request.state.user
+    u = session.get(User, user_id)
+    if not u:
+        raise HTTPException(404)
+    if u.username == "admin":
+        raise HTTPException(400, "Нельзя удалить администратора")
+    if u.id == current.id:
+        raise HTTPException(400, "Нельзя удалить самого себя")
+    session.execute(select(Task).where(
+        or_(Task.created_by == user_id, Task.assigned_to == user_id)
+    ).with_for_update())
+    for t in session.execute(
+        select(Task).where(or_(Task.created_by == user_id, Task.assigned_to == user_id))
+    ).scalars().all():
+        session.delete(t)
+    for m in session.execute(
+        select(ChatMessage).where(ChatMessage.from_user_id == user_id)
+    ).scalars().all():
+        session.delete(m)
+    for a in session.execute(
+        select(Attendance).where(Attendance.user_id == user_id)
+    ).scalars().all():
+        session.delete(a)
+    for s in session.execute(
+        select(Schedule).where(Schedule.user_id == user_id)
+    ).scalars().all():
+        session.delete(s)
+    for o in session.execute(
+        select(Order).where(Order.assigned_to == user_id)
+    ).scalars().all():
+        o.assigned_to = None
+    name = u.full_name
+    session.delete(u)
+    session.commit()
+    _audit("delete", "user", user_id, name, current, session)
+    return RedirectResponse("/users", status_code=303)
+
+
 @app.get("/profile", response_class=HTMLResponse)
 def profile_page(request: Request, session: Session = Depends(get_db)):
     current = request.state.user
