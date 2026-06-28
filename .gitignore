@@ -2,9 +2,14 @@ __pycache__/
 *.pyc
 .DS_Store
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 venv/
 .env
 app/static/uploads/
 .pytest_cache/
 test.db
 test.db-journal
+crm.log
+*.bak
