@@ -18,13 +18,11 @@
   </div>
 </div>
 
-{# Check-in/out — big card #}
+{# Check-in/out — compact card #}
 <div class="card shadow-sm mb-4 border-primary">
   <div class="card-body text-center py-3">
     <div class="d-flex justify-content-center align-items-center gap-4 flex-wrap">
-      <div>
-        <small class="text-muted">{{ today.strftime('%d.%m.%Y') }}</small>
-      </div>
+      <div><small class="text-muted">{{ today.strftime('%d.%m.%Y') }}</small></div>
       {% if current_user_id in today_attendance %}
         {% if today_attendance[current_user_id].check_out %}
           <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Смена завершена</span>
@@ -45,7 +43,7 @@
   </div>
 </div>
 
-{# Tabs: Monthly grid + Who's here + Schedule #}
+{# Tabs #}
 <ul class="nav nav-tabs mb-3" id="attTabs" role="tablist">
   <li class="nav-item" role="presentation">
     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-month" type="button">Обзор месяца</button>
@@ -59,7 +57,7 @@
 </ul>
 
 <div class="tab-content">
-  {# Monthly grid #}
+  {# Monthly attendance grid #}
   <div class="tab-pane fade show active" id="tab-month">
     {% set first_day = base_month.replace(day=1) %}
     {% set last_day = (first_day.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
@@ -88,8 +86,6 @@
             {% set a = by_user_date.get(u.id, {}).get(date_str) %}
             {% if a %}
               {% if a.check_out %}
-                {% set _ = worked %}
-                {% if worked is not defined %}{% set worked = 0 %}{% endif %}
                 {% set worked = worked + 1 %}
                 <td class="text-center bg-success bg-opacity-25" title="{{ a.check_in.strftime('%H:%M') }}–{{ a.check_out.strftime('%H:%M') }}">
                   <i class="bi bi-check-circle-fill text-success small"></i>
@@ -142,52 +138,86 @@
     </div>
   </div>
 
-  {# Schedule #}
+  {# Schedule — calendar grid view #}
   <div class="tab-pane fade" id="tab-schedule">
-    {% if all_schedules %}
-    <div class="table-responsive">
-      <table class="table table-hover table-sm">
-        <thead class="table-light">
-          <tr><th>Сотрудник</th><th>Дата</th><th>Время</th><th style="width:40px"></th></tr>
-        </thead>
-        <tbody>
-          {% for s in all_schedules %}
-          <tr>
-            <td>{{ s.user.full_name }}</td>
-            <td>{{ s.date.strftime('%d.%m.%Y') }}</td>
-            <td><span class="badge bg-primary">{{ s.time_from }} — {{ s.time_to }}</span></td>
-            <td>
-              <form method="post" action="/schedule/{{ s.id }}/delete" class="d-inline"
-                    data-confirm="Удалить смену {{ s.date.strftime('%d.%m') }} {{ s.time_from }}-{{ s.time_to }}?">
-                <button class="btn btn-sm text-danger p-0 border-0 bg-transparent"><i class="bi bi-x-lg"></i></button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    {% set sched_first = base_month.replace(day=1) %}
+    {% set sched_last = (sched_first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
+    {% set sched_total = sched_last.day %}
+    {% set sched_start = sched_first.weekday() %}
+    {# Build schedule map: date_str -> list of schedules #}
+    {% set sched_map = {} %}
+    {% for s in all_schedules %}
+      {% set dkey = s.date.strftime('%Y-%m-%d') %}
+      {% set _ = sched_map.setdefault(dkey, []) %}
+      {% set _ = sched_map[dkey].append(s) %}
+    {% endfor %}
+
+    <div class="card shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm align-top mb-0" style="font-size:0.75rem">
+          <thead>
+            <tr class="table-light text-center">
+              <th style="width:14.2%">Пн</th><th style="width:14.2%">Вт</th><th style="width:14.2%">Ср</th><th style="width:14.2%">Чт</th>
+              <th style="width:14.2%">Пт</th><th style="width:14.2%" class="text-danger">Сб</th><th style="width:14.2%" class="text-danger">Вс</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set sched_day = 1 %}
+            {% set cols_used = 0 %}
+            {% for w in range(6) %}
+            {% if sched_day <= sched_total %}
+            <tr>
+              {% for dow in range(7) %}
+              <td style="height:70px;vertical-align:top;padding:4px" class="{{ 'text-muted' if (w==0 and dow < sched_start) or sched_day > sched_total }}">
+                {% if (w==0 and dow >= sched_start) or (w>0 and sched_day <= sched_total) %}
+                <small class="fw-bold">{{ sched_day }}</small>
+                {% set date_str = base_month.strftime('%Y-%m') + '-%02d' % sched_day %}
+                {% set day_scheds = sched_map.get(date_str, []) %}
+                {% if day_scheds %}
+                <div class="d-flex flex-column gap-1 mt-1">
+                  {% for s in day_scheds %}
+                  <div class="rounded px-1 py-0 bg-primary bg-opacity-10 d-flex justify-content-between align-items-center"
+                       style="cursor:pointer"
+                       onclick="openScheduleModal({{ s.id }}, '{{ s.date.strftime('%Y-%m-%d') }}', '{{ s.time_from }}', '{{ s.time_to }}', {{ s.user_id }})"
+                       title="{{ s.user.full_name }}: {{ s.time_from }}–{{ s.time_to }}">
+                    <span class="text-truncate small">{{ s.user.full_name.split()[0] }} {{ s.time_from }}–{{ s.time_to }}</span>
+                    <form method="post" action="/schedule/{{ s.id }}/delete" class="d-inline ms-1"
+                          data-confirm="Удалить смену {{ s.date.strftime('%d.%m') }} {{ s.time_from }}-{{ s.time_to }}?"
+                          onclick="event.stopPropagation()">
+                      <button class="btn btn-sm text-danger p-0 border-0 bg-transparent" style="font-size:0.7rem"><i class="bi bi-x"></i></button>
+                    </form>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+                {% set sched_day = sched_day + 1 %}
+                {% elif w==0 and dow < sched_start %}{# empty cell before month start #}
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-    {% else %}
-    <div class="text-center py-4 text-muted">
-      <i class="bi bi-calendar fs-2"></i>
-      <p class="mt-2">Смен не запланировано.</p>
-    </div>
-    {% endif %}
   </div>
 </div>
 
-{# Schedule Modal #}
+{# Schedule Modal (create + edit) #}
 <div class="modal fade" id="scheduleModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
-    <form class="modal-content" method="post" action="/schedule">
+    <form class="modal-content" id="schedForm" method="post" action="/schedule">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-calendar-plus me-1"></i>Добавить смену</h5>
+        <h5 class="modal-title" id="schedModalTitle"><i class="bi bi-calendar-plus me-1"></i>Добавить смену</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <input type="hidden" name="_method" id="schedMethod" value="">
         <div class="mb-3">
           <label class="form-label">Сотрудник</label>
-          <select name="user_id" class="form-select">
+          <select name="user_id" id="schedUserId" class="form-select">
             <option value="{{ current_user_id }}" selected>{{ user.full_name }} (я)</option>
             {% for u in users if u.id != current_user_id %}
             <option value="{{ u.id }}">{{ u.full_name }}</option>
@@ -196,22 +226,22 @@
         </div>
         <div class="mb-3">
           <label class="form-label">Дата</label>
-          <input type="date" name="date" class="form-control" required value="{{ today.strftime('%Y-%m-%d') }}">
+          <input type="date" name="date" id="schedDate" class="form-control" required value="{{ today.strftime('%Y-%m-%d') }}">
         </div>
         <div class="row">
           <div class="col-6 mb-3">
             <label class="form-label">С</label>
-            <input type="time" name="time_from" class="form-control" required value="09:00">
+            <input type="time" name="time_from" id="schedFrom" class="form-control" required value="09:00">
           </div>
           <div class="col-6 mb-3">
             <label class="form-label">До</label>
-            <input type="time" name="time_to" class="form-control" required value="18:00">
+            <input type="time" name="time_to" id="schedTo" class="form-control" required value="18:00">
           </div>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="submit" class="btn btn-primary" id="schedSubmitBtn">Сохранить</button>
       </div>
     </form>
   </div>
@@ -220,7 +250,24 @@
 
 {% block scripts %}
 <script>
-function openScheduleModal() {
+function openScheduleModal(schedId, date, from, to, userId) {
+  var f = document.getElementById('schedForm');
+  var title = document.getElementById('schedModalTitle');
+  if (schedId) {
+    title.innerHTML = '<i class="bi bi-pencil me-1"></i>Редактировать смену';
+    f.action = '/schedule/' + schedId + '/edit';
+    document.getElementById('schedDate').value = date;
+    document.getElementById('schedFrom').value = from;
+    document.getElementById('schedTo').value = to;
+    document.getElementById('schedUserId').value = userId;
+  } else {
+    title.innerHTML = '<i class="bi bi-calendar-plus me-1"></i>Добавить смену';
+    f.action = '/schedule';
+    document.getElementById('schedDate').value = '{{ today.strftime('%Y-%m-%d') }}';
+    document.getElementById('schedFrom').value = '09:00';
+    document.getElementById('schedTo').value = '18:00';
+    document.getElementById('schedUserId').value = '{{ current_user_id }}';
+  }
   new bootstrap.Modal(document.getElementById('scheduleModal')).show();
 }
 </script>

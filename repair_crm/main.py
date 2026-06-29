@@ -517,6 +517,17 @@ async def forbidden(request: Request, _):
     }, status_code=403)
 
 
+@app.exception_handler(500)
+async def internal_error(request: Request, exc: Exception):
+    import traceback
+    traceback.print_exc()
+    return templates.TemplateResponse(request, "error.html", {
+        "title": "Внутренняя ошибка",
+        "message": str(exc),
+        "user": getattr(request.state, "user", None),
+    }, status_code=500)
+
+
 # ══════════════════════════════════════════════════════════════════
 #  Helpers
 # ══════════════════════════════════════════════════════════════════
@@ -2074,6 +2085,35 @@ def delete_schedule(sched_id: int, request: Request, session: Session = Depends(
     if s:
         session.delete(s)
         session.commit()
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/schedule/{sched_id}/edit")
+def edit_schedule(
+    sched_id: int, request: Request,
+    date: str = Form(""),
+    time_from: str = Form(""),
+    time_to: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    s = session.get(Schedule, sched_id)
+    if not s:
+        raise HTTPException(404)
+    try:
+        d = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, "Неверная дата")
+    if not time_from or not time_to:
+        raise HTTPException(400, "Укажите время")
+    s.date = d
+    s.time_from = time_from
+    s.time_to = time_to
+    session.commit()
+    _audit("edit_schedule", "schedule", s.id,
+           f"{s.user.full_name} {date} {time_from}-{time_to}", u, session)
     return RedirectResponse("/attendance", status_code=303)
 
 
