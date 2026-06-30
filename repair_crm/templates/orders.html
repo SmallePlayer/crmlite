@@ -97,7 +97,7 @@
     </thead>
     <tbody>
       {% for o in orders %}
-      <tr class="clickable" onclick="if(event.target.tagName!=='INPUT'&&event.target.tagName!=='BUTTON'&&event.target.tagName!=='I'&&event.target.tagName!=='FORM')location.href='/orders/{{ o.id }}'">
+      <tr class="clickable" onclick="goToOrder({{ o.id }})">
         <td class="hide-mobile"><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()"></td>
         <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a>
           {% if o.is_confirmed %}<i class="bi bi-check-circle-fill text-success ms-1 small" title="Подтверждён"></i>{% endif %}</td>
@@ -156,6 +156,11 @@
 
 {% block scripts %}
 <script>
+function goToOrder(id) {
+  var t = event.target;
+  if (t.tagName == 'INPUT' || t.tagName == 'BUTTON' || t.tagName == 'I' || t.tagName == 'FORM') return;
+  location.href = '/orders/' + id;
+}
 function toggleAll(cb) {
   document.querySelectorAll('.order-check').forEach(function(c) { c.checked = cb.checked; });
   updateBatch();
