@@ -40,11 +40,11 @@
           {% if is_today_cell %}
           {% set date_key = base_month.strftime('%Y-%m') + '-%02d' % ns.day %}
           {% set day_orders = orders_by_date.get(date_key, []) %}
-          <div class="d-flex justify-content-between align-items-center mb-1">
+          <div class="d-flex justify-content-between align-items-center mb-1"
+               {% if day_orders %}style="cursor:pointer" onclick="toggleDay('d{{ date_key }}')"{% endif %}>
             <small class="fw-bold">{{ ns.day }}</small>
             {% if day_orders %}
-            <small class="text-primary clickable fw-bold" style="cursor:pointer;font-size:0.7rem"
-                   onclick="toggleDay('d{{ date_key }}', this)">+{{ day_orders|length }}</small>
+            <small class="text-primary fw-bold" style="font-size:0.7rem">+{{ day_orders|length }}</small>
             {% endif %}
           </div>
           {% if day_orders %}
@@ -91,14 +91,14 @@
 
 {% block scripts %}
 <script>
-function toggleDay(id, el) {
+function toggleDay(id) {
   var div = document.getElementById(id);
+  if (!div) return;
+  var orders = div.querySelectorAll('a.d-block').length;
   if (div.style.display === 'none' || div.style.display === '') {
     div.style.display = 'block';
-    el.textContent = '−';
   } else {
     div.style.display = 'none';
-    el.textContent = '+' + div.querySelectorAll('a.d-block').length;
   }
 }
 </script>
