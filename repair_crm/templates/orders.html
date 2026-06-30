@@ -89,7 +89,7 @@
     </thead>
     <tbody>
       {% for o in orders %}
-      <tr>
+      <tr class="clickable" onclick="if(event.target.tagName!=='INPUT'&&event.target.tagName!=='BUTTON'&&event.target.tagName!=='I'&&event.target.tagName!=='FORM')location.href='/orders/{{ o.id }}'">
         <td><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()"></td>
         <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a></td>
         <td><span class="badge bg-light text-dark border">{{ ORDER_TYPES[o.order_type][0] }}</span></td>

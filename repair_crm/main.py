@@ -658,6 +658,9 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         .where(Task.assigned_to == u.id, Task.status == "pending")
         .order_by(desc(Task.created_at)).limit(5)
     ).unique().scalars().all()
+    users = session.execute(
+        select(User).where(User.is_active == True).order_by(User.full_name)
+    ).scalars().all()
     return templates.TemplateResponse(request, "index.html", {
         **_user_context(request),
         "active_orders": active, "closed_orders": closed,
@@ -665,7 +668,7 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         "total_parts": total_parts, "total_products": total_products,
         "low_stock": low_stock, "overdue": overdue, "due_soon": due_soon,
         "my_tasks": my_tasks, "total_tasks": total_tasks,
-        "my_recent_tasks": my_recent_tasks,
+        "my_recent_tasks": my_recent_tasks, "users": users,
         "recent_orders": recent,
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES,
         "datetime": datetime,
