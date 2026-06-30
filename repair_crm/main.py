@@ -188,6 +188,7 @@ class Order(Base):
     deadline: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
     schedule_location: Mapped[str] = mapped_column(String(300), default="")
+    is_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     items = relationship(
         "OrderItem", back_populates="order",
         cascade="all, delete-orphan", order_by="OrderItem.id",
@@ -264,7 +265,8 @@ async def lifespan(app: FastAPI):
     # DB migrations
     with engine.connect() as conn:
         for col, dtype in [("order_type", "VARCHAR(20) DEFAULT 'repair'"),
-                           ("scheduled_at", "DATETIME"), ("schedule_location", "VARCHAR(300) DEFAULT ''")]:
+                           ("scheduled_at", "DATETIME"), ("schedule_location", "VARCHAR(300) DEFAULT ''"),
+                           ("is_confirmed", "BOOLEAN DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -1545,6 +1547,18 @@ def reopen_order(order_id: int, request: Request, session: Session = Depends(get
     order.closed_at = None
     session.commit()
     _audit("reopen", "order", order_id, f"#{order_id}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/confirm")
+def toggle_confirm(order_id: int, request: Request, session: Session = Depends(get_db)):
+    order = session.get(Order, order_id)
+    if not order:
+        raise HTTPException(404)
+    order.is_confirmed = not order.is_confirmed
+    session.commit()
+    _audit("confirm" if order.is_confirmed else "unconfirm", "order", order_id,
+           f"#{order_id}", request.state.user, session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
 
 

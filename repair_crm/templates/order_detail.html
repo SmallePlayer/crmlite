@@ -6,6 +6,11 @@
   <a href="/orders" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Назад</a>
   <h4 class="mb-0">Заказ #{{ order.id }}</h4>
   <span class="badge bg-secondary">{{ ORDER_TYPES[order.order_type][0] }}</span>
+  {% if order.is_confirmed %}
+  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Подтверждён</span>
+  {% else %}
+  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Не подтверждён</span>
+  {% endif %}
   <span class="badge bg-{{ ORDER_STATUSES[order.status][1] }}">{{ ORDER_STATUSES[order.status][0] }}</span>
 </div>
 
@@ -23,6 +28,13 @@
                   title="Отправить на почту">
             <i class="bi bi-envelope"></i>
           </button>
+          <form method="post" action="/orders/{{ order.id }}/confirm" class="d-inline">
+            <button class="btn btn-{{ 'outline-warning' if order.is_confirmed else 'outline-success' }} btn-sm"
+                    title="{{ 'Отменить подтверждение' if order.is_confirmed else 'Подтвердить заказ' }}">
+              <i class="bi bi-{{ 'x-circle' if order.is_confirmed else 'check-circle' }}"></i>
+              {{ 'Отменить' if order.is_confirmed else 'Подтвердить' }}
+            </button>
+          </form>
           {% if order.status == "closed" %}
           <form method="post" action="/orders/{{ order.id }}/reopen" class="d-inline"
                 data-confirm="Вернуть заказ #{{ order.id }} в работу?">
