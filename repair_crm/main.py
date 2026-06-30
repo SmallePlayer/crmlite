@@ -807,7 +807,6 @@ def orders_page(
     request: Request,
     status: str = Query(""),
     order_type: str = Query(""),
-    sort: str = Query(""),
     date_from: str = Query(""),
     date_to: str = Query(""),
     client: str = Query(""),
@@ -840,14 +839,6 @@ def orders_page(
         base_q = base_q.where(Order.client.has(Client.full_name.ilike(like)))
 
     q = base_q.order_by(desc(Order.created_at))
-    if sort == "oldest":
-        q = base_q.order_by(Order.created_at)
-    elif sort == "id_desc":
-        q = base_q.order_by(desc(Order.id))
-    elif sort == "id_asc":
-        q = base_q.order_by(Order.id)
-    elif sort == "price_desc":
-        q = base_q.order_by(desc(Order.total_price))
     orders, page, pages, total = _paginate(session, q, page)
 
     counts = {}
@@ -859,7 +850,6 @@ def orders_page(
     return templates.TemplateResponse(request, "orders.html", {
         **_user_context(request),
         "orders": orders, "current_status": status, "current_type": order_type,
-        "current_sort": sort,
         "counts": counts, "page": page, "pages": pages, "total": total,
         "date_from": date_from, "date_to": date_to, "client_filter": client.strip(),
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES, "timedelta": timedelta,
