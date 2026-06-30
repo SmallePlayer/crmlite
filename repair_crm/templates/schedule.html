@@ -21,11 +21,11 @@
 {% set total_days = last_day.day %}
 
 <div class="table-responsive">
-  <table class="table table-bordered align-top" style="table-layout:fixed">
+  <table class="table table-bordered align-top" style="table-layout:fixed;min-width:600px">
     <thead>
       <tr class="table-light text-center">
         {% for d in ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"] %}
-        <th style="width:14.2%" class="{{ 'text-danger' if loop.index0 >= 5 }}">{{ d }}</th>
+        <th style="width:14.2%;font-size:0.75rem;padding:4px" class="{{ 'text-danger' if loop.index0 >= 5 }}">{{ d }}</th>
         {% endfor %}
       </tr>
     </thead>
@@ -36,7 +36,7 @@
       <tr>
         {% for dow in range(7) %}
         {% set is_today_cell = (w == 0 and dow >= start_dow) or (w > 0 and ns.day <= total_days) %}
-        <td style="vertical-align:top;padding:4px" class="{{ 'text-muted' if not is_today_cell }}">
+        <td style="vertical-align:top;padding:3px;font-size:0.7rem" class="{{ 'text-muted' if not is_today_cell }}">
           {% if is_today_cell %}
           {% set date_key = base_month.strftime('%Y-%m') + '-%02d' % ns.day %}
           {% set day_orders = orders_by_date.get(date_key, []) %}

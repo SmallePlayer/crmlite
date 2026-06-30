@@ -10,7 +10,7 @@
 </div>
 
 <div class="row g-4">
-  <div class="col-lg-5">
+  <div class="col-12 col-lg-5">
     <div class="card shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <strong>Информация о заказе</strong>
@@ -45,7 +45,7 @@
             {% if next_status != "closed" %}
             <form method="post" action="/orders/{{ order.id }}/status" class="d-inline">
               <input type="hidden" name="new_status" value="{{ next_status }}">
-              <button class="btn btn-sm btn-outline-{{ ORDER_STATUSES[next_status][1].split()[0] if ' ' in ORDER_STATUSES[next_status][1] else ORDER_STATUSES[next_status][1] }}">
+              <button class="btn btn-sm btn-outline-{{ ORDER_STATUSES[next_status][1].split()[0] if ' ' in ORDER_STATUSES[next_status][1] else ORDER_STATUSES[next_status][1] }} mb-1">
                 <i class="bi bi-arrow-right"></i> {{ ORDER_STATUSES[next_status][0] }}
               </button>
             </form>
@@ -94,7 +94,7 @@
     </div>
   </div>
 
-  <div class="col-lg-7">
+  <div class="col-12 col-lg-7">
     {# Services card #}
     <div class="card shadow-sm mb-4">
       <div class="card-header"><strong>Выполненные услуги</strong></div>
