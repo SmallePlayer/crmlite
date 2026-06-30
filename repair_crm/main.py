@@ -439,52 +439,6 @@ def _seed_data():
         for p in products:
             s.add(ProductMovement(product_id=p.id, type="in", quantity=p.quantity,
                                   destination="", reason="Начальный остаток"))
-        # Test workers
-        worker1 = User(
-            username="worker1", password_hash=_hash_password("test1234"),
-            full_name="Михаил Кузнецов", role_id=worker_role.id,
-            inn="771234567890", position="Мастер по ремонту",
-        )
-        worker2 = User(
-            username="worker2", password_hash=_hash_password("test1234"),
-            full_name="Алексей Смирнов", role_id=worker_role.id,
-            inn="772345678901", position="Мастер по ремонту",
-        )
-        manager1 = User(
-            username="manager1", password_hash=_hash_password("test1234"),
-            full_name="Елена Васильева", role_id=manager_role.id,
-            inn="773456789012", position="Менеджер",
-        )
-        s.add_all([worker1, worker2, manager1])
-        s.flush()
-        # Test tasks
-        admin_id = 1
-        s.add_all([
-            Task(title="Проверить нагрев хотэнда Ender 3",
-                 description="Клиент жалуется на перегрев. Проверить термистор и плату управления.",
-                 created_by=admin_id, assigned_to=worker1.id),
-            Task(title="Замена ремня осей Y на Prusa MK4",
-                 description="Ремень изношен, пропуски шагов. Заменить и откалибровать.",
-                 created_by=admin_id, assigned_to=worker2.id),
-            Task(title="Калибровка стола Anycubic Photon",
-                 description="Плановое обслуживание. Ручная + автоматическая калибровка.",
-                 created_by=admin_id, assigned_to=worker1.id),
-            Task(title="Прошивка Marlin на Creality CR-10",
-                 description="Установка последней версии Marlin с BLTouch.",
-                 created_by=admin_id, assigned_to=worker2.id),
-            Task(title="Заказать запчасти у поставщика",
-                 description="Сопла 0.4мм x50, термисторы NTC 100K x20",
-                 created_by=admin_id, assigned_to=admin_id),
-            Task(title="Обзвонить клиентов по готовым заказам",
-                 description="Уведомить клиентов что заказы готовы к выдаче.",
-                 created_by=admin_id, assigned_to=manager1.id),
-            Task(title="Провести инвентаризацию склада запчастей",
-                 description="Сверить остатки хотэндов, сопел, термисторов.",
-                 created_by=admin_id, assigned_to=worker1.id),
-            Task(title="Подготовить отчёт по выручке за месяц",
-                 description="Собрать данные по закрытым заказам, выгрузить в Excel.",
-                 created_by=admin_id, assigned_to=manager1.id),
-        ])
         s.commit()
 
 
@@ -1414,7 +1368,8 @@ def create_order(
     printer: str = Form(...),
     defect: str = Form(...),
     assigned_to: int = Form(0),
-    deadline: str = Form(""),
+    scheduled_date: str = Form(""),
+    scheduled_time: str = Form(""),
     scheduled_at: str = Form(""),
     schedule_location: str = Form(""),
     session: Session = Depends(get_db),
@@ -1422,15 +1377,11 @@ def create_order(
     if not session.get(Client, client_id):
         raise HTTPException(400, "Клиент не найден")
     deadline_val = None
-    if deadline.strip():
-        try:
-            deadline_val = datetime.strptime(deadline.strip(), "%Y-%m-%d")
-        except ValueError:
-            pass
     sched_val = None
-    if scheduled_at.strip():
+    sched_str = scheduled_at.strip() or f"{scheduled_date.strip()}T{scheduled_time.strip()}"
+    if sched_str and sched_str != "T":
         try:
-            sched_val = datetime.strptime(scheduled_at.strip(), "%Y-%m-%dT%H:%M")
+            sched_val = datetime.strptime(sched_str.replace("T", " ")[:16], "%Y-%m-%d %H:%M")
         except ValueError:
             pass
     order = Order(

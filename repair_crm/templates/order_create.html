@@ -12,7 +12,7 @@
           <label class="form-label">Тип заказа <span class="text-danger">*</span></label>
           <select name="order_type" class="form-select" id="orderType" onchange="onTypeChange()">
             {% for t_val, (t_label, t_icon) in ORDER_TYPES.items() %}
-            <option value="{{ t_val }}"><i class="bi bi-{{ t_icon }}"></i> {{ t_label }}</option>
+            <option value="{{ t_val }}">{{ t_label }}</option>
             {% endfor %}
           </select>
         </div>
@@ -50,21 +50,26 @@
             {% endfor %}
           </select>
         </div>
-        <div class="mb-3">
-          <label class="form-label">Срок сдачи</label>
-          <input type="date" name="deadline" class="form-control">
-          <div class="form-text">Оставьте пустым если срок не определён</div>
+        <hr>
+        <h6 class="mb-3"><i class="bi bi-calendar-event me-1"></i>Выезд к клиенту</h6>
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Дата</label>
+            <input type="date" name="scheduled_date" id="schedDate" class="form-control"
+                   onchange="updateScheduledAt()">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Время</label>
+            <input type="time" name="scheduled_time" id="schedTime" class="form-control"
+                   value="10:00" onchange="updateScheduledAt()">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Адрес</label>
+            <input type="text" name="schedule_location" class="form-control"
+                   placeholder="Улица, дом, подъезд..." autocomplete="off">
+          </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label">Дата и время выезда</label>
-          <input type="datetime-local" name="scheduled_at" class="form-control">
-          <div class="form-text">Когда и во сколько едем к клиенту</div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Адрес выезда</label>
-          <input type="text" name="schedule_location" class="form-control"
-                 placeholder="Улица, дом, подъезд..." autocomplete="off">
-        </div>
+        <input type="hidden" name="scheduled_at" id="scheduledAt">
         <div class="d-flex gap-2">
           <button type="submit" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i> Создать заказ
@@ -94,6 +99,11 @@ function onTypeChange() {
     document.getElementById('deviceLabel').textContent = 'Принтер *';
     document.getElementById('defectLabel').textContent = 'Описание дефекта *';
   }
+}
+function updateScheduledAt() {
+  var d = document.getElementById('schedDate').value;
+  var t = document.getElementById('schedTime').value;
+  document.getElementById('scheduledAt').value = d && t ? d + 'T' + t : '';
 }
 </script>
 {% endblock %}
