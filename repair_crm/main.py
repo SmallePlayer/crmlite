@@ -64,7 +64,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(100), unique=True)
     password_hash: Mapped[str] = mapped_column(String(200))
     full_name: Mapped[str] = mapped_column(String(200))
-    role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
+    role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), index=True)
     role = relationship("Role")
     inn: Mapped[str] = mapped_column(String(20), default="")
     position: Mapped[str] = mapped_column(String(100), default="")
@@ -83,7 +83,7 @@ class Role(Base):
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     user_name: Mapped[str] = mapped_column(String(200), default="")
     action: Mapped[str] = mapped_column(String(100))
     entity_type: Mapped[str] = mapped_column(String(50))
@@ -127,13 +127,13 @@ class Part(Base):
 class StockMovement(Base):
     __tablename__ = "stock_movements"
     id: Mapped[int] = mapped_column(primary_key=True)
-    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id"))
+    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id"), index=True)
     part = relationship("Part", back_populates="movements")
     type: Mapped[str] = mapped_column(String(10))
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     price_per_unit: Mapped[float] = mapped_column(Float, default=0)
     reason: Mapped[str] = mapped_column(String(500), default="")
-    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"), nullable=True)
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -153,7 +153,7 @@ class Product(Base):
 class ProductMovement(Base):
     __tablename__ = "product_movements"
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     product = relationship("Product", back_populates="movements")
     type: Mapped[str] = mapped_column(String(10))
     quantity: Mapped[int] = mapped_column(Integer, default=0)
@@ -165,7 +165,7 @@ class ProductMovement(Base):
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     id: Mapped[int] = mapped_column(primary_key=True)
-    from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     from_user = relationship("User", foreign_keys=[from_user_id])
     text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -174,14 +174,14 @@ class ChatMessage(Base):
 class Order(Base):
     __tablename__ = "orders"
     id: Mapped[int] = mapped_column(primary_key=True)
-    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), index=True)
     client = relationship("Client", back_populates="orders")
     order_type: Mapped[str] = mapped_column(String(20), default="repair")
     printer: Mapped[str] = mapped_column(String(200))
     defect: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="in_progress")
     total_price: Mapped[float] = mapped_column(Float, default=0)
-    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     assignee = relationship("User")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     closed_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
@@ -201,7 +201,7 @@ class Order(Base):
 class OrderItem(Base):
     __tablename__ = "order_items"
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), index=True)
     order = relationship("Order", back_populates="items")
     name: Mapped[str] = mapped_column(String(300))
     price: Mapped[float] = mapped_column(Float, default=0)
@@ -210,9 +210,9 @@ class OrderItem(Base):
 class OrderPart(Base):
     __tablename__ = "order_parts"
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), index=True)
     order = relationship("Order", back_populates="parts")
-    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id"))
+    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id"), index=True)
     part = relationship("Part")
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     price: Mapped[float] = mapped_column(Float, default=0)
@@ -223,9 +223,9 @@ class Task(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str] = mapped_column(Text, default="")
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     creator = relationship("User", foreign_keys=[created_by])
-    assigned_to: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    assigned_to: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     assignee = relationship("User", foreign_keys=[assigned_to])
     status: Mapped[str] = mapped_column(String(20), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -239,7 +239,7 @@ class Task(Base):
 class Attendance(Base):
     __tablename__ = "attendance"
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     user = relationship("User")
     date: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     check_in: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -250,7 +250,7 @@ class Attendance(Base):
 class Schedule(Base):
     __tablename__ = "schedules"
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     user = relationship("User")
     date: Mapped[datetime] = mapped_column(DateTime)
     time_from: Mapped[str] = mapped_column(String(5))
@@ -267,6 +267,17 @@ async def lifespan(app: FastAPI):
                            ("scheduled_at", "DATETIME"), ("schedule_location", "VARCHAR(300) DEFAULT ''")]:
             try:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        # Create indexes on FK columns (silently skip if exist)
+        for tbl, col in [("tasks", "assigned_to"), ("tasks", "created_by"),
+                         ("attendance", "user_id"), ("order_items", "order_id"),
+                         ("order_parts", "order_id"), ("orders", "client_id"),
+                         ("schedules", "user_id"), ("chat_messages", "from_user_id"),
+                         ("orders", "assigned_to")]:
+            try:
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{tbl}_{col} ON {tbl} ({col})"))
                 conn.commit()
             except Exception:
                 pass
@@ -755,8 +766,7 @@ def orders_page(
     session: Session = Depends(get_db),
 ):
     base_q = select(Order).options(
-        joinedload(Order.client), joinedload(Order.items),
-        joinedload(Order.parts), joinedload(Order.assignee),
+        joinedload(Order.client), joinedload(Order.assignee),
     )
     if status:
         base_q = base_q.where(Order.status == status)
@@ -1993,22 +2003,18 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
     ).unique().scalars().all()
 
     by_user_date = {}
+    today_str = today.strftime("%Y-%m-%d")
+    today_attendance = {}
     for a in attendances:
         d = a.date.strftime("%Y-%m-%d") if isinstance(a.date, datetime) else str(a.date)[:10]
         by_user_date.setdefault(a.user_id, {})[d] = a
+        if d == today_str:
+            today_attendance[a.user_id] = a
 
     sched_by_user = {}
     for s in schedules:
         d = s.date.strftime("%Y-%m-%d") if isinstance(s.date, datetime) else str(s.date)[:10]
         sched_by_user.setdefault(s.user_id, {}).setdefault(d, []).append(s)
-
-    # Today's check-in status
-    today_str = today.strftime("%Y-%m-%d")
-    today_attendance = {}
-    for a in attendances:
-        d = a.date.strftime("%Y-%m-%d") if isinstance(a.date, datetime) else str(a.date)[:10]
-        if d == today_str:
-            today_attendance[a.user_id] = a
 
     return templates.TemplateResponse(request, "attendance.html", {
         **_user_context(request),
