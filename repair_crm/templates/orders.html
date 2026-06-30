@@ -41,6 +41,16 @@
     </select>
   </div>
   <div class="col-6 col-md-2">
+    <select name="sort" class="form-select form-select-sm">
+      <option value="" {{ 'selected' if not current_sort }}>Новые сверху</option>
+      <option value="oldest" {{ 'selected' if current_sort == 'oldest' }}>Старые сверху</option>
+      <option value="id_desc" {{ 'selected' if current_sort == 'id_desc' }}>По номеру ↓</option>
+      <option value="id_asc" {{ 'selected' if current_sort == 'id_asc' }}>По номеру ↑</option>
+      <option value="price_desc" {{ 'selected' if current_sort == 'price_desc' }}>По сумме ↓</option>
+      <option value="client" {{ 'selected' if current_sort == 'client' }}>По клиенту</option>
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
     <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}" title="С даты">
   </div>
   <div class="col-6 col-md-2">
