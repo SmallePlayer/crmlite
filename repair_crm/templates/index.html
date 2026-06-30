@@ -99,15 +99,6 @@
   {% endif %}
 </div>
 
-<div class="row g-3 mb-4">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-header"><strong><i class="bi bi-bar-chart me-1"></i>Топ услуг</strong></div>
-      <div class="card-body"><canvas id="servicesChart" height="200"></canvas></div>
-    </div>
-  </div>
-</div>
-
 {% if my_recent_tasks %}
 <div class="card shadow-sm mb-4">
   <div class="card-header d-flex justify-content-between align-items-center">
@@ -167,14 +158,4 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-fetch('/api/charts/top-services').then(r => r.json()).then(data => {
-  var colors = ['#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545','#fd7e14','#ffc107','#198754'];
-  new Chart(document.getElementById('servicesChart'), {
-    type: 'doughnut', data: { labels: data.map(d => d.name), datasets: [{ data: data.map(d => d.total), backgroundColor: colors.slice(0, data.length) }] },
-    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } }
-  });
-});
-</script>
 {% endblock %}
