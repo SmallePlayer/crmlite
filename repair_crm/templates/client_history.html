@@ -5,7 +5,7 @@
 <div class="d-flex align-items-center gap-2 mb-4">
   <a href="/clients" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Назад</a>
   <h4 class="mb-0">{{ client.full_name }}</h4>
-  <small class="text-muted">{{ client.phone }}</small>
+  <a href="tel:{{ client.phone }}" class="text-decoration-none"><small class="text-muted">{{ client.phone }}</small></a>
 </div>
 
 {% if client.comment %}

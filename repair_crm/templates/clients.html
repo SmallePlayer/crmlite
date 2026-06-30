@@ -27,7 +27,7 @@
         <td>
           <a href="/clients/{{ c.id }}/orders" class="text-decoration-none"><strong>{{ c.full_name }}</strong></a>
         </td>
-        <td>{{ c.phone }}</td>
+        <td><a href="tel:{{ c.phone }}" class="text-decoration-none">{{ c.phone }}</a></td>
         <td class="text-muted text-truncate-cell">{{ c.comment or '—' }}</td>
         <td>
           {% set n = c.orders | length %}

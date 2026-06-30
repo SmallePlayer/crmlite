@@ -28,7 +28,7 @@
     <tbody>
       {% for c in results.clients %}
       <tr class="clickable" onclick="location.href='/clients'">
-        <td><strong>{{ c.full_name }}</strong></td><td>{{ c.phone }}</td><td class="text-muted">{{ c.comment or '—' }}</td>
+        <td><strong>{{ c.full_name }}</strong></td><td><a href="tel:{{ c.phone }}" class="text-decoration-none">{{ c.phone }}</a></td><td class="text-muted">{{ c.comment or '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>
