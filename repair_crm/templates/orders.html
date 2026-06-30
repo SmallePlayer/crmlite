@@ -4,9 +4,12 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4 class="mb-0">Заказы</h4>
-  <a href="/orders/new" class="btn btn-primary">
+  <div>
+    <a href="/orders" class="btn btn-sm btn-outline-secondary me-1">Сбросить всё</a>
+    <a href="/orders/new" class="btn btn-primary">
     <i class="bi bi-plus-lg"></i> Новый заказ
   </a>
+  </div>
 </div>
 
 <ul class="nav nav-tabs nav-tabs-bordered mb-0">
@@ -57,6 +60,7 @@
 </form>
 
 {% if orders %}
+<small class="text-muted">Показано {{ orders|length }} из {{ total }}</small>
 <div class="d-flex align-items-center gap-2 mb-2" id="batchBar" style="display:none">
   <small class="text-muted">Выбрано: <span id="batchCount">0</span></small>
   <form method="post" action="/orders/batch-close" id="batchCloseForm" class="d-inline"
