@@ -29,7 +29,15 @@
 
 <form class="row g-2 mt-0 mb-3 bg-light p-2 rounded" action="/orders" method="get">
   {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
-  <div class="col-6 col-md-2 hide-mobile">
+  <div class="col-6 col-md-2">
+    <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">Новые сверху</option>
+      <option value="oldest" {{ 'selected' if current_sort == 'oldest' }}>Старые сверху</option>
+      <option value="id_desc" {{ 'selected' if current_sort == 'id_desc' }}>№ по убыванию</option>
+      <option value="id_asc" {{ 'selected' if current_sort == 'id_asc' }}>№ по возрастанию</option>
+      <option value="price_desc" {{ 'selected' if current_sort == 'price_desc' }}>По сумме</option>
+    </select>
+  </div>
     <select name="order_type" class="form-select form-select-sm">
       <option value="">Все типы</option>
       {% for t_val, (t_label, t_icon) in ORDER_TYPES.items() %}
@@ -82,8 +90,8 @@
         <th class="hide-mobile">Принтер</th>
         <th>Статус</th>
         <th class="hide-mobile">Срок</th>
-        <th>Сумма</th>
-        <th class="hide-mobile">Создан</th>
+        <th class="hide-mobile">Сумма</th>
+        <th>Дата</th>
         <th style="width:120px"></th>
       </tr>
     </thead>
@@ -104,7 +112,7 @@
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td><strong>{{ o.total_price | money }}</strong></td>
-        <td class="text-muted hide-mobile">{{ o.created_at | dt }}</td>
+        <td class="text-muted">{{ o.created_at | dt }}</td>
         <td>
           <a href="/orders/{{ o.id }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
           {% if o.status == "closed" %}

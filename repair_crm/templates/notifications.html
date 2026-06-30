@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% set current_page = "notifications" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Уведомления</h4>
+  {% if notifications %}
+  <form method="post" action="/notifications/read-all">
+    <button class="btn btn-sm btn-outline-primary">Прочитать все</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if notifications %}
+<div class="list-group">
+  {% for n in notifications %}
+  <div class="list-group-item {{ 'bg-light' if not n.is_read }}">
+    <div class="d-flex w-100 justify-content-between">
+      <div>
+        {% if n.link %}
+        <a href="{{ n.link }}" class="text-decoration-none fw-semibold">{{ n.title }}</a>
+        {% else %}
+        <span class="fw-semibold">{{ n.title }}</span>
+        {% endif %}
+        {% if not n.is_read %}
+        <span class="badge bg-primary ms-1" style="font-size:0.5rem">●</span>
+        {% endif %}
+        {% if n.text %}
+        <p class="mb-0 text-muted small">{{ n.text }}</p>
+        {% endif %}
+      </div>
+      <small class="text-muted">{{ n.created_at | dt }}</small>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-bell fs-1"></i>
+  <p class="mt-2">Уведомлений пока нет.</p>
+</div>
+{% endif %}
+{% endblock %}

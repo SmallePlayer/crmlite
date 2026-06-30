@@ -136,6 +136,16 @@
             <input type="text" name="q" class="form-control" placeholder="Поиск..." id="globalSearch" autocomplete="off">
           </div>
         </form>
+        {% if user %}
+        <a href="/notifications" class="btn btn-sm btn-outline-secondary position-relative" title="Уведомления">
+          <i class="bi bi-bell"></i>
+          {% if unread_count > 0 %}
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.6rem">
+            {{ unread_count }}
+          </span>
+          {% endif %}
+        </a>
+        {% endif %}
         <div class="dropdown d-none d-md-block">
           <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Экспорт">
             <i class="bi bi-download"></i> Экспорт

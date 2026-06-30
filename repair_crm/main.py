@@ -259,6 +259,18 @@ class Schedule(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class Notification(Base):
+    __tablename__ = "notifications"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user = relationship("User")
+    title: Mapped[str] = mapped_column(String(200))
+    text: Mapped[str] = mapped_column(Text, default="")
+    link: Mapped[str] = mapped_column(String(300), default="")
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
@@ -272,6 +284,20 @@ async def lifespan(app: FastAPI):
                 conn.commit()
             except Exception:
                 pass
+        # Create notifications table if not exists
+        with engine.connect() as nc:
+            nc.execute(text("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    title VARCHAR(200) NOT NULL,
+                    text TEXT DEFAULT '',
+                    link VARCHAR(300) DEFAULT '',
+                    is_read BOOLEAN DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            nc.commit()
         # Create indexes on FK columns (silently skip if exist)
         for tbl, col in [("tasks", "assigned_to"), ("tasks", "created_by"),
                          ("attendance", "user_id"), ("order_items", "order_id"),
@@ -374,6 +400,16 @@ def _audit(action: str, entity_type: str, entity_id: int | None = None,
     else:
         with Session(engine) as s:
             s.add(a)
+            s.commit()
+
+
+def _notify(user_id: int, title: str, text: str = "", link: str = "", session: Session | None = None):
+    n = Notification(user_id=user_id, title=title, text=text, link=link)
+    if session is not None:
+        session.add(n)
+    else:
+        with Session(engine) as s:
+            s.add(n)
             s.commit()
 
 
@@ -523,7 +559,16 @@ async def internal_error(request: Request, exc: Exception):
 def _user_context(request: Request) -> dict:
     u = getattr(request.state, "user", None)
     if not u:
-        return {"user": None, "is_admin": False, "can_manage_users": False}
+        return {"user": None, "is_admin": False, "can_manage_users": False, "unread_count": 0}
+    unread = 0
+    try:
+        with Session(engine) as s:
+            unread = s.execute(
+                select(func.count(Notification.id))
+                .where(Notification.user_id == u.id, Notification.is_read == False)
+            ).scalar() or 0
+    except Exception:
+        pass
     return {
         "user": u,
         "is_admin": u.role.name == "admin",
@@ -532,6 +577,7 @@ def _user_context(request: Request) -> dict:
         "can_manage_orders": _has_permission(u, "manage_orders"),
         "can_manage_warehouse": _has_permission(u, "manage_warehouse"),
         "can_manage_products": _has_permission(u, "manage_products"),
+        "unread_count": unread,
     }
 
 
@@ -761,6 +807,7 @@ def orders_page(
     request: Request,
     status: str = Query(""),
     order_type: str = Query(""),
+    sort: str = Query(""),
     date_from: str = Query(""),
     date_to: str = Query(""),
     client: str = Query(""),
@@ -793,6 +840,14 @@ def orders_page(
         base_q = base_q.where(Order.client.has(Client.full_name.ilike(like)))
 
     q = base_q.order_by(desc(Order.created_at))
+    if sort == "oldest":
+        q = base_q.order_by(Order.created_at)
+    elif sort == "id_desc":
+        q = base_q.order_by(desc(Order.id))
+    elif sort == "id_asc":
+        q = base_q.order_by(Order.id)
+    elif sort == "price_desc":
+        q = base_q.order_by(desc(Order.total_price))
     orders, page, pages, total = _paginate(session, q, page)
 
     counts = {}
@@ -804,6 +859,7 @@ def orders_page(
     return templates.TemplateResponse(request, "orders.html", {
         **_user_context(request),
         "orders": orders, "current_status": status, "current_type": order_type,
+        "current_sort": sort,
         "counts": counts, "page": page, "pages": pages, "total": total,
         "date_from": date_from, "date_to": date_to, "client_filter": client.strip(),
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES, "timedelta": timedelta,
@@ -1409,6 +1465,9 @@ def create_order(
     session.add(order)
     session.commit()
     _audit("create", "order", order.id, f"#{order.id} {printer.strip()}", request.state.user, session)
+    if order.assigned_to:
+        _notify(order.assigned_to, f"Новый заказ #{order.id}",
+                f"{order.client.full_name} — {printer.strip()}", f"/orders/{order.id}", session)
     return RedirectResponse(f"/orders/{order.id}", status_code=303)
 
 
@@ -2239,6 +2298,43 @@ def delete_task(task_id: int, request: Request, session: Session = Depends(get_d
     session.commit()
     _audit("delete", "task", task_id, f"«{task.title}»", u, session)
     return RedirectResponse("/tasks", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Notifications
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/notifications", response_class=HTMLResponse)
+def notifications_page(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    notifs = session.execute(
+        select(Notification)
+        .where(Notification.user_id == u.id)
+        .order_by(desc(Notification.created_at)).limit(50)
+    ).scalars().all()
+    return templates.TemplateResponse(request, "notifications.html", {
+        **_user_context(request), "notifications": notifs,
+    })
+
+
+@app.post("/notifications/read-all")
+def notifications_read_all(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    session.execute(
+        select(Notification)
+        .where(Notification.user_id == u.id, Notification.is_read == False)
+    )
+    for n in session.execute(
+        select(Notification)
+        .where(Notification.user_id == u.id, Notification.is_read == False)
+    ).scalars().all():
+        n.is_read = True
+    session.commit()
+    return RedirectResponse("/notifications", status_code=303)
 
 
 # ══════════════════════════════════════════════════════════════════
