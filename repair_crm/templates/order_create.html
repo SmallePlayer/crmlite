@@ -2,12 +2,20 @@
 {% set current_page = "orders" %}
 
 {% block content %}
-<h4 class="mb-4">Новый заказ на ремонт</h4>
+<h4 class="mb-4">Новый заказ</h4>
 
 <div class="row">
   <div class="col-lg-7">
     <form method="post" action="/orders" class="card shadow-sm">
       <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Тип заказа <span class="text-danger">*</span></label>
+          <select name="order_type" class="form-select" id="orderType" onchange="onTypeChange()">
+            {% for t_val, (t_label, t_icon) in ORDER_TYPES.items() %}
+            <option value="{{ t_val }}"><i class="bi bi-{{ t_icon }}"></i> {{ t_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <div class="mb-3">
           <label class="form-label">Клиент <span class="text-danger">*</span></label>
           <input type="text" id="clientFilter" class="form-control mb-2"
@@ -23,14 +31,14 @@
           </div>
         </div>
         <div class="mb-3">
-          <label class="form-label">Принтер <span class="text-danger">*</span></label>
+          <label class="form-label" id="deviceLabel">Принтер <span class="text-danger">*</span></label>
           <input type="text" name="printer" class="form-control"
                  placeholder="Например: Ender 3 V2" required autocomplete="off">
         </div>
         <div class="mb-3">
-          <label class="form-label">Описание дефекта <span class="text-danger">*</span></label>
+          <label class="form-label" id="defectLabel">Описание <span class="text-danger">*</span></label>
           <textarea name="defect" class="form-control" rows="4"
-                    placeholder="Опишите неисправность..."
+                    placeholder="Опишите неисправность или задачу..."
                     required></textarea>
         </div>
         <div class="mb-3">
@@ -66,6 +74,16 @@ function filterClients() {
   document.querySelectorAll('#clientSelect option').forEach(function(o) {
     o.style.display = o.textContent.toLowerCase().indexOf(q) >= 0 ? '' : 'none';
   });
+}
+function onTypeChange() {
+  var t = document.getElementById('orderType').value;
+  if (t === 'print') {
+    document.getElementById('deviceLabel').textContent = 'Модель/изделие *';
+    document.getElementById('defectLabel').textContent = 'Задача / требования *';
+  } else {
+    document.getElementById('deviceLabel').textContent = 'Принтер *';
+    document.getElementById('defectLabel').textContent = 'Описание дефекта *';
+  }
 }
 </script>
 {% endblock %}

@@ -10,13 +10,16 @@
 </div>
 
 <ul class="nav nav-tabs nav-tabs-bordered mb-0">
-  {% set tabs = [("", "Все", "list-ul", "bg-dark"), ("in_progress", "В работе", "tools", "bg-warning text-dark"),
-                 ("waiting_parts", "Ожидает запчастей", "hourglass-split", "bg-info text-dark"),
-                 ("ready", "Готов к выдаче", "check-circle", "bg-primary"), ("closed", "Архив", "archive", "bg-secondary")] %}
+  {% set tabs = [("", "Все", "list-ul", "bg-dark")] %}
+  {% for s_val, s_label, s_icon, s_cls in [("in_progress", "В работе", "tools", "bg-warning text-dark"),
+      ("waiting_parts", "Ожидает запчастей", "hourglass-split", "bg-info text-dark"),
+      ("ready", "Готов к выдаче", "check-circle", "bg-primary"), ("closed", "Архив", "archive", "bg-secondary")] %}
+  {% set _ = tabs.append((s_val, s_label, s_icon, s_cls)) %}
+  {% endfor %}
   {% for s_val, s_label, s_icon, s_cls in tabs %}
   <li class="nav-item">
-    <a class="nav-link {{ 'active fw-semibold' if current_status == s_val and not (not s_val and date_from or client_filter) }}"
-       href="/orders{% if s_val %}?status={{ s_val }}{% endif %}">
+    <a class="nav-link {{ 'active fw-semibold' if current_status == s_val and not (not s_val and (date_from or client_filter or current_type)) }}"
+       href="/orders{% if s_val %}?status={{ s_val }}{% endif %}{% if current_type %}&order_type={{ current_type }}{% endif %}">
       <i class="bi bi-{{ s_icon }} me-1"></i>{{ s_label }}
       <span class="badge {{ s_cls }} ms-1">{{ counts[s_val] if s_val else counts.values()|sum }}</span>
     </a>
@@ -27,26 +30,33 @@
 <form class="row g-2 mt-0 mb-3 bg-light p-2 rounded" action="/orders" method="get">
   {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
   <div class="col-md-2">
+    <select name="order_type" class="form-select form-select-sm">
+      <option value="">Все типы</option>
+      {% for t_val, (t_label, t_icon) in ORDER_TYPES.items() %}
+      <option value="{{ t_val }}" {{ 'selected' if current_type == t_val }}>{{ t_label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
     <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}" title="С даты">
   </div>
   <div class="col-md-2">
     <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}" title="По дату">
   </div>
-  <div class="col-md-3">
+  <div class="col-md-2">
     <input type="text" name="client" class="form-control form-control-sm" value="{{ client_filter }}" placeholder="Поиск по клиенту..." autocomplete="off">
   </div>
   <div class="col-md-2">
     <button type="submit" class="btn btn-sm btn-outline-primary w-100">Применить</button>
   </div>
-  {% if date_from or date_to or client_filter %}
-  <div class="col-md-3">
+  {% if date_from or date_to or client_filter or current_type %}
+  <div class="col-md-2">
     <a href="/orders{% if current_status %}?status={{ current_status }}{% endif %}" class="btn btn-sm btn-outline-secondary w-100">Сбросить</a>
   </div>
   {% endif %}
 </form>
 
 {% if orders %}
-{# Batch actions bar #}
 <div class="d-flex align-items-center gap-2 mb-2" id="batchBar" style="display:none">
   <small class="text-muted">Выбрано: <span id="batchCount">0</span></small>
   <form method="post" action="/orders/batch-close" id="batchCloseForm" class="d-inline"
@@ -67,9 +77,9 @@
       <tr>
         <th style="width:30px"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"></th>
         <th>#</th>
+        <th>Тип</th>
         <th>Клиент</th>
         <th>Принтер</th>
-        <th>Дефект</th>
         <th>Статус</th>
         <th>Срок</th>
         <th>Сумма</th>
@@ -82,13 +92,14 @@
       <tr>
         <td><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()"></td>
         <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a></td>
+        <td><span class="badge bg-light text-dark border">{{ ORDER_TYPES[o.order_type][0] }}</span></td>
         <td>{{ o.client.full_name }}</td>
         <td class="text-truncate-cell">{{ o.printer }}</td>
-        <td class="text-muted text-truncate-cell">{{ o.defect }}</td>
         <td><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
         <td>
           {% if o.deadline %}
-          <span class="badge bg-{{ 'danger' if o.deadline < now else 'warning text-dark' if (o.deadline - now).days < 3 else 'success' }}">{{ o.deadline.strftime('%d.%m') }}</span>
+          {% set days_left = (o.deadline - now).days %}
+          <span class="badge bg-{{ 'danger' if days_left < 0 else 'warning text-dark' if days_left < 3 else 'success' }}">{{ o.deadline.strftime('%d.%m') }}</span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td><strong>{{ o.total_price | money }}</strong></td>
@@ -112,7 +123,6 @@
   </table>
 </div>
 
-{# Pagination #}
 {% if pages > 1 %}
 <nav class="d-flex justify-content-between align-items-center">
   <small class="text-muted">{{ total }} заказов</small>

@@ -22,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from jose import jwt
 from sqlalchemy import (
     create_engine, String, Float, Text, DateTime, Integer, Boolean, ForeignKey,
-    func, select, desc, event, or_,
+    func, select, desc, event, or_, text,
 )
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column, relationship,
@@ -176,6 +176,7 @@ class Order(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
     client = relationship("Client", back_populates="orders")
+    order_type: Mapped[str] = mapped_column(String(20), default="repair")
     printer: Mapped[str] = mapped_column(String(200))
     defect: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="in_progress")
@@ -258,6 +259,14 @@ class Schedule(Base):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    # DB migrations
+    with engine.connect() as conn:
+        for col, dtype in [("order_type", "VARCHAR(20) DEFAULT 'repair'")]:
+            try:
+                conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
     _seed_data()
     yield
 
@@ -392,6 +401,15 @@ def _seed_data():
             Service(name="Прошивка Marlin", price=1000, description="Обновление прошивки"),
         ]
         s.add_all(services)
+        # Test print services
+        print_services = [
+            Service(name="3D печать (PLA)", price=5, description="За грамм, пластик PLA"),
+            Service(name="3D печать (PETG)", price=7, description="За грамм, пластик PETG"),
+            Service(name="3D печать (ABS)", price=8, description="За грамм, пластик ABS"),
+            Service(name="Постобработка", price=300, description="Удаление поддержек, шлифовка"),
+            Service(name="3D моделирование", price=1500, description="Создание модели с нуля"),
+        ]
+        s.add_all(print_services)
         # Test parts
         parts = [
             Part(name="Хотэнд Ender 3", article="HT-E3-V2", purchase_price=450, quantity=15, min_stock=3),
@@ -553,6 +571,10 @@ ORDER_STATUSES = {
     "ready": ("Готов к выдаче", "primary"),
     "closed": ("Закрыт", "success"),
 }
+ORDER_TYPES = {
+    "repair": ("Ремонт", "tools"),
+    "print": ("3D печать", "printer"),
+}
 ORDER_FLOW = {
     "in_progress": ["waiting_parts", "ready", "closed"],
     "waiting_parts": ["in_progress", "ready", "closed"],
@@ -688,7 +710,8 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         "my_tasks": my_tasks, "total_tasks": total_tasks,
         "my_recent_tasks": my_recent_tasks,
         "recent_orders": recent,
-        "ORDER_STATUSES": ORDER_STATUSES, "datetime": datetime,
+        "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES,
+        "datetime": datetime,
         "last_backup": (datetime.fromtimestamp((BASE_DIR / "repair_crm.db").stat().st_mtime)
                         if (BASE_DIR / "repair_crm.db").exists() else None),
         "backup_days": ((datetime.now() - datetime.fromtimestamp((BASE_DIR / "repair_crm.db").stat().st_mtime)).days
@@ -767,6 +790,7 @@ def products_page(request: Request, session: Session = Depends(get_db)):
 def orders_page(
     request: Request,
     status: str = Query(""),
+    order_type: str = Query(""),
     date_from: str = Query(""),
     date_to: str = Query(""),
     client: str = Query(""),
@@ -781,6 +805,8 @@ def orders_page(
         base_q = base_q.where(Order.status == status)
     else:
         base_q = base_q.where(Order.status != "closed")
+    if order_type:
+        base_q = base_q.where(Order.order_type == order_type)
     if date_from:
         try:
             df = datetime.strptime(date_from, "%Y-%m-%d")
@@ -808,10 +834,11 @@ def orders_page(
 
     return templates.TemplateResponse(request, "orders.html", {
         **_user_context(request),
-        "orders": orders, "current_status": status,
+        "orders": orders, "current_status": status, "current_type": order_type,
         "counts": counts, "page": page, "pages": pages, "total": total,
         "date_from": date_from, "date_to": date_to, "client_filter": client.strip(),
-        "timedelta": timedelta,
+        "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES, "timedelta": timedelta,
+        "now": datetime.now(),
     })
 
 
@@ -825,6 +852,7 @@ def order_create_page(request: Request, session: Session = Depends(get_db)):
     ).scalars().all()
     return templates.TemplateResponse(request, "order_create.html", {
         **_user_context(request), "clients": clients, "users": users,
+        "ORDER_TYPES": ORDER_TYPES,
     })
 
 
@@ -848,7 +876,8 @@ def order_detail_page(order_id: int, request: Request, session: Session = Depend
     return templates.TemplateResponse(request, "order_detail.html", {
         **_user_context(request),
         "order": order, "services": services, "parts": parts,
-        "ORDER_STATUSES": ORDER_STATUSES, "ORDER_FLOW": ORDER_FLOW, "now": lambda: datetime.now(),
+        "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES,
+        "ORDER_FLOW": ORDER_FLOW, "now": lambda: datetime.now(),
         "services_data": [{
             "id": s.id, "name": s.name, "price": s.price,
         } for s in services],
@@ -1378,6 +1407,7 @@ def profile_edit(
 def create_order(
     request: Request,
     client_id: int = Form(...),
+    order_type: str = Form("repair"),
     printer: str = Form(...),
     defect: str = Form(...),
     assigned_to: int = Form(0),
@@ -1394,6 +1424,7 @@ def create_order(
             pass
     order = Order(
         client_id=client_id,
+        order_type=order_type,
         printer=printer.strip(),
         defect=defect.strip(),
         assigned_to=assigned_to if assigned_to > 0 else None,
@@ -1582,7 +1613,7 @@ def client_history(client_id: int, request: Request, session: Session = Depends(
     ).unique().scalars().all()
     return templates.TemplateResponse(request, "client_history.html", {
         **_user_context(request), "client": client, "orders": orders,
-        "ORDER_STATUSES": ORDER_STATUSES, "timedelta": timedelta,
+        "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES, "timedelta": timedelta,
     })
 
 
@@ -1643,9 +1674,9 @@ def export_orders(request: Request, session: Session = Depends(get_db)):
         select(Order).options(joinedload(Order.client))
         .order_by(desc(Order.created_at))
     ).unique().scalars().all()
-    rows = [[o.id, o.client.full_name, o.printer, o.defect, o.status,
+    rows = [[o.id, o.client.full_name, o.order_type, o.printer, o.defect, o.status,
              o.total_price, str(o.created_at), str(o.closed_at or "")] for o in orders]
-    return _make_excel(["ID", "Клиент", "Принтер", "Дефект", "Статус", "Сумма", "Создан", "Закрыт"],
+    return _make_excel(["ID", "Клиент", "Тип", "Принтер", "Дефект", "Статус", "Сумма", "Создан", "Закрыт"],
                        rows, "orders.xlsx")
 
 

@@ -5,6 +5,7 @@
 <div class="d-flex align-items-center gap-2 mb-4">
   <a href="/orders" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Назад</a>
   <h4 class="mb-0">Заказ #{{ order.id }}</h4>
+  <span class="badge bg-secondary">{{ ORDER_TYPES[order.order_type][0] }}</span>
   <span class="badge bg-{{ ORDER_STATUSES[order.status][1] }}">{{ ORDER_STATUSES[order.status][0] }}</span>
 </div>
 
@@ -56,8 +57,8 @@
         <table class="table table-sm mb-0">
           <tr><td class="text-muted" style="width:100px">Клиент</td><td><strong>{{ order.client.full_name }}</strong>
             <br><small class="text-muted">{{ order.client.phone }}</small></td></tr>
-          <tr><td class="text-muted">Принтер</td><td>{{ order.printer }}</td></tr>
-          <tr><td class="text-muted">Дефект</td><td>{{ order.defect }}</td></tr>
+          <tr><td class="text-muted">{% if order.order_type == 'print' %}Модель{% else %}Принтер{% endif %}</td><td>{{ order.printer }}</td></tr>
+          <tr><td class="text-muted">{% if order.order_type == 'print' %}Задача{% else %}Дефект{% endif %}</td><td>{{ order.defect }}</td></tr>
           {% if order.assignee %}
           <tr><td class="text-muted">Мастер</td><td>{{ order.assignee.full_name }}</td></tr>
           {% endif %}
