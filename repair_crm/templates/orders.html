@@ -30,7 +30,7 @@
 <form class="row g-2 mt-0 mb-3 bg-light p-2 rounded" action="/orders" method="get">
   {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
   <div class="col-6 col-md-2">
-    <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+    <select name="sort" class="form-select form-select-sm">
       <option value="">Новые сверху</option>
       <option value="oldest" {{ 'selected' if current_sort == 'oldest' }}>Старые сверху</option>
       <option value="id_desc" {{ 'selected' if current_sort == 'id_desc' }}>№ по убыванию</option>
