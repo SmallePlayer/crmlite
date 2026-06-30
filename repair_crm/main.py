@@ -186,6 +186,8 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     closed_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
     deadline: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
+    schedule_location: Mapped[str] = mapped_column(String(300), default="")
     items = relationship(
         "OrderItem", back_populates="order",
         cascade="all, delete-orphan", order_by="OrderItem.id",
@@ -261,7 +263,8 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     # DB migrations
     with engine.connect() as conn:
-        for col, dtype in [("order_type", "VARCHAR(20) DEFAULT 'repair'")]:
+        for col, dtype in [("order_type", "VARCHAR(20) DEFAULT 'repair'"),
+                           ("scheduled_at", "DATETIME"), ("schedule_location", "VARCHAR(300) DEFAULT ''")]:
             try:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -1412,6 +1415,8 @@ def create_order(
     defect: str = Form(...),
     assigned_to: int = Form(0),
     deadline: str = Form(""),
+    scheduled_at: str = Form(""),
+    schedule_location: str = Form(""),
     session: Session = Depends(get_db),
 ):
     if not session.get(Client, client_id):
@@ -1422,6 +1427,12 @@ def create_order(
             deadline_val = datetime.strptime(deadline.strip(), "%Y-%m-%d")
         except ValueError:
             pass
+    sched_val = None
+    if scheduled_at.strip():
+        try:
+            sched_val = datetime.strptime(scheduled_at.strip(), "%Y-%m-%dT%H:%M")
+        except ValueError:
+            pass
     order = Order(
         client_id=client_id,
         order_type=order_type,
@@ -1429,6 +1440,8 @@ def create_order(
         defect=defect.strip(),
         assigned_to=assigned_to if assigned_to > 0 else None,
         deadline=deadline_val,
+        scheduled_at=sched_val,
+        schedule_location=schedule_location.strip(),
     )
     session.add(order)
     session.commit()
@@ -2255,6 +2268,45 @@ def delete_task(task_id: int, request: Request, session: Session = Depends(get_d
     session.commit()
     _audit("delete", "task", task_id, f"«{task.title}»", u, session)
     return RedirectResponse("/tasks", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Schedule Calendar
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/schedule", response_class=HTMLResponse)
+def schedule_calendar_page(request: Request, month: str = Query(""), session: Session = Depends(get_db)):
+    today = datetime.now()
+    if month:
+        try:
+            year, mon = map(int, month.split("-"))
+            base = datetime(year, mon, 1)
+        except (ValueError, TypeError):
+            base = today.replace(day=1)
+    else:
+        base = today.replace(day=1)
+
+    next_month = (base.replace(day=28) + timedelta(days=4)).replace(day=1)
+    prev_month = (base - timedelta(days=1)).replace(day=1)
+
+    orders = session.execute(
+        select(Order).options(joinedload(Order.client), joinedload(Order.assignee))
+        .where(Order.scheduled_at.isnot(None),
+               Order.scheduled_at >= base, Order.scheduled_at < next_month)
+        .order_by(Order.scheduled_at)
+    ).unique().scalars().all()
+
+    by_date = {}
+    for o in orders:
+        d = o.scheduled_at.strftime("%Y-%m-%d")
+        by_date.setdefault(d, []).append(o)
+
+    return templates.TemplateResponse(request, "schedule.html", {
+        **_user_context(request),
+        "orders_by_date": by_date, "base_month": base, "next_month": next_month,
+        "prev_month": prev_month,
+        "ORDER_STATUSES": ORDER_STATUSES, "timedelta": timedelta,
+    })
 
 
 # ══════════════════════════════════════════════════════════════════

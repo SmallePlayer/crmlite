@@ -74,6 +74,14 @@
           {% if order.closed_at %}
           <tr><td class="text-muted">Закрыт</td><td>{{ order.closed_at | dt }}</td></tr>
           {% endif %}
+          {% if order.scheduled_at %}
+          <tr><td class="text-muted">Выезд</td><td>
+            <strong>{{ order.scheduled_at.strftime('%d.%m.%Y %H:%M') }}</strong>
+            {% if order.schedule_location %}
+            <br><small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ order.schedule_location }}</small>
+            {% endif %}
+          </td></tr>
+          {% endif %}
           <tr class="table-active">
             <td class="text-muted">Итого</td>
             <td><strong class="fs-5">{{ order.total_price | money }}</strong></td>

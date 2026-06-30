@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% set current_page = "schedule" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Расписание заказов</h4>
+  <div class="d-flex gap-2">
+    <a href="/schedule?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-chevron-left"></i>
+    </a>
+    <span class="btn btn-sm btn-primary disabled">{{ base_month | month_ru }} {{ base_month.year }}</span>
+    <a href="/schedule?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-chevron-right"></i>
+    </a>
+  </div>
+</div>
+
+{% set first_day = base_month.replace(day=1) %}
+{% set last_day = (first_day.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
+{% set start_dow = first_day.weekday() %}
+{% set total_days = last_day.day %}
+
+<div class="table-responsive">
+  <table class="table table-bordered align-top" style="table-layout:fixed">
+    <thead>
+      <tr class="table-light text-center">
+        {% for d in ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"] %}
+        <th style="width:14.2%" class="{{ 'text-danger' if loop.index0 >= 5 }}">{{ d }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% set ns = namespace(day=1) %}
+      {% for w in range(6) %}
+      {% if ns.day <= total_days %}
+      <tr>
+        {% for dow in range(7) %}
+        <td style="height:90px;vertical-align:top;padding:4px" class="{{ 'text-muted' if (w==0 and dow < start_dow) or ns.day > total_days }}">
+          {% if (w == 0 and dow >= start_dow) or (w > 0 and ns.day <= total_days) %}
+          <small class="fw-bold">{{ ns.day }}</small>
+          {% set date_key = base_month.strftime('%Y-%m') + '-%02d' % ns.day %}
+          {% if date_key in orders_by_date %}
+          <div class="d-flex flex-column gap-1 mt-1">
+            {% for o in orders_by_date[date_key][:5] %}
+            <a href="/orders/{{ o.id }}" class="text-decoration-none small d-block rounded px-1 py-0
+               bg-{{ ORDER_STATUSES[o.status][1].split()[0] if ' ' in ORDER_STATUSES[o.status][1] else ORDER_STATUSES[o.status][1] }} bg-opacity-25"
+               title="{{ o.scheduled_at.strftime('%H:%M') }} — {{ o.client.full_name }} — {{ o.schedule_location }}">
+              <span class="badge bg-{{ ORDER_STATUSES[o.status][1].split()[0] if ' ' in ORDER_STATUSES[o.status][1] else ORDER_STATUSES[o.status][1] }} me-1" style="width:6px;height:6px;display:inline-block;padding:0">&nbsp;</span>
+              <strong>{{ o.scheduled_at.strftime('%H:%M') }}</strong>
+              {{ o.client.full_name.split()[0] }}
+              {% if o.schedule_location %}
+              <br><i class="bi bi-geo-alt small me-1"></i>{{ o.schedule_location[:20] }}
+              {% endif %}
+            </a>
+            {% endfor %}
+            {% if orders_by_date[date_key]|length > 5 %}
+            <small class="text-muted">+{{ orders_by_date[date_key]|length - 5 }} ещё</small>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% set ns.day = ns.day + 1 %}
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if not orders_by_date %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-calendar2-week fs-1"></i>
+  <p class="mt-2">Нет заказов с назначенной датой выезда в этом месяце.</p>
+  <p>При создании заказа укажите «Дата и время выезда» — они появятся здесь.</p>
+</div>
+{% endif %}
+{% endblock %}
