@@ -49,7 +49,11 @@
               <strong>{{ o.scheduled_at.strftime('%H:%M') }}</strong>
               {{ o.client.full_name.split()[0] }}
               {% if o.schedule_location %}
-              <br><i class="bi bi-geo-alt small me-1"></i>{{ o.schedule_location[:20] }}
+              <br><a href="https://yandex.ru/maps/?text={{ o.schedule_location | urlencode }}"
+                    target="_blank" class="text-decoration-none"
+                    onclick="event.stopPropagation()"
+                    title="Открыть в Яндекс.Картах">
+                <i class="bi bi-geo-alt small me-1"></i>{{ o.schedule_location[:20] }}</a>
               {% endif %}
             </a>
             {% endfor %}

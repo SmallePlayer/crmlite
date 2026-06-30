@@ -78,7 +78,10 @@
           <tr><td class="text-muted">Выезд</td><td>
             <strong>{{ order.scheduled_at.strftime('%d.%m.%Y %H:%M') }}</strong>
             {% if order.schedule_location %}
-            <br><small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ order.schedule_location }}</small>
+            <br><a href="https://yandex.ru/maps/?text={{ order.schedule_location | urlencode }}"
+                  target="_blank" class="text-decoration-none small">
+              <i class="bi bi-geo-alt me-1"></i>{{ order.schedule_location }}
+              <i class="bi bi-box-arrow-up-right ms-1 small"></i></a>
             {% endif %}
           </td></tr>
           {% endif %}
