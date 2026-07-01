@@ -51,9 +51,10 @@
           </select>
         </div>
         <div class="mb-3">
-          <label class="form-label">Гарантия (дней)</label>
-          <input type="number" name="warranty_days" class="form-control" min="0" max="365" value="0">
-          <div class="form-text">0 — без гарантии. Обычно 30 дней для ремонта, 14 для печати.</div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="is_warranty" value="1" id="warrantyCheck">
+            <label class="form-check-label" for="warrantyCheck">Гарантийный заказ</label>
+          </div>
         </div>
         <hr>
         {# Repair: выезд #}

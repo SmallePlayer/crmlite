@@ -229,6 +229,7 @@ class Order(Base):
     schedule_location: Mapped[str] = mapped_column(String(300), default="")
     is_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     warranty_days: Mapped[int] = mapped_column(Integer, default=0)
+    is_warranty: Mapped[bool] = mapped_column(Boolean, default=False)
     items = relationship(
         "OrderItem", back_populates="order",
         cascade="all, delete-orphan", order_by="OrderItem.id",
@@ -319,7 +320,8 @@ async def lifespan(app: FastAPI):
         for col, dtype in [("order_type", "VARCHAR(20) DEFAULT 'repair'"),
                            ("scheduled_at", "DATETIME"), ("schedule_location", "VARCHAR(300) DEFAULT ''"),
                            ("is_confirmed", "BOOLEAN DEFAULT 0"),
-                           ("warranty_days", "INTEGER DEFAULT 0")]:
+                           ("warranty_days", "INTEGER DEFAULT 0"),
+                           ("is_warranty", "BOOLEAN DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -1555,6 +1557,7 @@ def create_order(
     scheduled_at: str = Form(""),
     schedule_location: str = Form(""),
     warranty_days: int = Form(0),
+    is_warranty: bool = Form(False),
     session: Session = Depends(get_db),
 ):
     if not session.get(Client, client_id):
@@ -1582,6 +1585,7 @@ def create_order(
         scheduled_at=sched_val,
         schedule_location=schedule_location.strip(),
         warranty_days=warranty_days,
+        is_warranty=is_warranty,
     )
     session.add(order)
     session.commit()
@@ -1743,6 +1747,7 @@ def edit_order(
     scheduled_at: str = Form(""),
     schedule_location: str = Form(""),
     warranty_days: int = Form(0),
+    is_warranty: bool = Form(False),
     session: Session = Depends(get_db),
 ):
     order = session.get(Order, order_id)
@@ -1763,6 +1768,7 @@ def edit_order(
         order.scheduled_at = None
     order.schedule_location = schedule_location.strip()
     order.warranty_days = warranty_days
+    order.is_warranty = is_warranty
     session.commit()
     _audit("edit", "order", order_id, f"#{order_id}", request.state.user, session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
