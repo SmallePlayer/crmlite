@@ -25,7 +25,7 @@
         <small class="text-muted">{{ spools }} кат. × {{ f.grams_per_spool }} г. · Мин: {{ f.min_stock }} г.</small>
         <div class="d-flex justify-content-center gap-1 mt-3">
           <button class="btn btn-sm btn-outline-success" onclick="openExpenseModal({{ f.id }}, '{{ f.name | e }}', {{ f.quantity }})" title="Расход"><i class="bi bi-dash-circle"></i></button>
-          <button class="btn btn-sm btn-outline-primary" onclick="openReceiveModal({{ f.id }}, {{ f.grams_per_spool }})" title="Приход катушками"><i class="bi bi-plus-circle"></i></button>
+          <button class="btn btn-sm btn-outline-primary" onclick="openReceiveModal({{ f.id }}, '{{ f.name | e }}', {{ f.grams_per_spool }})" title="Приход"><i class="bi bi-plus-circle"></i></button>
           <button class="btn btn-sm btn-outline-secondary" onclick="openFilamentModal({{ f.id }})" title="Ред."><i class="bi bi-pencil"></i></button>
           <form method="post" action="/filaments/{{ f.id }}/delete" class="d-inline" data-confirm="Удалить {{ f.name }}?"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
         </div>
@@ -69,6 +69,20 @@
       </div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div></form></div></div>
+
+<div class="modal fade" id="receiveModal" tabindex="-1"><div class="modal-dialog modal-sm">
+  <div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-1"></i>Приход пластика</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <p class="mb-2">Пластик: <strong id="recvFilamentName"></strong></p>
+      <input type="hidden" id="recvFilamentId">
+      <input type="hidden" id="recvGps" value="1000">
+      <div class="mb-2"><label class="form-label">Катушек</label><input type="number" id="recvSpools" class="form-control" min="0" value="1" onchange="updateRecvGrams()"></div>
+      <div class="mb-2"><label class="form-label">Или грамм</label><input type="number" id="recvGrams" class="form-control" min="0" value="0" onchange="updateRecvSpools()"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button class="btn btn-primary" onclick="doReceive()">Добавить</button></div>
+  </div>
+</div></div>
 
 <div class="modal fade" id="expenseModal" tabindex="-1"><div class="modal-dialog modal-sm">
   <form class="modal-content" method="post" action="/filaments/expense">
@@ -136,16 +150,36 @@ function openExpenseModal(fid, name, stock) {
   new bootstrap.Modal(document.getElementById('expenseModal')).show();
 }
 
-function openReceiveModal(fid, gps) {
-  var spools = prompt('Сколько катушек добавить?', '1');
-  if (spools && parseInt(spools) > 0) {
-    var grams = parseInt(spools) * gps;
-    fetch('/filaments/receive', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify([{id: fid, quantity: grams}])
-    }).then(function(r){ location.reload(); });
-  }
+function openReceiveModal(fid, name, gps) {
+  document.getElementById('recvFilamentId').value = fid;
+  document.getElementById('recvFilamentName').textContent = name + ' (' + gps + ' г/кат)';
+  document.getElementById('recvGps').value = gps;
+  document.getElementById('recvSpools').value = 1;
+  document.getElementById('recvGrams').value = gps;
+  new bootstrap.Modal(document.getElementById('receiveModal')).show();
+}
+
+function updateRecvGrams() {
+  var spools = parseInt(document.getElementById('recvSpools').value) || 0;
+  var gps = parseInt(document.getElementById('recvGps').value) || 1000;
+  document.getElementById('recvGrams').value = spools * gps;
+}
+
+function updateRecvSpools() {
+  var grams = parseInt(document.getElementById('recvGrams').value) || 0;
+  var gps = parseInt(document.getElementById('recvGps').value) || 1000;
+  if (gps > 0) document.getElementById('recvSpools').value = (grams / gps).toFixed(1);
+}
+
+function doReceive() {
+  var fid = parseInt(document.getElementById('recvFilamentId').value);
+  var grams = parseInt(document.getElementById('recvGrams').value) || 0;
+  if (grams <= 0) { alert('Укажите количество'); return; }
+  fetch('/filaments/receive', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify([{id: fid, quantity: grams}])
+  }).then(function(r){ location.reload(); });
 }
 </script>
 {% endblock %}
