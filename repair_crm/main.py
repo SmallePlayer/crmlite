@@ -214,6 +214,7 @@ class Order(Base):
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
     schedule_location: Mapped[str] = mapped_column(String(300), default="")
     is_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    warranty_days: Mapped[int] = mapped_column(Integer, default=0)
     items = relationship(
         "OrderItem", back_populates="order",
         cascade="all, delete-orphan", order_by="OrderItem.id",
@@ -303,7 +304,8 @@ async def lifespan(app: FastAPI):
     with engine.connect() as conn:
         for col, dtype in [("order_type", "VARCHAR(20) DEFAULT 'repair'"),
                            ("scheduled_at", "DATETIME"), ("schedule_location", "VARCHAR(300) DEFAULT ''"),
-                           ("is_confirmed", "BOOLEAN DEFAULT 0")]:
+                           ("is_confirmed", "BOOLEAN DEFAULT 0"),
+                           ("warranty_days", "INTEGER DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -981,7 +983,7 @@ def order_detail_page(order_id: int, request: Request, session: Session = Depend
             select(User).where(User.is_active == True).order_by(User.full_name)
         ).scalars().all(),
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES,
-        "ORDER_FLOW": ORDER_FLOW, "now": lambda: datetime.now(),
+        "ORDER_FLOW": ORDER_FLOW, "timedelta": timedelta, "now": lambda: datetime.now(),
         "services_data": [{
             "id": s.id, "name": s.name, "price": s.price,
         } for s in services],
@@ -1521,6 +1523,7 @@ def create_order(
     scheduled_time: str = Form(""),
     scheduled_at: str = Form(""),
     schedule_location: str = Form(""),
+    warranty_days: int = Form(0),
     session: Session = Depends(get_db),
 ):
     if not session.get(Client, client_id):
@@ -1547,6 +1550,7 @@ def create_order(
         deadline=deadline_val,
         scheduled_at=sched_val,
         schedule_location=schedule_location.strip(),
+        warranty_days=warranty_days,
     )
     session.add(order)
     session.commit()
@@ -1707,6 +1711,7 @@ def edit_order(
     scheduled_time: str = Form(""),
     scheduled_at: str = Form(""),
     schedule_location: str = Form(""),
+    warranty_days: int = Form(0),
     session: Session = Depends(get_db),
 ):
     order = session.get(Order, order_id)
@@ -1726,6 +1731,7 @@ def edit_order(
     else:
         order.scheduled_at = None
     order.schedule_location = schedule_location.strip()
+    order.warranty_days = warranty_days
     session.commit()
     _audit("edit", "order", order_id, f"#{order_id}", request.state.user, session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)

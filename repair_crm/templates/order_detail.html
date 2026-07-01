@@ -90,6 +90,12 @@
           {% if order.closed_at %}
           <tr><td class="text-muted">Закрыт</td><td>{{ order.closed_at | dt }}</td></tr>
           {% endif %}
+          <tr><td class="text-muted">Гарантия</td><td>
+            {% if order.warranty_days > 0 %}
+            <span class="badge bg-success">{{ order.warranty_days }} дн.</span>
+            {% if order.closed_at %}(до {{ (order.closed_at + timedelta(days=order.warranty_days)).strftime('%d.%m.%Y') }}){% endif %}
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td></tr>
           {% if order.scheduled_at %}
           <tr><td class="text-muted">{% if order.order_type == 'print' %}Принят{% else %}Выезд{% endif %}</td><td>
             <strong>{{ order.scheduled_at.strftime('%d.%m.%Y %H:%M') if order.order_type == 'repair' else order.scheduled_at.strftime('%d.%m.%Y') }}</strong>
@@ -327,6 +333,10 @@
               <option value="{{ u.id }}" {{ 'selected' if order.assigned_to == u.id }}>{{ u.full_name }}</option>
               {% endfor %}
             </select>
+          </div>
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Гарантия (дней)</label>
+            <input type="number" name="warranty_days" class="form-control form-control-sm" min="0" max="365" value="{{ order.warranty_days }}">
           </div>
           <div class="col-12 mb-2">
             <label class="form-label">Описание</label>
