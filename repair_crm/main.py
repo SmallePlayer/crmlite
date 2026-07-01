@@ -2150,12 +2150,30 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
         d = s.date.strftime("%Y-%m-%d") if isinstance(s.date, datetime) else str(s.date)[:10]
         sched_by_user.setdefault(s.user_id, {}).setdefault(d, []).append(s)
 
+    # Calculate work hours for the month
+    work_hours = {}
+    for u in users:
+        total_seconds = 0
+        days_worked = 0
+        for a in attendances:
+            if a.user_id == u.id and a.check_out:
+                delta = (a.check_out - a.check_in).total_seconds()
+                if delta > 0:
+                    total_seconds += delta
+                    days_worked += 1
+        work_hours[u.id] = {
+            "hours": round(total_seconds / 3600, 1),
+            "days": days_worked,
+        }
+
     return templates.TemplateResponse(request, "attendance.html", {
         **_user_context(request),
         "users": users, "base_month": base, "next_month": next_month, "prev_month": prev_month,
         "by_user_date": by_user_date, "sched_by_user": sched_by_user,
         "today_attendance": today_attendance, "today": today, "current_user_id": u.id,
         "timedelta": timedelta, "all_schedules": schedules,
+        "work_hours": work_hours,
+        "can_view_all": u.role.name in ("admin", "manager"),
     })
 
 
