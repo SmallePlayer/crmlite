@@ -72,9 +72,8 @@
 
 <div class="modal fade" id="receiveModal" tabindex="-1"><div class="modal-dialog modal-sm">
   <div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-1"></i>Приход пластика</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header"><h5 class="modal-title" id="recvTitle">Приход</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-      <p class="mb-2">Пластик: <strong id="recvFilamentName"></strong></p>
       <input type="hidden" id="recvFilamentId">
       <input type="hidden" id="recvGps" value="1000">
       <div class="mb-2"><label class="form-label">Катушек</label><input type="number" id="recvSpools" class="form-control" min="0" value="1" onchange="updateRecvGrams()"></div>
@@ -152,7 +151,7 @@ function openExpenseModal(fid, name, stock) {
 
 function openReceiveModal(fid, name, gps) {
   document.getElementById('recvFilamentId').value = fid;
-  document.getElementById('recvFilamentName').textContent = name + ' (' + gps + ' г/кат)';
+  document.getElementById('recvTitle').textContent = 'Приход: ' + name;
   document.getElementById('recvGps').value = gps;
   document.getElementById('recvSpools').value = 1;
   document.getElementById('recvGrams').value = gps;
