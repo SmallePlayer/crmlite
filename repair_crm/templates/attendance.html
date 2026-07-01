@@ -134,7 +134,7 @@
               {% set a = by_user_date.get(u.id, {}).get(date_str) %}
               {% if a and a.check_out %}
                 {% set worked = worked + 1 %}
-                <td class="text-center bg-success bg-opacity-10" title="{{ a.check_in | tm }} – {{ a.check_out | tm }}{% if a.report and is_admin %} | {{ a.report }}{% endif %}">
+                <td class="text-center bg-success bg-opacity-10" title="{{ a.check_in | tm }} – {{ a.check_out | tm }}{% if a.report and (is_admin or current_user_id == u.id) %} | {{ a.report }}{% endif %}">
                   <i class="bi bi-check-circle-fill text-success" style="font-size:0.65rem"></i>
                 </td>
               {% elif a %}
