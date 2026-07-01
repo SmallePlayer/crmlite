@@ -2314,6 +2314,20 @@ def create_print_job(
     session.add(PrintJob(name=name.strip(), filament_id=filament_id, created_by=u.id, grams=grams, hours=hours))
     session.commit()
     return RedirectResponse("/prints", status_code=303)
+
+
+@app.post("/prints/{job_id}/delete")
+def delete_print_job(job_id: int, request: Request, session: Session = Depends(get_db)):
+    job = session.get(PrintJob, job_id)
+    if not job: raise HTTPException(404)
+    f = session.get(Filament, job.filament_id)
+    if f:
+        f.quantity += job.grams
+        session.add(FilamentMovement(filament_id=job.filament_id, type="in", quantity=job.grams,
+                     reason=f"Аннулирована печать: {job.name}"))
+    session.delete(job)
+    session.commit()
+    return RedirectResponse("/prints", status_code=303)
 # ══════════════════════════════════════════════════════════════════
 
 @app.get("/chat", response_class=HTMLResponse)
