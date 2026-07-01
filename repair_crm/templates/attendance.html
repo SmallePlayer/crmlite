@@ -98,7 +98,8 @@
   <form class="modal-content" id="schedForm" method="post" action="/schedule">
     <div class="modal-header"><h5 class="modal-title" id="schedModalTitle"><i class="bi bi-calendar-plus me-1"></i>Добавить смену</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-      <div class="mb-3"><label class="form-label">Сотрудник</label><select name="user_id" id="schedUserId" class="form-select"><option value="{{ current_user_id }}" selected>{{ user.full_name }} (я)</option>{% for u in users if u.id != current_user_id %}<option value="{{ u.id }}">{{ u.full_name }}</option>{% endfor %}</select></div>
+      <div class="mb-3"><label class="form-label">Сотрудник</label><select name="user_id" id="schedUserId" class="form-select"><option value="{{ current_user_id }}" selected>{{ user.full_name }} (я)</option>{% for u in users if u.id != current_user_id %}<option value="{{ u.id }}">{{ u.full_name }}</option>{% endfor %}</select>
+      <small class="text-muted">Всего активных: {{ users|length }}</small></div>
       <div class="mb-3"><label class="form-label">Дата</label><input type="date" name="date" id="schedDate" class="form-control" required value="{{ today.strftime('%Y-%m-%d') }}"></div>
       <div class="row"><div class="col-6 mb-3"><label class="form-label">С</label><input type="time" name="time_from" id="schedFrom" class="form-control" required value="09:00"></div><div class="col-6 mb-3"><label class="form-label">До</label><input type="time" name="time_to" id="schedTo" class="form-control" required value="18:00"></div></div></div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div></form></div></div>
