@@ -45,10 +45,10 @@
             {% set is_cell = (w == 0 and dow >= start_dow) or (w > 0 and ns.day <= total_days) %}
             {% set date_key = base_month.strftime('%Y-%m') + '-%02d' % ns.day %}
             {% set day_orders = orders_by_date.get(date_key, []) %}
-            <td style="height:95px;vertical-align:top;padding:6px" class="{{ 'text-muted bg-light' if not is_cell }}">
+            <td style="height:95px;vertical-align:top;padding:6px" class="{{ 'text-muted bg-light' if not is_cell }}{% if is_cell and day_orders %} clickable{% endif %}"
+                {% if is_cell and day_orders %}onclick="toggleDay('d{{ date_key }}')"{% endif %}>
               {% if is_cell %}
-              <div class="d-flex justify-content-between align-items-center mb-1"
-                   {% if day_orders %}style="cursor:pointer" onclick="toggleDay('d{{ date_key }}')"{% endif %}>
+              <div class="d-flex justify-content-between align-items-center mb-1">
                 <span class="fw-bold">{{ ns.day }}</span>
                 {% if day_orders %}
                 <span class="badge bg-primary rounded-pill">{{ day_orders|length }}</span>
@@ -58,7 +58,7 @@
                 {% for o in day_orders %}
                 <a href="/orders/{{ o.id }}" class="d-block text-decoration-none mb-1 rounded px-2 py-1 small
                    border-start border-3 border-{{ ORDER_STATUSES[o.status][1].split()[0] if ' ' in ORDER_STATUSES[o.status][1] else ORDER_STATUSES[o.status][1] }} bg-light"
-                   style="font-size:0.72rem">
+                   style="font-size:0.72rem" onclick="event.stopPropagation()">
                   <div class="d-flex justify-content-between align-items-center">
                     <span class="fw-semibold text-dark">{{ o.client.full_name.split()[0] }}</span>
                     <span class="badge bg-{{ ORDER_STATUSES[o.status][1].split()[0] if ' ' in ORDER_STATUSES[o.status][1] else ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span>
