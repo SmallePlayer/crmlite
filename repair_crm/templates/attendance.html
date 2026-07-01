@@ -176,7 +176,10 @@
 
   {# ─── Расписание ─── #}
   <div class="tab-pane fade" id="tab-schedule">
-    <div class="d-flex justify-content-end mb-2"><button class="btn btn-outline-primary btn-sm" onclick="openScheduleModal()"><i class="bi bi-plus me-1"></i>Новая смена</button></div>
+    <div class="d-flex justify-content-end mb-2 gap-2">
+      <button class="btn btn-outline-primary btn-sm" onclick="openBulkScheduleModal()"><i class="bi bi-calendar-plus me-1"></i>Массовое создание</button>
+      <button class="btn btn-primary btn-sm" onclick="openScheduleModal()"><i class="bi bi-plus me-1"></i>Одна смена</button>
+    </div>
     {% set ns = namespace(sched_day=1) %}
     <div class="card shadow-sm"><div class="card-body p-2"><div class="table-responsive">
       <table class="table table-bordered table-sm align-top mb-0" style="font-size:0.75rem;min-width:600px">
@@ -250,6 +253,20 @@
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
   </form>
 </div></div>
+
+{# ─── Модалка: массовое создание смен ─── #}
+<div class="modal fade" id="bulkScheduleModal" tabindex="-1"><div class="modal-dialog">
+  <form class="modal-content" method="post" action="/schedule/bulk">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-calendar-plus me-1"></i>Массовое создание смен</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-3"><label class="form-label">Сотрудник</label><select name="user_id" class="form-select" size="4">{% for u in users %}<option value="{{ u.id }}" {% if u.id == current_user_id %}selected{% endif %}>{{ u.full_name }}{% if u.id == current_user_id %} (я){% endif %}</option>{% endfor %}</select></div>
+      <div class="row"><div class="col-6 mb-3"><label class="form-label">Дата с</label><input type="date" name="date_from" class="form-control" required value="{{ base_month.strftime('%Y-%m-%d') }}"></div><div class="col-6 mb-3"><label class="form-label">Дата по</label><input type="date" name="date_to" class="form-control" required value="{{ (base_month.replace(day=28)+timedelta(days=4)).replace(day=1)-timedelta(days=1) }}"></div></div>
+      <div class="row"><div class="col-6 mb-3"><label class="form-label">С</label><input type="time" name="time_from" class="form-control" required value="09:00"></div><div class="col-6 mb-3"><label class="form-label">До</label><input type="time" name="time_to" class="form-control" required value="18:00"></div></div>
+      <div class="form-check"><input type="checkbox" name="workdays_only" value="1" class="form-check-input" id="workdaysOnly" checked><label class="form-check-label" for="workdaysOnly">Только будние дни (Пн–Пт)</label></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Создать смены</button></div>
+  </form>
+</div></div>
 {% endblock %}
 
 {% block scripts %}
@@ -283,6 +300,10 @@ function openScheduleModal(schedId, date, from, to, userId) {
     document.getElementById('schedUserId').value = '{{ current_user_id }}';
   }
   new bootstrap.Modal(document.getElementById('scheduleModal')).show();
+}
+
+function openBulkScheduleModal() {
+  new bootstrap.Modal(document.getElementById('bulkScheduleModal')).show();
 }
 </script>
 {% endblock %}

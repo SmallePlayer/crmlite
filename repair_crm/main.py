@@ -2527,6 +2527,45 @@ def cancel_check_in(request: Request, session: Session = Depends(get_db)):
     return RedirectResponse("/attendance", status_code=303)
 
 
+@app.post("/schedule/bulk")
+def bulk_schedule(
+    request: Request,
+    user_id: int = Form(0),
+    date_from: str = Form(""),
+    date_to: str = Form(""),
+    time_from: str = Form(""),
+    time_to: str = Form(""),
+    workdays_only: str = Form("0"),
+    session: Session = Depends(get_db),
+):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    target_user = session.get(User, user_id or u.id)
+    if not target_user: raise HTTPException(400)
+    if not time_from or not time_to:
+        raise HTTPException(400, "Укажите время")
+    try:
+        d_from = datetime.strptime(date_from, "%Y-%m-%d")
+        d_to = datetime.strptime(date_to, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, "Неверная дата")
+    if d_to < d_from:
+        raise HTTPException(400, "Дата «по» должна быть позже даты «с»")
+    count = 0
+    current = d_from
+    while current <= d_to:
+        if workdays_only == "1" and current.weekday() >= 5:
+            current += timedelta(days=1)
+            continue
+        session.add(Schedule(user_id=target_user.id, date=current, time_from=time_from, time_to=time_to))
+        count += 1
+        current += timedelta(days=1)
+    session.commit()
+    _audit("bulk_schedule", "schedule", None,
+           f"{target_user.full_name} {date_from}–{date_to} {time_from}-{time_to} ({count} смен)", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
 @app.post("/schedule")
 def save_schedule(request: Request,
                   user_id: int = Form(0),
