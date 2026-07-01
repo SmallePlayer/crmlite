@@ -20,6 +20,10 @@
       <div class="card-header d-flex justify-content-between align-items-center">
         <strong>Информация о заказе</strong>
         <div class="d-flex gap-1">
+          <button class="btn btn-outline-secondary btn-sm" onclick="openEditOrderModal()"
+                  title="Редактировать">
+            <i class="bi bi-pencil"></i>
+          </button>
           <a href="/orders/{{ order.id }}/receipt" class="btn btn-outline-secondary btn-sm"
              title="Квитанция" target="_blank">
             <i class="bi bi-receipt"></i>
@@ -277,8 +281,91 @@
 {% endblock %}
 
 {% block scripts %}
+{# Edit Order Modal #}
+<div class="modal fade" id="editOrderModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form class="modal-content" method="post" action="/orders/{{ order.id }}/edit">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-1"></i>Редактировать заказ #{{ order.id }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Тип</label>
+            <select name="order_type" class="form-select form-select-sm">
+              {% for t_val, (t_label, t_icon) in ORDER_TYPES.items() %}
+              <option value="{{ t_val }}" {{ 'selected' if order.order_type == t_val }}>{{ t_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Клиент</label>
+            <select name="client_id" class="form-select form-select-sm">
+              {% for c in clients %}
+              <option value="{{ c.id }}" {{ 'selected' if order.client_id == c.id }}>{{ c.full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Принтер / Модель</label>
+            <input type="text" name="printer" class="form-control form-control-sm" value="{{ order.printer }}" required>
+          </div>
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Мастер</label>
+            <select name="assigned_to" class="form-select form-select-sm">
+              <option value="0" {{ 'selected' if not order.assigned_to }}>— Не назначен —</option>
+              {% for u in users %}
+              <option value="{{ u.id }}" {{ 'selected' if order.assigned_to == u.id }}>{{ u.full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 mb-2">
+            <label class="form-label">Описание</label>
+            <textarea name="defect" class="form-control form-control-sm" rows="3" required>{{ order.defect }}</textarea>
+          </div>
+          <div class="col-12">
+            <h6 class="mb-2"><i class="bi bi-calendar-event me-1"></i>Выезд</h6>
+          </div>
+          <div class="col-md-4 mb-2">
+            <label class="form-label">Дата</label>
+            <input type="date" id="editSchedDate" class="form-control form-control-sm"
+                   value="{{ order.scheduled_at.strftime('%Y-%m-%d') if order.scheduled_at else '' }}"
+                   onchange="updateEditSched()">
+          </div>
+          <div class="col-md-3 mb-2">
+            <label class="form-label">Время</label>
+            <input type="time" id="editSchedTime" class="form-control form-control-sm"
+                   value="{{ order.scheduled_at.strftime('%H:%M') if order.scheduled_at else '' }}"
+                   onchange="updateEditSched()">
+          </div>
+          <div class="col-md-5 mb-2">
+            <label class="form-label">Адрес</label>
+            <input type="text" name="schedule_location" class="form-control form-control-sm"
+                   value="{{ order.schedule_location or '' }}" placeholder="Адрес выезда">
+          </div>
+          <input type="hidden" name="scheduled_at" id="editScheduledAt" value="{{ order.scheduled_at.strftime('%Y-%m-%dT%H:%M') if order.scheduled_at else '' }}">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 var SRV = {{ services_data | tojson }};
+
+function openEditOrderModal() {
+  new bootstrap.Modal(document.getElementById('editOrderModal')).show();
+}
+function updateEditSched() {
+  var d = document.getElementById('editSchedDate').value;
+  var t = document.getElementById('editSchedTime').value;
+  document.getElementById('editScheduledAt').value = d && t ? d + 'T' + t : '';
+}
 
 function openEmailModal() {
   new bootstrap.Modal(document.getElementById('emailModal')).show();

@@ -903,6 +903,12 @@ def order_detail_page(order_id: int, request: Request, session: Session = Depend
     return templates.TemplateResponse(request, "order_detail.html", {
         **_user_context(request),
         "order": order, "services": services, "parts": parts,
+        "clients": session.execute(
+            select(Client).order_by(Client.full_name)
+        ).scalars().all(),
+        "users": session.execute(
+            select(User).where(User.is_active == True).order_by(User.full_name)
+        ).scalars().all(),
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES,
         "ORDER_FLOW": ORDER_FLOW, "now": lambda: datetime.now(),
         "services_data": [{
@@ -1608,6 +1614,42 @@ def reopen_order(order_id: int, request: Request, session: Session = Depends(get
     order.closed_at = None
     session.commit()
     _audit("reopen", "order", order_id, f"#{order_id}", request.state.user, session)
+    return RedirectResponse(f"/orders/{order_id}", status_code=303)
+
+
+@app.post("/orders/{order_id}/edit")
+def edit_order(
+    order_id: int, request: Request,
+    client_id: int = Form(...),
+    order_type: str = Form("repair"),
+    printer: str = Form(...),
+    defect: str = Form(...),
+    assigned_to: int = Form(0),
+    scheduled_date: str = Form(""),
+    scheduled_time: str = Form(""),
+    scheduled_at: str = Form(""),
+    schedule_location: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    order = session.get(Order, order_id)
+    if not order:
+        raise HTTPException(404)
+    order.client_id = client_id
+    order.order_type = order_type
+    order.printer = printer.strip()
+    order.defect = defect.strip()
+    order.assigned_to = assigned_to if assigned_to > 0 else None
+    sched_str = scheduled_at.strip() or f"{scheduled_date.strip()}T{scheduled_time.strip()}"
+    if sched_str and sched_str != "T":
+        try:
+            order.scheduled_at = datetime.strptime(sched_str.replace("T", " ")[:16], "%Y-%m-%d %H:%M")
+        except ValueError:
+            order.scheduled_at = None
+    else:
+        order.scheduled_at = None
+    order.schedule_location = schedule_location.strip()
+    session.commit()
+    _audit("edit", "order", order_id, f"#{order_id}", request.state.user, session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
 
 
