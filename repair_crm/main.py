@@ -167,9 +167,11 @@ class Filament(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     article: Mapped[str] = mapped_column(String(100), default="")
+    manufacturer: Mapped[str] = mapped_column(String(100), default="")
     type: Mapped[str] = mapped_column(String(50), default="PLA")
     color: Mapped[str] = mapped_column(String(100), default="")
     quantity: Mapped[int] = mapped_column(Integer, default=0)
+    grams_per_spool: Mapped[int] = mapped_column(Integer, default=1000)
     min_stock: Mapped[int] = mapped_column(Integer, default=500)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     movements = relationship("FilamentMovement", back_populates="filament",
@@ -327,7 +329,9 @@ async def lifespan(app: FastAPI):
                 conn.commit()
             except Exception:
                 pass
-        for col, dtype in [("article", "VARCHAR(100) DEFAULT ''")]:
+        for col, dtype in [("article", "VARCHAR(100) DEFAULT ''"),
+                           ("manufacturer", "VARCHAR(100) DEFAULT ''"),
+                           ("grams_per_spool", "INTEGER DEFAULT 1000")]:
             try:
                 conn.execute(text(f"ALTER TABLE filaments ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -2193,12 +2197,15 @@ def create_filament(
     request: Request,
     name: str = Form(...),
     article: str = Form(""),
+    manufacturer: str = Form(""),
     type: str = Form("PLA"),
     color: str = Form(""),
     quantity: int = Form(0),
+    grams_per_spool: int = Form(1000),
     session: Session = Depends(get_db),
 ):
-    f = Filament(name=name.strip(), article=article.strip(), type=type, color=color.strip(), quantity=quantity)
+    f = Filament(name=name.strip(), article=article.strip(), manufacturer=manufacturer.strip(),
+                 type=type, color=color.strip(), quantity=quantity, grams_per_spool=grams_per_spool)
     session.add(f)
     session.flush()
     if quantity > 0:
@@ -2212,7 +2219,9 @@ def edit_filament(
     fid: int, request: Request,
     name: str = Form(...),
     article: str = Form(""),
+    manufacturer: str = Form(""),
     color: str = Form(""),
+    grams_per_spool: int = Form(1000),
     min_stock: int = Form(0),
     session: Session = Depends(get_db),
 ):
@@ -2220,7 +2229,9 @@ def edit_filament(
     if not f: raise HTTPException(404)
     f.name = name.strip()
     f.article = article.strip()
+    f.manufacturer = manufacturer.strip()
     f.color = color.strip()
+    f.grams_per_spool = grams_per_spool
     f.min_stock = min_stock
     session.commit()
     return RedirectResponse("/filaments", status_code=303)
