@@ -110,7 +110,7 @@ function selectDay(dateKey) {
     return;
   }
 
-  var html = '<div class="list-group list-group-flush">';
+  var html = '';
   orders.forEach(function(o) {
     var st = ORDER_STATUSES[o.status] || ['Неизвестно', 'secondary'];
     var colorClass = st[1].split(' ')[0];
@@ -122,22 +122,22 @@ function selectDay(dateKey) {
       var m = String(d.getMinutes()).padStart(2,'0');
       timeStr = h + ':' + m;
     }
-    html += '<a href="/orders/' + o.id + '" class="list-group-item list-group-item-action py-2 px-3">';
+    html += '<div class="border-bottom p-2 px-3">';
+    html += '<a href="/orders/' + o.id + '" class="text-decoration-none text-reset">';
     html += '<div class="d-flex align-items-center gap-2">';
-    html += '<span class="badge bg-' + colorClass + ' flex-shrink-0" style="font-size:0.65rem">' + st[0] + '</span>';
-    html += '<div class="min-width-0 flex-grow-1">';
+    html += '<span class="badge bg-' + colorClass + ' flex-shrink-0">' + st[0] + '</span>';
+    html += '<div class="min-width-0">';
     html += '<span class="fw-semibold">' + icon + ' ' + escapeHtml(o.client_name) + '</span>';
     html += ' <small class="text-muted">' + escapeHtml(o.printer || '—') + '</small>';
     if (timeStr) html += ' <small class="text-muted">' + timeStr + '</small>';
+    html += '</div>';
+    html += '</div>';
     if (o.schedule_location) {
-      html += '<br><i class="bi bi-geo-alt text-secondary"></i> ';
-      html += '<a href="https://yandex.ru/maps/?text=' + encodeURIComponent(o.schedule_location) + '" target="_blank" class="text-muted small" onclick="event.stopPropagation()">' + escapeHtml(o.schedule_location) + '</a>';
+      html += '<div class="ms-4 mt-1 small text-muted"><i class="bi bi-geo-alt me-1"></i>' + escapeHtml(o.schedule_location) + '</div>';
     }
-    html += '</div>';
-    html += '</div>';
     html += '</a>';
+    html += '</div>';
   });
-  html += '</div>';
   body.innerHTML = html;
 }
 
