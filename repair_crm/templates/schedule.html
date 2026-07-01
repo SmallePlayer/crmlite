@@ -23,7 +23,7 @@
   <div class="col-6 col-sm-3"><div class="card border-success bg-success bg-opacity-10 text-center py-2"><div class="text-success fw-bold fs-5">{{ orders_by_date|length }}</div><small class="text-muted">Дней с заказами</small></div></div>
 </div>
 
-<div class="row g-3">
+<div class="row g-3 align-items-start">
   <div class="col-lg-7">
     <div class="card shadow-sm">
       <div class="card-body p-2 p-md-3">
@@ -83,11 +83,11 @@
   </div>
 
   <div class="col-lg-5">
-    <div class="card shadow-sm" style="min-height:300px">
+    <div class="card shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <strong id="detailTitle"><i class="bi bi-list-ul me-1"></i>Выберите дату</strong>
       </div>
-      <div class="card-body p-0" id="detailBody">
+      <div class="card-body p-0" style="max-height:420px;overflow-y:auto" id="detailBody">
         <div class="text-center py-5 text-muted">
           <i class="bi bi-arrow-left-circle fs-1 d-block mb-2"></i>
           Нажмите на дату в календаре чтобы увидеть заказы
