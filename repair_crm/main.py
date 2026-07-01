@@ -2097,9 +2097,9 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
             year, mon = map(int, month.split("-"))
             base = datetime(year, mon, 1)
         except (ValueError, TypeError):
-            base = today.replace(day=1)
+            base = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     else:
-        base = today.replace(day=1)
+        base = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     next_month = (base.replace(day=28) + timedelta(days=4)).replace(day=1)
     prev_month = (base - timedelta(days=1)).replace(day=1)
 
@@ -2395,9 +2395,9 @@ def schedule_calendar_page(request: Request, month: str = Query(""), session: Se
             year, mon = map(int, month.split("-"))
             base = datetime(year, mon, 1)
         except (ValueError, TypeError):
-            base = today.replace(day=1)
+            base = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     else:
-        base = today.replace(day=1)
+        base = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     next_month = (base.replace(day=28) + timedelta(days=4)).replace(day=1)
     prev_month = (base - timedelta(days=1)).replace(day=1)
