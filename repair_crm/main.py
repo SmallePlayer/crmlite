@@ -2512,6 +2512,21 @@ def check_out(request: Request, report: str = Form(""), session: Session = Depen
     return RedirectResponse("/attendance", status_code=303)
 
 
+@app.post("/attendance/cancel")
+def cancel_check_in(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    a = session.execute(
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
+    ).scalar_one_or_none()
+    if a and not a.check_out:
+        session.delete(a)
+        session.commit()
+        _audit("cancel_check_in", "attendance", None, f"{u.full_name} отменил отметку", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
 @app.post("/schedule")
 def save_schedule(request: Request,
                   user_id: int = Form(0),
