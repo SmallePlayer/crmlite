@@ -316,11 +316,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="CRM — Ремонт 3D принтеров", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+TIMEZONE_OFFSET = timedelta(hours=int(os.getenv("TZ_OFFSET", "0")))
 templates.env.filters["money"] = lambda x: f"{x:,.0f}".replace(",", " ") + " ₽"
-templates.env.filters["dt"] = lambda x: x.strftime("%d.%m.%Y %H:%M") if x else "—"
+templates.env.filters["dt"] = lambda x: (x + TIMEZONE_OFFSET).strftime("%d.%m.%Y %H:%M") if x else "—"
 templates.env.filters["int"] = lambda x: f"{x:,}".replace(",", " ") if x else "0"
 _MONTHS_RU = ["","январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"]
-templates.env.filters["month_ru"] = lambda dt: _MONTHS_RU[dt.month] if dt else "—"
+templates.env.filters["month_ru"] = lambda dt: _MONTHS_RU[(dt + TIMEZONE_OFFSET).month] if dt else "—"
 
 UPLOADS_DIR = BASE_DIR / "static" / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
