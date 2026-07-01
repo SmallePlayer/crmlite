@@ -13,8 +13,8 @@
     <div class="card shadow-sm {% if f.quantity <= f.min_stock %}border-danger{% endif %} h-100">
       <div class="card-body text-center py-3">
         <div class="mb-2"><span class="badge bg-primary">{{ f.type }}</span></div>
-        <h5 class="mb-1">{{ f.name }}</h5>
-        <small class="text-muted">{{ f.color if f.color else '—' }}</small>
+      <h5 class="mb-1">{{ f.name }}</h5>
+      <small class="text-muted">{% if f.article %}<code>{{ f.article }}</code> · {% endif %}{{ f.color if f.color else '—' }}</small>
         <div class="mt-3 fs-4 fw-bold {% if f.quantity <= f.min_stock %}text-danger{% else %}text-success{% endif %}">
           {{ f.quantity }} <small style="font-size:0.6em">г.</small>
         </div>
@@ -55,6 +55,7 @@
     <div class="modal-header"><h5 class="modal-title" id="filamentTitle">Новый пластик</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
       <div class="mb-2"><label class="form-label">Название</label><input type="text" name="name" id="fName" class="form-control" required></div>
+      <div class="mb-2"><label class="form-label">Артикул</label><input type="text" name="article" id="fArticle" class="form-control"></div>
       <div class="mb-2"><label class="form-label">Тип</label><select name="type" id="fType" class="form-select"><option>PLA</option><option>PETG</option><option>ABS</option><option>TPU</option><option>Другое</option></select></div>
       <div class="mb-2"><label class="form-label">Цвет</label><input type="text" name="color" id="fColor" class="form-control"></div>
       <div class="mb-2"><label class="form-label">Кол-во (грамм)</label><input type="number" name="quantity" id="fQty" class="form-control" min="0" value="1000"></div>
@@ -77,7 +78,7 @@
 
 {% block scripts %}
 <script>
-var FILAMENTS = [{% for f in filaments %}{"id":{{ f.id }},"name":"{{ f.name|e }}","type":"{{ f.type|e }}","color":"{{ f.color|e }}","quantity":{{ f.quantity }}}{% if not loop.last %},{% endif %}{% endfor %}];
+var FILAMENTS = [{% for f in filaments %}{"id":{{ f.id }},"name":"{{ f.name|e }}","article":"{{ f.article|e }}","type":"{{ f.type|e }}","color":"{{ f.color|e }}","quantity":{{ f.quantity }}}{% if not loop.last %},{% endif %}{% endfor %}];
 
 function openFilamentModal(fid) {
   var f = document.getElementById('filamentForm');
@@ -87,6 +88,7 @@ function openFilamentModal(fid) {
     document.getElementById('filamentTitle').textContent = 'Редактировать';
     f.action = '/filaments/' + fid + '/edit';
     document.getElementById('fName').value = d.name;
+    document.getElementById('fArticle').value = d.article;
     document.getElementById('fType').value = d.type;
     document.getElementById('fColor').value = d.color;
     document.getElementById('fQty').value = '';
@@ -97,6 +99,7 @@ function openFilamentModal(fid) {
     document.getElementById('filamentTitle').textContent = 'Новый пластик';
     f.action = '/filaments';
     document.getElementById('fName').value = '';
+    document.getElementById('fArticle').value = '';
     document.getElementById('fColor').value = '';
     document.getElementById('fQty').value = 1000;
     document.getElementById('fQty').style.display = '';

@@ -166,6 +166,7 @@ class Filament(Base):
     __tablename__ = "filaments"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
+    article: Mapped[str] = mapped_column(String(100), default="")
     type: Mapped[str] = mapped_column(String(50), default="PLA")
     color: Mapped[str] = mapped_column(String(100), default="")
     quantity: Mapped[int] = mapped_column(Integer, default=0)
@@ -321,6 +322,12 @@ async def lifespan(app: FastAPI):
                            ("warranty_days", "INTEGER DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col, dtype in [("article", "VARCHAR(100) DEFAULT ''")]:
+            try:
+                conn.execute(text(f"ALTER TABLE filaments ADD COLUMN {col} {dtype}"))
                 conn.commit()
             except Exception:
                 pass
@@ -2179,12 +2186,13 @@ def filaments_page(request: Request, session: Session = Depends(get_db)):
 def create_filament(
     request: Request,
     name: str = Form(...),
+    article: str = Form(""),
     type: str = Form("PLA"),
     color: str = Form(""),
     quantity: int = Form(0),
     session: Session = Depends(get_db),
 ):
-    f = Filament(name=name.strip(), type=type, color=color.strip(), quantity=quantity)
+    f = Filament(name=name.strip(), article=article.strip(), type=type, color=color.strip(), quantity=quantity)
     session.add(f)
     session.flush()
     if quantity > 0:
@@ -2197,6 +2205,7 @@ def create_filament(
 def edit_filament(
     fid: int, request: Request,
     name: str = Form(...),
+    article: str = Form(""),
     color: str = Form(""),
     min_stock: int = Form(0),
     session: Session = Depends(get_db),
@@ -2204,6 +2213,7 @@ def edit_filament(
     f = session.get(Filament, fid)
     if not f: raise HTTPException(404)
     f.name = name.strip()
+    f.article = article.strip()
     f.color = color.strip()
     f.min_stock = min_stock
     session.commit()
