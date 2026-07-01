@@ -2755,18 +2755,35 @@ def schedule_calendar_page(request: Request, month: str = Query(""), session: Se
     ).unique().scalars().all()
 
     by_date = {}
+    orders_json = {}
     for o in orders:
         if o.scheduled_at:
             d = o.scheduled_at.strftime("%Y-%m-%d")
             by_date.setdefault(d, []).append(o)
+            orders_json.setdefault(d, []).append({
+                "id": o.id, "client_name": o.client.full_name if o.client else "—",
+                "printer": o.printer or "", "status": o.status,
+                "order_type": o.order_type or "repair",
+                "scheduled_at": o.scheduled_at.isoformat() if o.scheduled_at else "",
+                "schedule_location": o.schedule_location or "",
+            })
         if o.order_type == "print" and o.deadline:
             d = o.deadline.strftime("%Y-%m-%d")
             by_date.setdefault(d, []).append(o)
+            if d not in orders_json or o.id not in [x["id"] for x in orders_json[d]]:
+                orders_json.setdefault(d, []).append({
+                    "id": o.id, "client_name": o.client.full_name if o.client else "—",
+                    "printer": o.printer or "", "status": o.status,
+                    "order_type": o.order_type or "repair",
+                    "scheduled_at": o.deadline.isoformat() if o.deadline else "",
+                    "schedule_location": o.schedule_location or "",
+                })
 
     return templates.TemplateResponse(request, "schedule.html", {
         **_user_context(request),
-        "orders_by_date": by_date, "base_month": base, "next_month": next_month,
-        "prev_month": prev_month,
+        "orders_by_date": by_date, "orders_json": orders_json,
+        "base_month": base, "next_month": next_month,
+        "prev_month": prev_month, "today": today,
         "ORDER_STATUSES": ORDER_STATUSES, "timedelta": timedelta,
     })
 
