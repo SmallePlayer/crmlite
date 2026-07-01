@@ -2146,9 +2146,11 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
             today_attendance[a.user_id] = a
 
     sched_by_user = {}
+    sched_map = {}
     for s in schedules:
         d = s.date.strftime("%Y-%m-%d") if isinstance(s.date, datetime) else str(s.date)[:10]
         sched_by_user.setdefault(s.user_id, {}).setdefault(d, []).append(s)
+        sched_map.setdefault(d, []).append(s)
 
     # Calculate work hours for the month
     work_hours = {}
@@ -2171,7 +2173,7 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
         "users": users, "base_month": base, "next_month": next_month, "prev_month": prev_month,
         "by_user_date": by_user_date, "sched_by_user": sched_by_user,
         "today_attendance": today_attendance, "today": today, "current_user_id": u.id,
-        "timedelta": timedelta, "all_schedules": schedules,
+        "timedelta": timedelta, "all_schedules": schedules, "sched_map": sched_map,
         "work_hours": work_hours,
     })
 

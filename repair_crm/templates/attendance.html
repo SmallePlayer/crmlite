@@ -78,21 +78,20 @@
 
   <div class="tab-pane fade" id="tab-schedule">
     {% set sched_first = base_month.replace(day=1) %}{% set sched_start = sched_first.weekday() %}
-    {% set sched_map = {} %}{% for s in all_schedules %}{% set dkey = s.date.strftime('%Y-%m-%d') %}{% set _ = sched_map.setdefault(dkey, []) %}{% set _ = sched_map[dkey].append(s) %}{% endfor %}
     <div class="card shadow-sm"><div class="table-responsive">
       <table class="table table-bordered table-sm align-top mb-0" style="font-size:0.75rem;min-width:600px">
         <thead><tr class="table-light text-center"><th style="width:14.2%">Пн</th><th style="width:14.2%">Вт</th><th style="width:14.2%">Ср</th><th style="width:14.2%">Чт</th><th style="width:14.2%">Пт</th><th style="width:14.2%" class="text-danger">Сб</th><th style="width:14.2%" class="text-danger">Вс</th></tr></thead>
-        <tbody>{% set sched_day = 1 %}{% for w in range(6) %}{% if sched_day <= total_days %}<tr>{% for dow in range(7) %}
-          <td style="height:70px;vertical-align:top;padding:3px;font-size:0.7rem" class="{{ 'text-muted' if (w==0 and dow < sched_start) or sched_day > total_days }}">
-            {% if (w==0 and dow >= sched_start) or (w>0 and sched_day <= total_days) %}<small class="fw-bold">{{ sched_day }}</small>
-            {% set date_str = base_month.strftime('%Y-%m') + '-%02d' % sched_day %}{% set day_scheds = sched_map.get(date_str, []) %}
+        <tbody>{% set ns = namespace(sched_day=1) %}{% for w in range(6) %}{% if ns.sched_day <= total_days %}<tr>{% for dow in range(7) %}
+          <td style="height:70px;vertical-align:top;padding:3px;font-size:0.7rem" class="{{ 'text-muted' if (w==0 and dow < sched_start) or ns.sched_day > total_days }}">
+            {% if (w==0 and dow >= sched_start) or (w>0 and ns.sched_day <= total_days) %}<small class="fw-bold">{{ ns.sched_day }}</small>
+            {% set date_str = base_month.strftime('%Y-%m') + '-%02d' % ns.sched_day %}{% set day_scheds = sched_map.get(date_str, []) %}
             {% if day_scheds %}<div class="d-flex flex-column gap-1 mt-1">{% for s in day_scheds %}
               <div class="rounded px-1 py-0 bg-primary bg-opacity-10 d-flex justify-content-between align-items-center" style="cursor:pointer"
                    onclick="openScheduleModal({{ s.id }}, '{{ s.date.strftime('%Y-%m-%d') }}', '{{ s.time_from }}', '{{ s.time_to }}', {{ s.user_id }})" title="{{ s.user.full_name }}: {{ s.time_from }}–{{ s.time_to }}">
                 <span class="text-truncate small">{{ s.user.full_name.split()[0] }} {{ s.time_from }}–{{ s.time_to }}</span>
                 <form method="post" action="/schedule/{{ s.id }}/delete" class="d-inline ms-1" data-confirm="Удалить?" onclick="event.stopPropagation()">
                   <button class="btn btn-sm text-danger p-0 border-0 bg-transparent" style="font-size:0.7rem"><i class="bi bi-x"></i></button></form></div>{% endfor %}</div>{% endif %}
-            {% set sched_day = sched_day + 1 %}{% endif %}</td>{% endfor %}</tr>{% endif %}{% endfor %}
+            {% set ns.sched_day = ns.sched_day + 1 %}{% endif %}</td>{% endfor %}</tr>{% endif %}{% endfor %}
         </tbody></table></div></div></div></div>
 
 <div class="modal fade" id="scheduleModal" tabindex="-1"><div class="modal-dialog modal-sm">
