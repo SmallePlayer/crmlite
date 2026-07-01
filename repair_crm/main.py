@@ -319,6 +319,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 TIMEZONE_OFFSET = timedelta(hours=int(os.getenv("TZ_OFFSET", "0")))
 templates.env.filters["money"] = lambda x: f"{x:,.0f}".replace(",", " ") + " ₽"
 templates.env.filters["dt"] = lambda x: (x + TIMEZONE_OFFSET).strftime("%d.%m.%Y %H:%M") if x else "—"
+templates.env.filters["tm"] = lambda x: (x + TIMEZONE_OFFSET).strftime("%H:%M") if x else "—"
 templates.env.filters["int"] = lambda x: f"{x:,}".replace(",", " ") if x else "0"
 _MONTHS_RU = ["","январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"]
 templates.env.filters["month_ru"] = lambda dt: _MONTHS_RU[(dt + TIMEZONE_OFFSET).month] if dt else "—"
@@ -2090,7 +2091,7 @@ def chat_send(request: Request, text: str = Form(...), session: Session = Depend
 def attendance_page(request: Request, month: str = Query(""), session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
-    today = datetime.now()
+    today = datetime.now() + TIMEZONE_OFFSET
     if month:
         try:
             year, mon = map(int, month.split("-"))
@@ -2147,7 +2148,7 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
 def check_in(request: Request, session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
     existing = session.execute(
         select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
     ).scalar_one_or_none()
@@ -2163,7 +2164,7 @@ def check_in(request: Request, session: Session = Depends(get_db)):
 def check_out(request: Request, session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
     existing = session.execute(
         select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
     ).scalar_one_or_none()
@@ -2388,7 +2389,7 @@ def notifications_read_all(request: Request, session: Session = Depends(get_db))
 
 @app.get("/schedule", response_class=HTMLResponse)
 def schedule_calendar_page(request: Request, month: str = Query(""), session: Session = Depends(get_db)):
-    today = datetime.now()
+    today = datetime.now() + TIMEZONE_OFFSET
     if month:
         try:
             year, mon = map(int, month.split("-"))

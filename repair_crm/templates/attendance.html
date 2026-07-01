@@ -18,7 +18,7 @@
   </div>
 </div>
 
-{# Check-in/out — compact card #}
+{# Check-in/out #}
 <div class="card shadow-sm mb-4 border-primary">
   <div class="card-body text-center py-3">
     <div class="d-flex justify-content-center align-items-center gap-4 flex-wrap">
@@ -26,9 +26,9 @@
       {% if current_user_id in today_attendance %}
         {% if today_attendance[current_user_id].check_out %}
           <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Смена завершена</span>
-          <small class="text-muted">{{ today_attendance[current_user_id].check_in.strftime('%H:%M') }} — {{ today_attendance[current_user_id].check_out.strftime('%H:%M') }}</small>
+          <small class="text-muted">{{ today_attendance[current_user_id].check_in | tm }} — {{ today_attendance[current_user_id].check_out | tm }}</small>
         {% else %}
-          <span class="text-warning"><i class="bi bi-hourglass-split me-1"></i>На работе с {{ today_attendance[current_user_id].check_in.strftime('%H:%M') }}</span>
+          <span class="text-warning"><i class="bi bi-hourglass-split me-1"></i>На работе с {{ today_attendance[current_user_id].check_in | tm }}</span>
           <form method="post" action="/attendance/check-out" class="d-inline">
             <button class="btn btn-danger btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Завершить</button>
           </form>
@@ -57,7 +57,7 @@
 </ul>
 
 <div class="tab-content">
-  {# Monthly attendance grid #}
+  {# Monthly grid #}
   <div class="tab-pane fade show active" id="tab-month">
     {% set first_day = base_month.replace(day=1) %}
     {% set last_day = (first_day.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
@@ -87,12 +87,12 @@
             {% if a %}
               {% if a.check_out %}
                 {% set worked = worked + 1 %}
-                <td class="text-center bg-success bg-opacity-25" title="{{ a.check_in.strftime('%H:%M') }}–{{ a.check_out.strftime('%H:%M') }}">
+                <td class="text-center bg-success bg-opacity-25" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}">
                   <i class="bi bi-check-circle-fill text-success small"></i>
                 </td>
               {% else %}
                 {% set worked = worked + 1 %}
-                <td class="text-center bg-warning bg-opacity-25" title="с {{ a.check_in.strftime('%H:%M') }}">
+                <td class="text-center bg-warning bg-opacity-25" title="с {{ a.check_in | tm }}">
                   <i class="bi bi-hourglass-split text-warning small"></i>
                 </td>
               {% endif %}
@@ -125,9 +125,9 @@
           {% if u.id in today_attendance %}
             {% set a = today_attendance[u.id] %}
             {% if a.check_out %}
-              <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>{{ a.check_in.strftime('%H:%M') }}–{{ a.check_out.strftime('%H:%M') }}</span>
+              <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>{{ a.check_in | tm }}–{{ a.check_out | tm }}</span>
             {% else %}
-              <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>с {{ a.check_in.strftime('%H:%M') }}</span>
+              <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>с {{ a.check_in | tm }}</span>
             {% endif %}
           {% else %}
             <span class="badge bg-light text-muted border">—</span>
@@ -138,13 +138,12 @@
     </div>
   </div>
 
-  {# Schedule — calendar grid view #}
+  {# Schedule calendar #}
   <div class="tab-pane fade" id="tab-schedule">
     {% set sched_first = base_month.replace(day=1) %}
     {% set sched_last = (sched_first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
     {% set sched_total = sched_last.day %}
     {% set sched_start = sched_first.weekday() %}
-    {# Build schedule map: date_str -> list of schedules #}
     {% set sched_map = {} %}
     {% for s in all_schedules %}
       {% set dkey = s.date.strftime('%Y-%m-%d') %}
@@ -163,12 +162,11 @@
           </thead>
           <tbody>
             {% set sched_day = 1 %}
-            {% set cols_used = 0 %}
             {% for w in range(6) %}
             {% if sched_day <= sched_total %}
             <tr>
               {% for dow in range(7) %}
-              <td style="height:70px;vertical-align:top;padding:4px" class="{{ 'text-muted' if (w==0 and dow < sched_start) or sched_day > sched_total }}">
+              <td style="height:70px;vertical-align:top;padding:3px;font-size:0.7rem" class="{{ 'text-muted' if (w==0 and dow < sched_start) or sched_day > sched_total }}">
                 {% if (w==0 and dow >= sched_start) or (w>0 and sched_day <= sched_total) %}
                 <small class="fw-bold">{{ sched_day }}</small>
                 {% set date_str = base_month.strftime('%Y-%m') + '-%02d' % sched_day %}
@@ -191,7 +189,6 @@
                 </div>
                 {% endif %}
                 {% set sched_day = sched_day + 1 %}
-                {% elif w==0 and dow < sched_start %}{# empty cell before month start #}
                 {% endif %}
               </td>
               {% endfor %}
@@ -205,7 +202,7 @@
   </div>
 </div>
 
-{# Schedule Modal (create + edit) #}
+{# Schedule Modal #}
 <div class="modal fade" id="scheduleModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
     <form class="modal-content" id="schedForm" method="post" action="/schedule">
@@ -214,7 +211,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <input type="hidden" name="_method" id="schedMethod" value="">
         <div class="mb-3">
           <label class="form-label">Сотрудник</label>
           <select name="user_id" id="schedUserId" class="form-select">
@@ -241,7 +237,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-        <button type="submit" class="btn btn-primary" id="schedSubmitBtn">Сохранить</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
       </div>
     </form>
   </div>
