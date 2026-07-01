@@ -316,7 +316,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="CRM — Ремонт 3D принтеров", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-TIMEZONE_OFFSET = timedelta(hours=int(os.getenv("TZ_OFFSET", "3")))
+_tz_offset = int(os.getenv("TZ_OFFSET", "0"))
+if _tz_offset == 0:
+    try:
+        import time as _time
+        _tz_offset = 3 + (_time.timezone // 3600)
+    except Exception:
+        _tz_offset = 3
+TIMEZONE_OFFSET = timedelta(hours=_tz_offset)
 templates.env.filters["money"] = lambda x: f"{x:,.0f}".replace(",", " ") + " ₽"
 templates.env.filters["dt"] = lambda x: (x + TIMEZONE_OFFSET).strftime("%d.%m.%Y %H:%M") if x else "—"
 templates.env.filters["tm"] = lambda x: (x + TIMEZONE_OFFSET).strftime("%H:%M") if x else "—"
