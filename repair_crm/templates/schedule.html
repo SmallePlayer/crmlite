@@ -53,14 +53,14 @@
             <a href="/orders/{{ o.id }}" class="d-block text-decoration-none mb-1 rounded px-1 py-0
                bg-{{ ORDER_STATUSES[o.status][1].split()[0] if ' ' in ORDER_STATUSES[o.status][1] else ORDER_STATUSES[o.status][1] }} bg-opacity-25"
                style="font-size:0.7rem">
+              {% if o.order_type == 'print' %}
+              📦 Сдача: {{ o.client.full_name.split()[0] }}
+              {% else %}
               <strong>{{ o.scheduled_at.strftime('%H:%M') }}</strong>
               {{ o.client.full_name.split()[0] }}
               {% if o.schedule_location %}
-              <br><a href="https://yandex.ru/maps/?text={{ o.schedule_location | urlencode }}"
-                    target="_blank" class="text-decoration-none"
-                    onclick="event.stopPropagation()"
-                    style="font-size:0.65rem">
-                <i class="bi bi-geo-alt small me-1"></i>{{ o.schedule_location[:25] }}</a>
+              <br><i class="bi bi-geo-alt small me-1"></i>{{ o.schedule_location[:20] }}
+              {% endif %}
               {% endif %}
             </a>
             {% endfor %}

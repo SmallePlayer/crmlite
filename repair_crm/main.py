@@ -538,7 +538,7 @@ async def not_found(request: Request, _):
 async def bad_request(request: Request, exc: HTTPException):
     return templates.TemplateResponse(request, "error.html", {
         "title": "Ошибка", "message": exc.detail or "Некорректный запрос",
-        "user": getattr(request.state, "user", None),
+        "user": getattr(request.state, "user", None), "unread_count": 0,
     }, status_code=400)
 
 
@@ -546,7 +546,7 @@ async def bad_request(request: Request, exc: HTTPException):
 async def forbidden(request: Request, _):
     return templates.TemplateResponse(request, "error.html", {
         "title": "Доступ запрещён", "message": "У вас нет прав для этого действия",
-        "user": getattr(request.state, "user", None),
+        "user": getattr(request.state, "user", None), "unread_count": 0,
     }, status_code=403)
 
 
@@ -558,6 +558,7 @@ async def internal_error(request: Request, exc: Exception):
         "title": "Внутренняя ошибка",
         "message": str(exc),
         "user": getattr(request.state, "user", None),
+        "unread_count": 0,
     }, status_code=500)
 
 
@@ -1453,7 +1454,9 @@ def create_order(
     printer: str = Form(...),
     defect: str = Form(...),
     assigned_to: int = Form(0),
+    deadline: str = Form(""),
     scheduled_date: str = Form(""),
+    scheduled_date_print: str = Form(""),
     scheduled_time: str = Form(""),
     scheduled_at: str = Form(""),
     schedule_location: str = Form(""),
@@ -1462,9 +1465,14 @@ def create_order(
     if not session.get(Client, client_id):
         raise HTTPException(400, "Клиент не найден")
     deadline_val = None
+    if deadline.strip():
+        try:
+            deadline_val = datetime.strptime(deadline.strip(), "%Y-%m-%d")
+        except ValueError:
+            pass
     sched_val = None
-    sched_str = scheduled_at.strip() or f"{scheduled_date.strip()}T{scheduled_time.strip()}"
-    if sched_str and sched_str != "T":
+    sched_str = scheduled_at.strip() or f"{scheduled_date.strip()}T{scheduled_time.strip()}" or f"{scheduled_date_print.strip()}T00:00"
+    if sched_str and sched_str != "T" and sched_str != "T00:00":
         try:
             sched_val = datetime.strptime(sched_str.replace("T", " ")[:16], "%Y-%m-%d %H:%M")
         except ValueError:
@@ -2411,15 +2419,27 @@ def schedule_calendar_page(request: Request, month: str = Query(""), session: Se
 
     orders = session.execute(
         select(Order).options(joinedload(Order.client), joinedload(Order.assignee))
-        .where(Order.scheduled_at.isnot(None),
-               Order.scheduled_at >= base, Order.scheduled_at < next_month)
+        .where(
+            or_(
+                Order.scheduled_at.isnot(None),
+                (Order.deadline.isnot(None)) & (Order.order_type == "print")
+            ),
+            or_(
+                (Order.scheduled_at >= base) & (Order.scheduled_at < next_month),
+                (Order.deadline >= base) & (Order.deadline < next_month) & (Order.order_type == "print")
+            )
+        )
         .order_by(Order.scheduled_at)
     ).unique().scalars().all()
 
     by_date = {}
     for o in orders:
-        d = o.scheduled_at.strftime("%Y-%m-%d")
-        by_date.setdefault(d, []).append(o)
+        if o.scheduled_at:
+            d = o.scheduled_at.strftime("%Y-%m-%d")
+            by_date.setdefault(d, []).append(o)
+        if o.order_type == "print" and o.deadline:
+            d = o.deadline.strftime("%Y-%m-%d")
+            by_date.setdefault(d, []).append(o)
 
     return templates.TemplateResponse(request, "schedule.html", {
         **_user_context(request),

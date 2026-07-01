@@ -51,22 +51,41 @@
           </select>
         </div>
         <hr>
-        <h6 class="mb-3"><i class="bi bi-calendar-event me-1"></i>Выезд к клиенту</h6>
-        <div class="row g-2 mb-3">
-          <div class="col-md-4">
-            <label class="form-label">Дата</label>
-            <input type="date" name="scheduled_date" id="schedDate" class="form-control"
-                   onchange="updateScheduledAt()">
+        {# Repair: выезд #}
+        <div id="repairFields">
+          <h6 class="mb-3"><i class="bi bi-calendar-event me-1"></i>Выезд к клиенту</h6>
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Дата</label>
+              <input type="date" name="scheduled_date" id="schedDate" class="form-control"
+                     onchange="updateScheduledAt()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Время</label>
+              <input type="time" name="scheduled_time" id="schedTime" class="form-control"
+                     value="10:00" onchange="updateScheduledAt()">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">Адрес</label>
+              <input type="text" name="schedule_location" class="form-control"
+                     placeholder="Улица, дом, подъезд..." autocomplete="off">
+            </div>
           </div>
-          <div class="col-md-3">
-            <label class="form-label">Время</label>
-            <input type="time" name="scheduled_time" id="schedTime" class="form-control"
-                   value="10:00" onchange="updateScheduledAt()">
-          </div>
-          <div class="col-md-5">
-            <label class="form-label">Адрес</label>
-            <input type="text" name="schedule_location" class="form-control"
-                   placeholder="Улица, дом, подъезд..." autocomplete="off">
+        </div>
+        {# Print: дата принятия + дата сдачи #}
+        <div id="printFields" style="display:none">
+          <h6 class="mb-3"><i class="bi bi-calendar-check me-1"></i>Сроки</h6>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Дата принятия</label>
+              <input type="date" name="scheduled_date_print" class="form-control" id="acceptDate"
+                     onchange="updateSchedPrint()">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Дата сдачи</label>
+              <input type="date" name="deadline" class="form-control" id="deadlineDate"
+                     onchange="updateSchedPrint()">
+            </div>
           </div>
         </div>
         <input type="hidden" name="scheduled_at" id="scheduledAt">
@@ -92,18 +111,28 @@ function filterClients() {
 }
 function onTypeChange() {
   var t = document.getElementById('orderType').value;
+  var repair = document.getElementById('repairFields');
+  var print = document.getElementById('printFields');
   if (t === 'print') {
     document.getElementById('deviceLabel').textContent = 'Модель/изделие *';
     document.getElementById('defectLabel').textContent = 'Задача / требования *';
+    repair.style.display = 'none';
+    print.style.display = '';
   } else {
     document.getElementById('deviceLabel').textContent = 'Принтер *';
     document.getElementById('defectLabel').textContent = 'Описание дефекта *';
+    repair.style.display = '';
+    print.style.display = 'none';
   }
 }
 function updateScheduledAt() {
   var d = document.getElementById('schedDate').value;
   var t = document.getElementById('schedTime').value;
   document.getElementById('scheduledAt').value = d && t ? d + 'T' + t : '';
+}
+function updateSchedPrint() {
+  var d = document.getElementById('acceptDate').value;
+  document.getElementById('scheduledAt').value = d ? d + 'T00:00' : '';
 }
 </script>
 {% endblock %}
