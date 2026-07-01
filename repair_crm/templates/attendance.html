@@ -42,8 +42,9 @@
       <i class="bi bi-hourglass-split display-5 text-warning mb-2 d-block"></i>
       <h5>Вы на работе</h5>
       <p class="mb-1 text-muted">Начало в <strong>{{ my.check_in | tm }}</strong></p>
-      {% set elapsed = ((now_utc - my.check_in).total_seconds()) | int %}
-      {% set h = elapsed // 3600 %}{% set m = (elapsed % 3600) // 60 %}
+      {% set secs = (now_utc - my.check_in).total_seconds() %}
+      {% set h = (secs // 3600) | round(0, 'floor') %}
+      {% set m = ((secs % 3600) // 60) | round(0, 'floor') %}
       <p class="mb-2"><span class="badge bg-warning text-dark fs-6">{{ h }} ч {{ m }} мин</span></p>
       <button class="btn btn-sm btn-outline-secondary me-2" onclick="openEditAttendance('{{ my.check_in.strftime('%H:%M') }}', '', '{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
       <button class="btn btn-danger px-4 py-2" onclick="openCheckOutModal()"><i class="bi bi-box-arrow-right me-2"></i>Завершить смену</button>
@@ -93,8 +94,8 @@
                   <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Работает</span>
                   <small class="text-muted">с {{ a.check_in | tm }}</small>
                 </div>
-                {% set e2 = ((now_utc - a.check_in).total_seconds()) | int %}
-                {% set h2 = e2 // 3600 %}{% set m2 = (e2 % 3600) // 60 %}
+                {% set secs2 = (now_utc - a.check_in).total_seconds() %}
+                {% set h2 = (secs2 // 3600) | round(0, 'floor') %}{% set m2 = ((secs2 % 3600) // 60) | round(0, 'floor') %}
                 <small class="text-muted d-block mt-1">Прошло: {{ h2 }} ч {{ m2 }} мин</small>
               {% else %}
                 <div>
