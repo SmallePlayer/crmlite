@@ -187,6 +187,19 @@ class FilamentMovement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class PrintJob(Base):
+    __tablename__ = "print_jobs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(300))
+    filament_id: Mapped[int] = mapped_column(ForeignKey("filaments.id"), index=True)
+    filament = relationship("Filament")
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    creator = relationship("User")
+    grams: Mapped[int] = mapped_column(Integer, default=0)
+    hours: Mapped[float] = mapped_column(Float, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -346,6 +359,17 @@ async def lifespan(app: FastAPI):
                     quantity INTEGER DEFAULT 0,
                     reason VARCHAR(500) DEFAULT '',
                     order_id INTEGER REFERENCES orders(id),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            fc.execute(text("""
+                CREATE TABLE IF NOT EXISTS print_jobs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(300) NOT NULL,
+                    filament_id INTEGER NOT NULL REFERENCES filaments(id),
+                    created_by INTEGER NOT NULL REFERENCES users(id),
+                    grams INTEGER DEFAULT 0,
+                    hours FLOAT DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """))
@@ -2223,6 +2247,46 @@ def expense_filament(
     session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=quantity, reason=reason.strip()))
     session.commit()
     return RedirectResponse("/filaments", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Print Jobs
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/prints", response_class=HTMLResponse)
+def print_jobs_page(request: Request, session: Session = Depends(get_db)):
+    jobs = session.execute(
+        select(PrintJob).options(joinedload(PrintJob.filament), joinedload(PrintJob.creator))
+        .order_by(desc(PrintJob.created_at)).limit(50)
+    ).unique().scalars().all()
+    filaments = session.execute(
+        select(Filament).order_by(Filament.name)
+    ).scalars().all()
+    return templates.TemplateResponse(request, "prints.html", {
+        **_user_context(request),
+        "jobs": jobs, "filaments": filaments,
+    })
+
+
+@app.post("/prints")
+def create_print_job(
+    request: Request,
+    name: str = Form(...),
+    filament_id: int = Form(...),
+    grams: int = Form(0),
+    hours: float = Form(0),
+    session: Session = Depends(get_db),
+):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    f = session.get(Filament, filament_id)
+    if not f: raise HTTPException(400, "Пластик не найден")
+    if f.quantity < grams: raise HTTPException(400, f"Недостаточно пластика: {f.quantity} г.")
+    f.quantity -= grams
+    session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=grams, reason=f"Печать: {name.strip()}"))
+    session.add(PrintJob(name=name.strip(), filament_id=filament_id, created_by=u.id, grams=grams, hours=hours))
+    session.commit()
+    return RedirectResponse("/prints", status_code=303)
 # ══════════════════════════════════════════════════════════════════
 
 @app.get("/chat", response_class=HTMLResponse)
