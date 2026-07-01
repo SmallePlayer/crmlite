@@ -4,9 +4,9 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4 class="mb-0"><i class="bi bi-calendar2-week me-2"></i>Расписание заказов</h4>
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2 align-items-center">
     <a href="/schedule?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
-    <span class="btn btn-outline-secondary btn-sm disabled px-3">{{ base_month | month_ru }} {{ base_month.year }}</span>
+    <span class="fw-semibold">{{ base_month | month_ru }} {{ base_month.year }}</span>
     <a href="/schedule?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
   </div>
 </div>
@@ -15,7 +15,6 @@
 {% set last_day = (first_day.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
 {% set start_dow = first_day.weekday() %}
 {% set total_days = last_day.day %}
-
 {% set total_orders = 0 %}{% for d, olist in orders_by_date.items() %}{% set total_orders = total_orders + olist|length %}{% endfor %}
 
 <div class="row g-2 mb-3">
@@ -23,78 +22,61 @@
   <div class="col-6 col-sm-3"><div class="card border-success bg-success bg-opacity-10 text-center py-2"><div class="text-success fw-bold fs-5">{{ orders_by_date|length }}</div><small class="text-muted">Дней с заказами</small></div></div>
 </div>
 
-<div class="row g-3 align-items-start">
-  <div class="col-lg-7">
-    <div class="card shadow-sm">
-      <div class="card-body p-2 p-md-3">
-        <div class="table-responsive">
-          <table class="table table-bordered align-top mb-0 text-center" style="table-layout:fixed;min-width:600px">
-            <thead>
-              <tr class="table-light">
-                {% set dow_names = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"] %}
-                {% for name in dow_names %}
-                <th style="width:14.2%;padding:8px 4px;font-size:0.8rem" class="{{ 'text-danger bg-danger bg-opacity-10' if loop.index0 >= 5 }}">{{ name }}</th>
-                {% endfor %}
-              </tr>
-            </thead>
-            <tbody>
-              {% set ns = namespace(day=1) %}
-              {% for w in range(6) %}
-              {% if ns.day <= total_days %}
-              <tr>
-                {% for dow in range(7) %}
-                {% set is_cell = (w == 0 and dow >= start_dow) or (w > 0 and ns.day <= total_days) %}
-                {% set date_key = base_month.strftime('%Y-%m') + '-%02d' % ns.day if is_cell else '' %}
-                {% set day_orders = orders_by_date.get(date_key, []) %}
-                {% set is_today = is_cell and date_key == today.strftime('%Y-%m-%d') %}
-                {% set has_repair = false %}{% set has_print = false %}
-                {% for o in day_orders %}{% if o.order_type == 'print' %}{% set has_print = true %}{% else %}{% set has_repair = true %}{% endif %}{% endfor %}
+<div class="card shadow-sm mb-4">
+  <div class="card-body p-2 p-md-3">
+    <div class="table-responsive">
+      <table class="table table-bordered align-top mb-0 text-center" style="table-layout:fixed;min-width:600px">
+        <thead>
+          <tr class="table-light">
+            {% set dow_names = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"] %}
+            {% for name in dow_names %}
+            <th style="width:14.2%;padding:8px 4px;font-size:0.8rem" class="{{ 'text-danger bg-danger bg-opacity-10' if loop.index0 >= 5 }}">{{ name }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% set ns = namespace(day=1) %}
+          {% for w in range(6) %}
+          {% if ns.day <= total_days %}
+          <tr>
+            {% for dow in range(7) %}
+            {% set is_cell = (w == 0 and dow >= start_dow) or (w > 0 and ns.day <= total_days) %}
+            {% set date_key = base_month.strftime('%Y-%m') + '-%02d' % ns.day if is_cell else '' %}
+            {% set day_orders = orders_by_date.get(date_key, []) %}
+            {% set is_today = is_cell and date_key == today.strftime('%Y-%m-%d') %}
+            {% set has_repair = false %}{% set has_print = false %}
+            {% for o in day_orders %}{% if o.order_type == 'print' %}{% set has_print = true %}{% else %}{% set has_repair = true %}{% endif %}{% endfor %}
 
-                <td style="height:62px;vertical-align:top;padding:4px 3px;cursor:pointer"
-                    class="position-relative {{ 'text-muted bg-light' if not is_cell }}{% if is_cell and not day_orders %} text-muted{% endif %}{% if is_today %} border-primary border-2{% endif %}"
-                    {% if is_cell and day_orders %}onclick="selectDay('{{ date_key }}')" id="cell-{{ date_key }}"{% endif %}>
-                  {% if is_cell %}
-                  <div class="small fw-bold mb-1 {{ 'text-primary' if is_today }}">{{ ns.day }}</div>
-                  {% if has_repair %}
-                  <span class="d-inline-block rounded-circle bg-warning" style="width:8px;height:8px" title="Ремонт"></span>
-                  {% endif %}
-                  {% if has_print %}
-                  <span class="d-inline-block rounded-circle bg-info" style="width:8px;height:8px" title="Печать"></span>
-                  {% endif %}
-                  {% if day_orders|length > 0 %}
-                  <span class="badge bg-secondary rounded-pill position-absolute" style="top:3px;right:3px;font-size:0.55rem;padding:2px 5px">{{ day_orders|length }}</span>
-                  {% endif %}
-                  {% set ns.day = ns.day + 1 %}
-                  {% endif %}
-                </td>
-                {% endfor %}
-              </tr>
+            <td style="height:62px;vertical-align:top;padding:4px 3px;cursor:{{ 'pointer' if is_cell and day_orders else 'default' }}"
+                class="position-relative {{ 'text-muted bg-light' if not is_cell }}{% if is_cell and not day_orders %} text-muted{% endif %}{% if is_today %} border-primary border-2{% endif %}"
+                {% if is_cell and day_orders %}onclick="selectDay('{{ date_key }}')" id="cell-{{ date_key }}"{% endif %}>
+              {% if is_cell %}
+              <div class="small fw-bold mb-1 {{ 'text-primary' if is_today }}">{{ ns.day }}</div>
+              {% if has_repair %}<span class="d-inline-block rounded-circle bg-warning me-1" style="width:8px;height:8px" title="Ремонт"></span>{% endif %}
+              {% if has_print %}<span class="d-inline-block rounded-circle bg-info" style="width:8px;height:8px" title="Печать"></span>{% endif %}
+              {% if day_orders|length > 0 %}<span class="badge bg-secondary rounded-pill position-absolute" style="top:3px;right:3px;font-size:0.55rem;padding:2px 5px">{{ day_orders|length }}</span>{% endif %}
+              {% set ns.day = ns.day + 1 %}
               {% endif %}
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        <div class="d-flex gap-3 mt-2 small text-muted">
-          <span><span class="d-inline-block rounded-circle bg-warning me-1" style="width:8px;height:8px"></span>Ремонт</span>
-          <span><span class="d-inline-block rounded-circle bg-info me-1" style="width:8px;height:8px"></span>Печать</span>
-        </div>
-      </div>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex gap-3 mt-2 small text-muted">
+      <span><span class="d-inline-block rounded-circle bg-warning me-1" style="width:8px;height:8px"></span>Ремонт</span>
+      <span><span class="d-inline-block rounded-circle bg-info me-1" style="width:8px;height:8px"></span>Печать</span>
     </div>
   </div>
+</div>
 
-  <div class="col-lg-5">
-    <div class="card shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <strong id="detailTitle"><i class="bi bi-list-ul me-1"></i>Выберите дату</strong>
-      </div>
-      <div class="card-body p-0" style="max-height:420px;overflow-y:auto" id="detailBody">
-        <div class="text-center py-5 text-muted">
-          <i class="bi bi-arrow-left-circle fs-1 d-block mb-2"></i>
-          Нажмите на дату в календаре чтобы увидеть заказы
-        </div>
-      </div>
-    </div>
+<div class="card shadow-sm" id="detailCard" style="display:none">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong id="detailTitle"></strong>
   </div>
+  <div class="card-body p-0" id="detailBody"></div>
 </div>
 
 {% if not orders_by_date %}
@@ -115,12 +97,16 @@ function selectDay(dateKey) {
   var orders = ALL_ORDERS[dateKey] || [];
   var parts = dateKey.split('-');
   var title = parts[2] + '.' + parts[1] + '.' + parts[0];
-  var titleEl = document.getElementById('detailTitle');
-  titleEl.innerHTML = '<i class="bi bi-calendar3 me-1"></i>' + title + ' <span class="badge bg-primary ms-1">' + orders.length + '</span>';
 
+  var card = document.getElementById('detailCard');
+  var titleEl = document.getElementById('detailTitle');
   var body = document.getElementById('detailBody');
+
+  titleEl.innerHTML = '<i class="bi bi-calendar3 me-1"></i>' + title + ' <span class="badge bg-primary ms-1">' + orders.length + ' зак.</span>';
+  card.style.display = 'block';
+
   if (!orders.length) {
-    body.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Нет заказов на этот день</div>';
+    body.innerHTML = '<div class="text-center py-3 text-muted">Нет заказов на этот день</div>';
     return;
   }
 
