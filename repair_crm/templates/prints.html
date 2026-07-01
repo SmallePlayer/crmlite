@@ -42,7 +42,7 @@
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-printer me-1"></i>Новая печать</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
       <div class="mb-3"><label class="form-label">Название <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" required placeholder="Модель, деталь..."></div>
-      <div class="mb-3"><label class="form-label">Пластик <span class="text-danger">*</span></label><select name="filament_id" class="form-select" required onchange="showFilamentInfo()"><option value="">— Выбрать —</option>{% for f in filaments %}<option value="{{ f.id }}" data-type="{{ f.type | e }}" data-color="{{ f.color | e }}" data-mfr="{{ f.manufacturer | e }}" data-stock="{{ f.quantity }}">{{ f.name }}{% if f.article %} [{{ f.article }}]{% endif %} ({{ f.type }}{% if f.color %}, {{ f.color }}{% endif %}, {{ f.quantity }} г.)</option>{% endfor %}</select>
+      <div class="mb-3"><label class="form-label">Пластик <span class="text-danger">*</span></label><select name="filament_id" class="form-select" required onchange="showFilamentInfo()"><option value="">— Выбрать —</option>{% for f in filaments %}<option value="{{ f.id }}" data-type="{{ f.type | e }}" data-color="{{ f.color | e }}" data-stock="{{ f.quantity }}">{{ f.name }}{% if f.article %} [{{ f.article }}]{% endif %} ({{ f.type }}{% if f.color %}, {{ f.color }}{% endif %}, {{ f.quantity }} г.)</option>{% endfor %}</select>
       <small class="text-muted" id="filInfo"></small></div>
       <div class="row"><div class="col-6 mb-3"><label class="form-label">Грамм</label><input type="number" name="grams" class="form-control" min="1" value="50"></div><div class="col-6 mb-3"><label class="form-label">Часов</label><input type="number" name="hours" class="form-control" min="0" step="0.5" value="1"></div></div>
     </div>
@@ -56,7 +56,6 @@ function showFilamentInfo() {
   var opt = sel.options[sel.selectedIndex];
   if (opt.value) {
     var parts = [];
-    if (opt.dataset.mfr) parts.push('Произв: ' + opt.dataset.mfr);
     parts.push('Тип: ' + opt.dataset.type);
     parts.push('Цвет: ' + opt.dataset.color);
     parts.push('Остаток: ' + opt.dataset.stock + ' г.');
