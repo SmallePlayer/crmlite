@@ -162,6 +162,31 @@ class ProductMovement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class Filament(Base):
+    __tablename__ = "filaments"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    type: Mapped[str] = mapped_column(String(50), default="PLA")
+    color: Mapped[str] = mapped_column(String(100), default="")
+    quantity: Mapped[int] = mapped_column(Integer, default=0)
+    min_stock: Mapped[int] = mapped_column(Integer, default=500)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    movements = relationship("FilamentMovement", back_populates="filament",
+                             cascade="all, delete-orphan", order_by="FilamentMovement.id")
+
+
+class FilamentMovement(Base):
+    __tablename__ = "filament_movements"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    filament_id: Mapped[int] = mapped_column(ForeignKey("filaments.id"), index=True)
+    filament = relationship("Filament", back_populates="movements")
+    type: Mapped[str] = mapped_column(String(10))
+    quantity: Mapped[int] = mapped_column(Integer, default=0)
+    reason: Mapped[str] = mapped_column(String(500), default="")
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -298,6 +323,31 @@ async def lifespan(app: FastAPI):
                 )
             """))
             nc.commit()
+        # Create filaments table if not exists
+        with engine.connect() as fc:
+            fc.execute(text("""
+                CREATE TABLE IF NOT EXISTS filaments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(200) NOT NULL,
+                    type VARCHAR(50) DEFAULT 'PLA',
+                    color VARCHAR(100) DEFAULT '',
+                    quantity INTEGER DEFAULT 0,
+                    min_stock INTEGER DEFAULT 500,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            fc.execute(text("""
+                CREATE TABLE IF NOT EXISTS filament_movements (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    filament_id INTEGER NOT NULL REFERENCES filaments(id),
+                    type VARCHAR(10) NOT NULL,
+                    quantity INTEGER DEFAULT 0,
+                    reason VARCHAR(500) DEFAULT '',
+                    order_id INTEGER REFERENCES orders(id),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            fc.commit()
         # Create indexes on FK columns (silently skip if exist)
         for tbl, col in [("tasks", "assigned_to"), ("tasks", "created_by"),
                          ("attendance", "user_id"), ("order_items", "order_id"),
@@ -489,6 +539,17 @@ def _seed_data():
             Product(name="ABS белый", article="ABS-WHT-1KG", color="Белый", quantity=10),
         ]
         s.add_all(products)
+        # Test filaments
+        filaments = [
+            Filament(name="PLA красный", type="PLA", color="Красный", quantity=2000, min_stock=500),
+            Filament(name="PLA чёрный", type="PLA", color="Чёрный", quantity=3000, min_stock=500),
+            Filament(name="PETG прозрачный", type="PETG", color="Прозрачный", quantity=1500, min_stock=300),
+            Filament(name="ABS белый", type="ABS", color="Белый", quantity=1000, min_stock=300),
+        ]
+        s.add_all(filaments)
+        s.flush()
+        for f in filaments:
+            s.add(FilamentMovement(filament_id=f.id, type="in", quantity=f.quantity, reason="Начальный остаток"))
         s.flush()
         # Stock in for parts
         for p in parts:
@@ -2066,7 +2127,96 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...),
 
 
 # ══════════════════════════════════════════════════════════════════
-#  Chat
+#  Filament Management
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/filaments", response_class=HTMLResponse)
+def filaments_page(request: Request, session: Session = Depends(get_db)):
+    filaments = session.execute(
+        select(Filament).order_by(Filament.name)
+    ).scalars().all()
+    movements = session.execute(
+        select(FilamentMovement).options(joinedload(FilamentMovement.filament))
+        .order_by(desc(FilamentMovement.created_at)).limit(30)
+    ).unique().scalars().all()
+    return templates.TemplateResponse(request, "filaments.html", {
+        **_user_context(request),
+        "filaments": filaments, "movements": movements,
+    })
+
+
+@app.post("/filaments")
+def create_filament(
+    request: Request,
+    name: str = Form(...),
+    type: str = Form("PLA"),
+    color: str = Form(""),
+    quantity: int = Form(0),
+    session: Session = Depends(get_db),
+):
+    f = Filament(name=name.strip(), type=type, color=color.strip(), quantity=quantity)
+    session.add(f)
+    session.flush()
+    if quantity > 0:
+        session.add(FilamentMovement(filament_id=f.id, type="in", quantity=quantity, reason="Начальный остаток"))
+    session.commit()
+    return RedirectResponse("/filaments", status_code=303)
+
+
+@app.post("/filaments/{fid}/edit")
+def edit_filament(
+    fid: int, request: Request,
+    name: str = Form(...),
+    color: str = Form(""),
+    min_stock: int = Form(0),
+    session: Session = Depends(get_db),
+):
+    f = session.get(Filament, fid)
+    if not f: raise HTTPException(404)
+    f.name = name.strip()
+    f.color = color.strip()
+    f.min_stock = min_stock
+    session.commit()
+    return RedirectResponse("/filaments", status_code=303)
+
+
+@app.post("/filaments/{fid}/delete")
+def delete_filament(fid: int, request: Request, session: Session = Depends(get_db)):
+    f = session.get(Filament, fid)
+    if f: session.delete(f); session.commit()
+    return RedirectResponse("/filaments", status_code=303)
+
+
+@app.post("/filaments/receive")
+async def receive_filament(request: Request, session: Session = Depends(get_db)):
+    data = await request.json()
+    for row in data:
+        fid = int(row.get("id", 0))
+        qty = int(row.get("quantity", 0))
+        if fid <= 0 or qty <= 0: continue
+        f = session.get(Filament, fid)
+        if not f: continue
+        f.quantity += qty
+        session.add(FilamentMovement(filament_id=fid, type="in", quantity=qty, reason="Приход"))
+    session.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.post("/filaments/expense")
+def expense_filament(
+    request: Request,
+    filament_id: int = Form(...),
+    quantity: int = Form(...),
+    reason: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    f = session.get(Filament, filament_id)
+    if not f: raise HTTPException(400)
+    if f.quantity < quantity: raise HTTPException(400, f"Недостаточно: {f.quantity} г.")
+    f.quantity -= quantity
+    session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=quantity, reason=reason.strip()))
+    session.commit()
+    return RedirectResponse("/filaments", status_code=303)
 # ══════════════════════════════════════════════════════════════════
 
 @app.get("/chat", response_class=HTMLResponse)

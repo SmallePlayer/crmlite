@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% set current_page = "filaments" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Учёт пластика</h4>
+  <button class="btn btn-primary" onclick="openFilamentModal()"><i class="bi bi-plus-lg me-1"></i>Добавить</button>
+</div>
+
+<div class="row g-3 mb-4">
+  {% for f in filaments %}
+  <div class="col-md-6 col-lg-3">
+    <div class="card shadow-sm {% if f.quantity <= f.min_stock %}border-danger{% endif %} h-100">
+      <div class="card-body text-center py-3">
+        <div class="mb-2"><span class="badge bg-primary">{{ f.type }}</span></div>
+        <h5 class="mb-1">{{ f.name }}</h5>
+        <small class="text-muted">{{ f.color if f.color else '—' }}</small>
+        <div class="mt-3 fs-4 fw-bold {% if f.quantity <= f.min_stock %}text-danger{% else %}text-success{% endif %}">
+          {{ f.quantity }} <small style="font-size:0.6em">г.</small>
+        </div>
+        <small class="text-muted">Мин: {{ f.min_stock }} г.</small>
+        <div class="d-flex justify-content-center gap-1 mt-3">
+          <button class="btn btn-sm btn-outline-success" onclick="openExpenseModal({{ f.id }}, '{{ f.name | e }}', {{ f.quantity }})" title="Расход"><i class="bi bi-dash-circle"></i></button>
+          <button class="btn btn-sm btn-outline-primary" onclick="openReceiveModal('{{ f.id }}')" title="Приход"><i class="bi bi-plus-circle"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="openFilamentModal({{ f.id }})" title="Ред."><i class="bi bi-pencil"></i></button>
+          <form method="post" action="/filaments/{{ f.id }}/delete" class="d-inline" data-confirm="Удалить {{ f.name }}?"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<h5 class="mb-3">Последние движения</h5>
+<div class="table-responsive">
+  <table class="table table-sm table-hover">
+    <thead class="table-light"><tr><th>Пластик</th><th>Тип</th><th>Кол-во</th><th>Причина</th><th>Дата</th></tr></thead>
+    <tbody>
+      {% for m in movements %}
+      <tr>
+        <td><strong>{{ m.filament.name }}</strong></td>
+        <td><span class="badge bg-{{ 'success' if m.type == 'in' else 'danger' }}">{{ '+' if m.type == 'in' else '−' }}{{ m.quantity }} г.</span></td>
+        <td>{{ m.quantity }} г.</td>
+        <td class="text-muted">{{ m.reason or '—' }}</td>
+        <td class="text-muted small">{{ m.created_at | dt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# Create/Edit Modal #}
+<div class="modal fade" id="filamentModal" tabindex="-1"><div class="modal-dialog modal-sm">
+  <form class="modal-content" id="filamentForm" method="post" action="/filaments">
+    <div class="modal-header"><h5 class="modal-title" id="filamentTitle">Новый пластик</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-2"><label class="form-label">Название</label><input type="text" name="name" id="fName" class="form-control" required></div>
+      <div class="mb-2"><label class="form-label">Тип</label><select name="type" id="fType" class="form-select"><option>PLA</option><option>PETG</option><option>ABS</option><option>TPU</option><option>Другое</option></select></div>
+      <div class="mb-2"><label class="form-label">Цвет</label><input type="text" name="color" id="fColor" class="form-control"></div>
+      <div class="mb-2"><label class="form-label">Кол-во (грамм)</label><input type="number" name="quantity" id="fQty" class="form-control" min="0" value="1000"></div>
+      <input type="hidden" name="min_stock" id="fMin" value="500">
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div></form></div></div>
+
+{# Expense Modal #}
+<div class="modal fade" id="expenseModal" tabindex="-1"><div class="modal-dialog modal-sm">
+  <form class="modal-content" method="post" action="/filaments/expense">
+    <div class="modal-header"><h5 class="modal-title">Списать пластик</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <input type="hidden" name="filament_id" id="expFilamentId">
+      <p class="mb-2">Пластик: <strong id="expFilamentName"></strong> (остаток: <span id="expFilamentStock"></span> г.)</p>
+      <div class="mb-2"><label class="form-label">Грамм</label><input type="number" name="quantity" class="form-control" required min="1" value="50"></div>
+      <div class="mb-2"><label class="form-label">Причина</label><input type="text" name="reason" class="form-control" placeholder="Напечатано, тест..."></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-danger">Списать</button></div></form></div></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var FILAMENTS = [{% for f in filaments %}{"id":{{ f.id }},"name":"{{ f.name|e }}","type":"{{ f.type|e }}","color":"{{ f.color|e }}","quantity":{{ f.quantity }}}{% if not loop.last %},{% endif %}{% endfor %}];
+
+function openFilamentModal(fid) {
+  var f = document.getElementById('filamentForm');
+  if (fid) {
+    var d = FILAMENTS.find(function(x){return x.id===fid});
+    if (!d) return;
+    document.getElementById('filamentTitle').textContent = 'Редактировать';
+    f.action = '/filaments/' + fid + '/edit';
+    document.getElementById('fName').value = d.name;
+    document.getElementById('fType').value = d.type;
+    document.getElementById('fColor').value = d.color;
+    document.getElementById('fQty').value = '';
+    document.getElementById('fQty').style.display = 'none';
+    document.getElementById('fQty').previousElementSibling.style.display = 'none';
+    document.getElementById('fMin').value = d.quantity <= 500 ? 500 : 500;
+  } else {
+    document.getElementById('filamentTitle').textContent = 'Новый пластик';
+    f.action = '/filaments';
+    document.getElementById('fName').value = '';
+    document.getElementById('fColor').value = '';
+    document.getElementById('fQty').value = 1000;
+    document.getElementById('fQty').style.display = '';
+    document.getElementById('fQty').previousElementSibling.style.display = '';
+  }
+  new bootstrap.Modal(document.getElementById('filamentModal')).show();
+}
+
+function openExpenseModal(fid, name, stock) {
+  document.getElementById('expFilamentId').value = fid;
+  document.getElementById('expFilamentName').textContent = name;
+  document.getElementById('expFilamentStock').textContent = stock;
+  new bootstrap.Modal(document.getElementById('expenseModal')).show();
+}
+
+function openReceiveModal(fid) {
+  var qty = prompt('Сколько грамм добавить?', '1000');
+  if (qty && parseInt(qty) > 0) {
+    fetch('/filaments/receive', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify([{id: parseInt(fid), quantity: parseInt(qty)}])
+    }).then(function(r){ location.reload(); });
+  }
+}
+</script>
+{% endblock %}
