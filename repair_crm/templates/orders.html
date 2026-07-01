@@ -104,7 +104,7 @@
     <tbody>
       {% for o in orders %}
       <tr class="clickable" onclick="location.href='/orders/{{ o.id }}'">
-        <td class="hide-mobile"><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()"></td>
+        <td class="hide-mobile"><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()" onclick="event.stopPropagation()"></td>
         <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a>
           {% if o.is_confirmed %}<i class="bi bi-check-circle-fill text-success ms-1 small" title="Подтверждён"></i>{% endif %}</td>
         <td class="hide-mobile"><span class="badge bg-light text-dark border">{{ ORDER_TYPES[o.order_type][0] }}</span></td>
@@ -120,16 +120,16 @@
         <td><strong>{{ o.total_price | money }}</strong></td>
         <td class="text-muted">{{ o.created_at | dt }}</td>
         <td>
-          <a href="/orders/{{ o.id }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+          <a href="/orders/{{ o.id }}" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation()"><i class="bi bi-eye"></i></a>
           {% if o.status == "closed" %}
           <form method="post" action="/orders/{{ o.id }}/reopen" class="d-inline"
                 data-confirm="Вернуть заказ #{{ o.id }} в работу?">
-            <button class="btn btn-sm btn-outline-warning"><i class="bi bi-arrow-repeat"></i></button>
+            <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation()"><i class="bi bi-arrow-repeat"></i></button>
           </form>
           {% endif %}
           <form method="post" action="/orders/{{ o.id }}/delete" class="d-inline"
                 data-confirm="Удалить заказ #{{ o.id }}?{% if o.parts %} Все запчасти вернутся на склад.{% endif %}">
-            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation()"><i class="bi bi-trash"></i></button>
           </form>
         </td>
       </tr>
