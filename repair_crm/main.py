@@ -2415,21 +2415,18 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
 
 
 @app.post("/attendance/check-in")
-def check_in(request: Request, for_user: int = Form(0), session: Session = Depends(get_db)):
+def check_in(request: Request, session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
-    target_id = for_user if (for_user > 0 and u.role.name in ("admin", "manager")) else u.id
-    target = session.get(User, target_id)
-    if not target: raise HTTPException(400)
     today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
     existing = session.execute(
-        select(Attendance).where(Attendance.user_id == target_id, Attendance.date == today)
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
     ).scalar_one_or_none()
     if existing:
         return RedirectResponse("/attendance", status_code=303)
-    session.add(Attendance(user_id=target_id, date=today, check_in=datetime.now()))
+    session.add(Attendance(user_id=u.id, date=today, check_in=datetime.now()))
     session.commit()
-    _audit("check_in", "attendance", None, f"{target.full_name} пришёл", u, session)
+    _audit("check_in", "attendance", None, f"{u.full_name} пришёл", u, session)
     return RedirectResponse("/attendance", status_code=303)
 
 
@@ -2466,18 +2463,17 @@ def edit_attendance(
 
 
 @app.post("/attendance/check-out")
-def check_out(request: Request, for_user: int = Form(0), session: Session = Depends(get_db)):
+def check_out(request: Request, session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
-    target_id = for_user if (for_user > 0 and u.role.name in ("admin", "manager")) else u.id
     today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
     existing = session.execute(
-        select(Attendance).where(Attendance.user_id == target_id, Attendance.date == today)
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
     ).scalar_one_or_none()
     if existing and not existing.check_out:
         existing.check_out = datetime.now()
         session.commit()
-        _audit("check_out", "attendance", None, f"{session.get(User, target_id).full_name} ушёл", u, session)
+        _audit("check_out", "attendance", None, f"{u.full_name} ушёл", u, session)
     return RedirectResponse("/attendance", status_code=303)
 
 
