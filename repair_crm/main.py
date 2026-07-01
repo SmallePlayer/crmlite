@@ -288,6 +288,7 @@ class Attendance(Base):
     date: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     check_in: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     check_out: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
+    report: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -329,9 +330,15 @@ async def lifespan(app: FastAPI):
                 conn.commit()
             except Exception:
                 pass
+        for col, dtype in [("report", "TEXT DEFAULT ''")]:
+            try:
+                conn.execute(text(f"ALTER TABLE attendance ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
         for col, dtype in [("article", "VARCHAR(100) DEFAULT ''"),
-                           ("manufacturer", "VARCHAR(100) DEFAULT ''"),
-                           ("grams_per_spool", "INTEGER DEFAULT 1000")]:
+                            ("manufacturer", "VARCHAR(100) DEFAULT ''"),
+                            ("grams_per_spool", "INTEGER DEFAULT 1000")]:
             try:
                 conn.execute(text(f"ALTER TABLE filaments ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -2435,7 +2442,7 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
         "by_user_date": by_user_date, "sched_by_user": sched_by_user,
         "today_attendance": today_attendance, "today": today, "current_user_id": u.id,
         "timedelta": timedelta, "all_schedules": schedules, "sched_map": sched_map,
-        "work_hours": work_hours,
+        "work_hours": work_hours, "now_utc": datetime.now(),
     })
 
 
@@ -2460,6 +2467,7 @@ def edit_attendance(
     request: Request,
     check_in: str = Form(""),
     check_out: str = Form(""),
+    report: str = Form(""),
     session: Session = Depends(get_db),
 ):
     u = request.state.user
@@ -2482,13 +2490,14 @@ def edit_attendance(
             a.check_out = today.replace(hour=h, minute=m) - TIMEZONE_OFFSET
         except ValueError:
             pass
+    a.report = report.strip()
     session.commit()
     _audit("edit_attendance", "attendance", a.id, f"{u.full_name}", u, session)
     return RedirectResponse("/attendance", status_code=303)
 
 
 @app.post("/attendance/check-out")
-def check_out(request: Request, session: Session = Depends(get_db)):
+def check_out(request: Request, report: str = Form(""), session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
     today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2497,6 +2506,7 @@ def check_out(request: Request, session: Session = Depends(get_db)):
     ).scalar_one_or_none()
     if existing and not existing.check_out:
         existing.check_out = datetime.now()
+        existing.report = report.strip()
         session.commit()
         _audit("check_out", "attendance", None, f"{u.full_name} ушёл", u, session)
     return RedirectResponse("/attendance", status_code=303)
