@@ -3,15 +3,11 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h4 class="mb-0">Расписание заказов</h4>
+  <h4 class="mb-0"><i class="bi bi-calendar2-week me-2"></i>Расписание заказов</h4>
   <div class="d-flex gap-2">
-    <a href="/schedule?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-chevron-left"></i>
-    </a>
-    <span class="btn btn-sm btn-primary disabled">{{ base_month | month_ru }} {{ base_month.year }}</span>
-    <a href="/schedule?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-chevron-right"></i>
-    </a>
+    <a href="/schedule?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
+    <span class="btn btn-primary btn-sm disabled px-3">{{ base_month | month_ru }} {{ base_month.year }}</span>
+    <a href="/schedule?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
   </div>
 </div>
 
@@ -20,72 +16,83 @@
 {% set start_dow = first_day.weekday() %}
 {% set total_days = last_day.day %}
 
-<div class="table-responsive">
-  <table class="table table-bordered align-top" style="table-layout:fixed;min-width:600px">
-    <thead>
-      <tr class="table-light text-center">
-        {% for d in ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"] %}
-        <th style="width:14.2%;font-size:0.75rem;padding:4px" class="{{ 'text-danger' if loop.index0 >= 5 }}">{{ d }}</th>
-        {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% set ns = namespace(day=1) %}
-      {% for w in range(6) %}
-      {% if ns.day <= total_days %}
-      <tr>
-        {% for dow in range(7) %}
-        {% set is_today_cell = (w == 0 and dow >= start_dow) or (w > 0 and ns.day <= total_days) %}
-        <td style="vertical-align:top;padding:3px;font-size:0.7rem" class="{{ 'text-muted' if not is_today_cell }}">
-          {% if is_today_cell %}
-          {% set date_key = base_month.strftime('%Y-%m') + '-%02d' % ns.day %}
-          {% set day_orders = orders_by_date.get(date_key, []) %}
-          <div class="d-flex justify-content-between align-items-center mb-1"
-               {% if day_orders %}style="cursor:pointer" onclick="toggleDay('d{{ date_key }}')"{% endif %}>
-            <small class="fw-bold">{{ ns.day }}</small>
-            {% if day_orders %}
-            <small class="text-primary fw-bold" style="font-size:0.7rem">+{{ day_orders|length }}</small>
-            {% endif %}
-          </div>
-          {% if day_orders %}
-          <div id="d{{ date_key }}" style="display:none" class="bg-light rounded p-1 small">
-            {% for o in day_orders %}
-            <a href="/orders/{{ o.id }}" class="d-block text-decoration-none mb-1 rounded px-1 py-0
-               bg-{{ ORDER_STATUSES[o.status][1].split()[0] if ' ' in ORDER_STATUSES[o.status][1] else ORDER_STATUSES[o.status][1] }} bg-opacity-25"
-               style="font-size:0.7rem">
-              {% if o.order_type == 'print' %}
-              📦 Сдача: {{ o.client.full_name.split()[0] }}
-              {% else %}
-              <strong>{{ o.scheduled_at.strftime('%H:%M') }}</strong>
-              {{ o.client.full_name.split()[0] }}
-              {% if o.schedule_location %}
-              <br><i class="bi bi-geo-alt small me-1"></i>{{ o.schedule_location[:20] }}
-              {% endif %}
-              {% endif %}
-            </a>
-            {% endfor %}
-          </div>
-          {% endif %}
-          {% set ns.day = ns.day + 1 %}
-          {% endif %}
-        </td>
-        {% endfor %}
-      </tr>
-      {% endif %}
-      {% endfor %}
-    </tbody>
-  </table>
+{# Stats cards #}
+{% set total_orders = 0 %}{% for d, olist in orders_by_date.items() %}{% set total_orders = total_orders + olist|length %}{% endfor %}
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3"><div class="card border-primary text-center py-2"><div class="text-primary fw-bold fs-5">{{ total_orders }}</div><small class="text-muted">Заказов в месяце</small></div></div>
+  <div class="col-6 col-md-3"><div class="card border-success text-center py-2"><div class="text-success fw-bold fs-5">{{ orders_by_date|length }}</div><small class="text-muted">Дней с заказами</small></div></div>
 </div>
 
-{% if not orders_by_date %}
-<div class="text-center py-5 text-muted">
-  <i class="bi bi-calendar2-week fs-1"></i>
-  <p class="mt-2">Нет заказов с назначенной датой выезда в этом месяце.</p>
+{# Calendar #}
+<div class="card shadow-sm mb-4">
+  <div class="card-body p-2">
+    <div class="table-responsive">
+      <table class="table table-bordered align-top mb-0" style="table-layout:fixed;min-width:700px">
+        <thead>
+          <tr class="table-light text-center">
+            {% set dow_names = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"] %}
+            {% for name in dow_names %}
+            <th style="width:14.2%;padding:10px 4px;font-size:0.85rem" class="{{ 'text-danger' if loop.index0 >= 5 }}">{{ name }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% set ns = namespace(day=1) %}
+          {% for w in range(6) %}
+          {% if ns.day <= total_days %}
+          <tr>
+            {% for dow in range(7) %}
+            {% set is_cell = (w == 0 and dow >= start_dow) or (w > 0 and ns.day <= total_days) %}
+            {% set date_key = base_month.strftime('%Y-%m') + '-%02d' % ns.day %}
+            {% set day_orders = orders_by_date.get(date_key, []) %}
+            <td style="height:95px;vertical-align:top;padding:6px" class="{{ 'text-muted bg-light' if not is_cell }}">
+              {% if is_cell %}
+              <div class="d-flex justify-content-between align-items-center mb-1"
+                   {% if day_orders %}style="cursor:pointer" onclick="toggleDay('d{{ date_key }}')"{% endif %}>
+                <span class="fw-bold">{{ ns.day }}</span>
+                {% if day_orders %}
+                <span class="badge bg-primary rounded-pill">{{ day_orders|length }}</span>
+                {% endif %}
+              </div>
+              <div id="d{{ date_key }}" style="display:none">
+                {% for o in day_orders %}
+                <a href="/orders/{{ o.id }}" class="d-block text-decoration-none mb-1 rounded px-2 py-1 small
+                   border-start border-3 border-{{ ORDER_STATUSES[o.status][1].split()[0] if ' ' in ORDER_STATUSES[o.status][1] else ORDER_STATUSES[o.status][1] }} bg-light"
+                   style="font-size:0.72rem">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold text-dark">{{ o.client.full_name.split()[0] }}</span>
+                    <span class="badge bg-{{ ORDER_STATUSES[o.status][1].split()[0] if ' ' in ORDER_STATUSES[o.status][1] else ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span>
+                  </div>
+                  {% if o.order_type == 'print' %}
+                  <span class="text-muted">📦 {{ o.printer[:30] }}</span>
+                  {% else %}
+                  <span class="text-muted">🔧 {{ o.scheduled_at.strftime('%H:%M') if o.scheduled_at else '' }} — {{ o.printer[:30] }}</span>
+                  {% endif %}
+                  {% if o.schedule_location %}
+                  <br><i class="bi bi-geo-alt text-secondary"></i>
+                  <a href="https://yandex.ru/maps/?text={{ o.schedule_location | urlencode }}"
+                     target="_blank" class="text-decoration-none text-muted" onclick="event.stopPropagation()">{{ o.schedule_location[:25] }}</a>
+                  {% endif %}
+                </a>
+                {% endfor %}
+              </div>
+              {% set ns.day = ns.day + 1 %}
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
+
+{% if orders_by_date %}
+<div class="text-muted small text-end">Нажмите на число чтобы развернуть заказы</div>
 {% else %}
-<div class="text-end mt-2">
-  <small class="text-muted">Нажмите <span class="text-primary fw-bold">+N</span> на числе чтобы развернуть заказы дня</small>
-</div>
+<div class="text-center py-5"><i class="bi bi-calendar2-week fs-1 text-muted"></i><p class="mt-3 text-muted">Нет заказов с назначенной датой</p><p class="text-muted small">При создании заказа укажите дату выезда или срок сдачи</p></div>
 {% endif %}
 {% endblock %}
 
@@ -93,13 +100,7 @@
 <script>
 function toggleDay(id) {
   var div = document.getElementById(id);
-  if (!div) return;
-  var orders = div.querySelectorAll('a.d-block').length;
-  if (div.style.display === 'none' || div.style.display === '') {
-    div.style.display = 'block';
-  } else {
-    div.style.display = 'none';
-  }
+  div.style.display = div.style.display === 'none' || !div.style.display ? 'block' : 'none';
 }
 </script>
 {% endblock %}
