@@ -9,7 +9,7 @@
   {% if order.is_confirmed %}
   <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Подтверждён</span>
   {% else %}
-  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Не подтверждён</span>
+  <span class="badge bg-warning text-dark"><i class="bi bi-x-circle me-1"></i>Не подтверждён</span>
   {% endif %}
   <span class="badge bg-{{ ORDER_STATUSES[order.status][1] }}">{{ ORDER_STATUSES[order.status][0] }}</span>
 </div>
