@@ -66,7 +66,6 @@
           {% for d in range(1, total_days + 1) %}{% set date_str = base_month.strftime('%Y-%m') + '-%02d' % d %}{% set a = by_user_date.get(u.id, {}).get(date_str) %}
           {% if a %}{% if a.check_out %}{% set worked = worked + 1 %}<td class="text-center bg-success bg-opacity-10" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}"><i class="bi bi-check-circle-fill text-success" style="font-size:0.65rem"></i></td>
           {% else %}{% set worked = worked + 1 %}<td class="text-center bg-warning bg-opacity-10" title="с {{ a.check_in | tm }}"><i class="bi bi-hourglass-split text-warning" style="font-size:0.65rem"></i></td>{% endif %}
-          {% elif sched_by_user.get(u.id, {}).get(date_str) %}<td class="text-center bg-info bg-opacity-10"><i class="bi bi-calendar text-info" style="font-size:0.65rem"></i></td>
           {% else %}<td class="text-center text-muted">·</td>{% endif %}{% endfor %}
           <td class="text-center fw-bold table-secondary small">{{ worked }}</td>
           <td class="text-center fw-bold table-secondary small">{{ work_hours[u.id].hours if work_hours[u.id].hours > 0 else '—' }}</td></tr>{% endfor %}</tbody>

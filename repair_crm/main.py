@@ -2368,13 +2368,13 @@ def edit_attendance(
     if check_in.strip():
         try:
             h, m = map(int, check_in.split(":"))
-            a.check_in = today.replace(hour=h, minute=m)
+            a.check_in = today.replace(hour=h, minute=m) - TIMEZONE_OFFSET
         except ValueError:
             pass
     if check_out.strip():
         try:
             h, m = map(int, check_out.split(":"))
-            a.check_out = today.replace(hour=h, minute=m)
+            a.check_out = today.replace(hour=h, minute=m) - TIMEZONE_OFFSET
         except ValueError:
             pass
     session.commit()
