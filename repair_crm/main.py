@@ -2194,6 +2194,38 @@ def check_in(request: Request, session: Session = Depends(get_db)):
     return RedirectResponse("/attendance", status_code=303)
 
 
+@app.post("/attendance/edit")
+def edit_attendance(
+    request: Request,
+    check_in: str = Form(""),
+    check_out: str = Form(""),
+    session: Session = Depends(get_db),
+):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    a = session.execute(
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
+    ).scalar_one_or_none()
+    if not a:
+        raise HTTPException(400, "Нет отметки за сегодня")
+    if check_in.strip():
+        try:
+            h, m = map(int, check_in.split(":"))
+            a.check_in = today.replace(hour=h, minute=m)
+        except ValueError:
+            pass
+    if check_out.strip():
+        try:
+            h, m = map(int, check_out.split(":"))
+            a.check_out = today.replace(hour=h, minute=m)
+        except ValueError:
+            pass
+    session.commit()
+    _audit("edit_attendance", "attendance", a.id, f"{u.full_name}", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
 @app.post("/attendance/check-out")
 def check_out(request: Request, session: Session = Depends(get_db)):
     u = request.state.user
