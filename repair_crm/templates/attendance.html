@@ -5,18 +5,10 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4 class="mb-0">Посещаемость</h4>
   <div class="d-flex gap-2 align-items-center">
-    {% if can_view_all %}
-    <a href="/attendance?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-chevron-left"></i>
-    </a>
+    <a href="/attendance?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
     <span class="fw-semibold">{{ base_month | month_ru }} {{ base_month.year }}</span>
-    <a href="/attendance?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-chevron-right"></i>
-    </a>
-    <button class="btn btn-outline-primary btn-sm ms-2" onclick="openScheduleModal()">
-      <i class="bi bi-plus me-1"></i>Смена
-    </button>
-    {% endif %}
+    <a href="/attendance?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
+    <button class="btn btn-outline-primary btn-sm ms-2" onclick="openScheduleModal()"><i class="bi bi-plus me-1"></i>Смена</button>
   </div>
 </div>
 
@@ -44,7 +36,6 @@
   </div>
 </div>
 
-{% if can_view_all %}
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-month" type="button">Обзор месяца</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-today" type="button">Кто сегодня</button></li>
@@ -53,23 +44,17 @@
 
 <div class="tab-content">
   <div class="tab-pane fade show active" id="tab-month">
-    {% set first_day = base_month.replace(day=1) %}
-    {% set sched_first = base_month.replace(day=1) %}
-    {% set last_day = (first_day.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
-    {% set total_days = last_day.day %}
+    {% set first_day = base_month.replace(day=1) %}{% set last_day = (first_day.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}{% set total_days = last_day.day %}
     <div class="table-responsive">
       <table class="table table-bordered table-sm align-middle mb-0" style="font-size:0.75rem">
-        <thead><tr class="table-light text-center"><th style="min-width:140px">Сотрудник</th>
-          {% for d in range(1, total_days + 1) %}<th style="width:30px;padding:4px" class="{{ 'text-danger' if (first_day.replace(day=d)).weekday() >= 5 }}">{{ d }}</th>{% endfor %}
-          <th style="width:40px" class="table-secondary">Дни</th></tr></thead>
-        <tbody>
-          {% for u in users %}{% set worked = 0 %}<tr><td class="fw-semibold small text-nowrap">{{ u.full_name }}</td>
-            {% for d in range(1, total_days + 1) %}{% set date_str = base_month.strftime('%Y-%m') + '-%02d' % d %}{% set a = by_user_date.get(u.id, {}).get(date_str) %}
-            {% if a %}{% if a.check_out %}{% set worked = worked + 1 %}<td class="text-center bg-success bg-opacity-25" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}"><i class="bi bi-check-circle-fill text-success small"></i></td>
-            {% else %}{% set worked = worked + 1 %}<td class="text-center bg-warning bg-opacity-25" title="с {{ a.check_in | tm }}"><i class="bi bi-hourglass-split text-warning small"></i></td>{% endif %}
-            {% elif sched_by_user.get(u.id, {}).get(date_str) %}<td class="text-center bg-info bg-opacity-10" title="Смена"><i class="bi bi-calendar text-info small"></i></td>
-            {% else %}<td class="text-center text-muted bg-light">·</td>{% endif %}{% endfor %}
-            <td class="text-center fw-bold table-secondary">{{ worked }}</td></tr>{% endfor %}</tbody>
+        <thead><tr class="table-light text-center"><th style="min-width:140px">Сотрудник</th>{% for d in range(1, total_days + 1) %}<th style="width:30px;padding:4px" class="{{ 'text-danger' if (first_day.replace(day=d)).weekday() >= 5 }}">{{ d }}</th>{% endfor %}<th style="width:40px" class="table-secondary">Дни</th></tr></thead>
+        <tbody>{% for u in users %}{% set worked = 0 %}<tr><td class="fw-semibold small text-nowrap">{{ u.full_name }}</td>
+          {% for d in range(1, total_days + 1) %}{% set date_str = base_month.strftime('%Y-%m') + '-%02d' % d %}{% set a = by_user_date.get(u.id, {}).get(date_str) %}
+          {% if a %}{% if a.check_out %}{% set worked = worked + 1 %}<td class="text-center bg-success bg-opacity-25" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}"><i class="bi bi-check-circle-fill text-success small"></i></td>
+          {% else %}{% set worked = worked + 1 %}<td class="text-center bg-warning bg-opacity-25" title="с {{ a.check_in | tm }}"><i class="bi bi-hourglass-split text-warning small"></i></td>{% endif %}
+          {% elif sched_by_user.get(u.id, {}).get(date_str) %}<td class="text-center bg-info bg-opacity-10"><i class="bi bi-calendar text-info small"></i></td>
+          {% else %}<td class="text-center text-muted bg-light">·</td>{% endif %}{% endfor %}
+          <td class="text-center fw-bold table-secondary">{{ worked }}</td></tr>{% endfor %}</tbody>
       </table>
     </div>
     {% if work_hours %}
@@ -92,14 +77,14 @@
   </div>
 
   <div class="tab-pane fade" id="tab-schedule">
-    {% set sched_start = sched_first.weekday() %}{% set sched_total = last_day.day %}
+    {% set sched_first = base_month.replace(day=1) %}{% set sched_start = sched_first.weekday() %}
     {% set sched_map = {} %}{% for s in all_schedules %}{% set dkey = s.date.strftime('%Y-%m-%d') %}{% set _ = sched_map.setdefault(dkey, []) %}{% set _ = sched_map[dkey].append(s) %}{% endfor %}
     <div class="card shadow-sm"><div class="table-responsive">
       <table class="table table-bordered table-sm align-top mb-0" style="font-size:0.75rem;min-width:600px">
         <thead><tr class="table-light text-center"><th style="width:14.2%">Пн</th><th style="width:14.2%">Вт</th><th style="width:14.2%">Ср</th><th style="width:14.2%">Чт</th><th style="width:14.2%">Пт</th><th style="width:14.2%" class="text-danger">Сб</th><th style="width:14.2%" class="text-danger">Вс</th></tr></thead>
-        <tbody>{% set sched_day = 1 %}{% for w in range(6) %}{% if sched_day <= sched_total %}<tr>{% for dow in range(7) %}
-          <td style="height:70px;vertical-align:top;padding:3px;font-size:0.7rem" class="{{ 'text-muted' if (w==0 and dow < sched_start) or sched_day > sched_total }}">
-            {% if (w==0 and dow >= sched_start) or (w>0 and sched_day <= sched_total) %}<small class="fw-bold">{{ sched_day }}</small>
+        <tbody>{% set sched_day = 1 %}{% for w in range(6) %}{% if sched_day <= total_days %}<tr>{% for dow in range(7) %}
+          <td style="height:70px;vertical-align:top;padding:3px;font-size:0.7rem" class="{{ 'text-muted' if (w==0 and dow < sched_start) or sched_day > total_days }}">
+            {% if (w==0 and dow >= sched_start) or (w>0 and sched_day <= total_days) %}<small class="fw-bold">{{ sched_day }}</small>
             {% set date_str = base_month.strftime('%Y-%m') + '-%02d' % sched_day %}{% set day_scheds = sched_map.get(date_str, []) %}
             {% if day_scheds %}<div class="d-flex flex-column gap-1 mt-1">{% for s in day_scheds %}
               <div class="rounded px-1 py-0 bg-primary bg-opacity-10 d-flex justify-content-between align-items-center" style="cursor:pointer"
@@ -118,12 +103,9 @@
       <div class="mb-3"><label class="form-label">Дата</label><input type="date" name="date" id="schedDate" class="form-control" required value="{{ today.strftime('%Y-%m-%d') }}"></div>
       <div class="row"><div class="col-6 mb-3"><label class="form-label">С</label><input type="time" name="time_from" id="schedFrom" class="form-control" required value="09:00"></div><div class="col-6 mb-3"><label class="form-label">До</label><input type="time" name="time_to" id="schedTo" class="form-control" required value="18:00"></div></div></div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div></form></div></div>
-
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
-{% if can_view_all %}
 <script>
 function openScheduleModal(schedId, date, from, to, userId) {
   var f = document.getElementById('schedForm');
@@ -145,5 +127,4 @@ function openScheduleModal(schedId, date, from, to, userId) {
   new bootstrap.Modal(document.getElementById('scheduleModal')).show();
 }
 </script>
-{% endif %}
 {% endblock %}

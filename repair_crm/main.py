@@ -2173,7 +2173,6 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
         "today_attendance": today_attendance, "today": today, "current_user_id": u.id,
         "timedelta": timedelta, "all_schedules": schedules,
         "work_hours": work_hours,
-        "can_view_all": u.role.name in ("admin", "manager"),
     })
 
 
