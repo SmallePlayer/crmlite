@@ -58,7 +58,7 @@
           <span class="badge bg-success">{{ p.quantity | int }}</span>
           {% endif %}
         </td>
-        <td class="text-end text-muted small">{{ (p.print_cost or 0) | money }}</td>
+        <td class="text-end text-muted small">{{ "%.2f"|format(p.print_cost or 0) }} ₽</td>
         <td>
           <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
                 class="d-inline" id="imgForm_{{ p.id }}">
