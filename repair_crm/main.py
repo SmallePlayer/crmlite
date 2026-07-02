@@ -201,6 +201,8 @@ class PrintJob(Base):
     creator = relationship("User")
     grams: Mapped[int] = mapped_column(Integer, default=0)
     hours: Mapped[float] = mapped_column(Float, default=0)
+    status: Mapped[str] = mapped_column(String(10), default="success")
+    waste_grams: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -348,6 +350,13 @@ async def lifespan(app: FastAPI):
         for col, dtype in [("to_user_id", "INTEGER")]:
             try:
                 conn.execute(text(f"ALTER TABLE chat_messages ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col, dtype in [("status", "VARCHAR(10) DEFAULT 'success'"),
+                            ("waste_grams", "INTEGER DEFAULT 0")]:
+            try:
+                conn.execute(text(f"ALTER TABLE print_jobs ADD COLUMN {col} {dtype}"))
                 conn.commit()
             except Exception:
                 pass
@@ -2354,14 +2363,24 @@ def expense_filament(
 def print_jobs_page(request: Request, session: Session = Depends(get_db)):
     jobs = session.execute(
         select(PrintJob).options(joinedload(PrintJob.filament), joinedload(PrintJob.creator))
-        .order_by(desc(PrintJob.created_at)).limit(50)
+        .order_by(desc(PrintJob.created_at)).limit(100)
     ).unique().scalars().all()
     filaments = session.execute(
         select(Filament).order_by(Filament.name)
     ).scalars().all()
+    total_jobs = len(jobs)
+    success_jobs = sum(1 for j in jobs if j.status == "success")
+    fail_jobs = sum(1 for j in jobs if j.status == "fail")
+    total_grams = sum(j.grams for j in jobs)
+    success_grams = sum(j.grams for j in jobs if j.status == "success")
+    fail_grams = sum(j.grams for j in jobs if j.status == "fail")
+    waste_grams_total = sum(j.waste_grams for j in jobs if j.status == "fail")
     return templates.TemplateResponse(request, "prints.html", {
         **_user_context(request),
         "jobs": jobs, "filaments": filaments,
+        "total_jobs": total_jobs, "success_jobs": success_jobs, "fail_jobs": fail_jobs,
+        "total_grams": total_grams, "success_grams": success_grams,
+        "fail_grams": fail_grams, "waste_grams_total": waste_grams_total,
     })
 
 
@@ -2383,6 +2402,23 @@ def create_print_job(
     session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=grams, reason=f"Печать: {name.strip()}"))
     session.add(PrintJob(name=name.strip(), filament_id=filament_id, created_by=u.id, grams=grams, hours=hours))
     session.commit()
+    return RedirectResponse("/prints", status_code=303)
+
+
+@app.post("/prints/{job_id}/result")
+def mark_print_result(job_id: int, request: Request,
+                      status: str = Form(...),
+                      waste_grams: int = Form(0),
+                      session: Session = Depends(get_db)):
+    job = session.get(PrintJob, job_id)
+    if not job: raise HTTPException(404)
+    job.status = status
+    job.waste_grams = waste_grams if status == "fail" else 0
+    session.commit()
+    _audit("mark_print", "print_job", job_id,
+           f"{job.name} → {'успех' if status == 'success' else 'брак'}" +
+           (f", {waste_grams} г. брак" if status == "fail" else ""),
+           request.state.user, session)
     return RedirectResponse("/prints", status_code=303)
 
 
