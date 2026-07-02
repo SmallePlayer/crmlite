@@ -11,31 +11,31 @@
   </div>
 </div>
 
-{% set present = 0 %}{% set working = 0 %}{% set absent = 0 %}
+{% set ns = namespace(present=0, working=0, absent=0) %}
 {% for u in users %}
   {% set a = today_attendance.get(u.id) %}
-  {% if a and a.check_out %}{% set present = present + 1 %}
-  {% elif a %}{% set working = working + 1 %}
-  {% else %}{% set absent = absent + 1 %}{% endif %}
+  {% if a and a.check_out %}{% set ns.present = ns.present + 1 %}
+  {% elif a %}{% set ns.working = ns.working + 1 %}
+  {% else %}{% set ns.absent = ns.absent + 1 %}{% endif %}
 {% endfor %}
 
 {# ── Stats row ── #}
 <div class="row g-2 mb-4">
   <div class="col-4">
     <div class="card border-success border-2 bg-success bg-opacity-10 text-center py-3 rounded-3">
-      <div class="fs-2 fw-bold text-success">{{ present }}</div>
+      <div class="fs-2 fw-bold text-success">{{ ns.present }}</div>
       <small class="text-muted fw-semibold">✅ Завершили</small>
     </div>
   </div>
   <div class="col-4">
     <div class="card border-warning border-2 bg-warning bg-opacity-10 text-center py-3 rounded-3">
-      <div class="fs-2 fw-bold text-warning-emphasis">{{ working }}</div>
+      <div class="fs-2 fw-bold text-warning-emphasis">{{ ns.working }}</div>
       <small class="text-muted fw-semibold">🕐 Работают</small>
     </div>
   </div>
   <div class="col-4">
     <div class="card border-secondary border-2 bg-light text-center py-3 rounded-3">
-      <div class="fs-2 fw-bold text-secondary">{{ absent }}</div>
+      <div class="fs-2 fw-bold text-secondary">{{ ns.absent }}</div>
       <small class="text-muted fw-semibold">❌ Не пришли</small>
     </div>
   </div>
