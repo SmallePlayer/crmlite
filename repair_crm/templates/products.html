@@ -29,6 +29,8 @@
         <th>Цвет</th>
         <th>Кол-во</th>
         <th class="text-end">Себест.</th>
+        <th class="text-end">Печать</th>
+        <th class="text-end">Упаковка</th>
         <th style="width:160px"></th>
       </tr>
     </thead>
@@ -56,6 +58,8 @@
           {% endif %}
         </td>
         <td class="text-end text-muted small">{{ (p.cost_price or 0) | money }}</td>
+        <td class="text-end text-muted small">{{ (p.print_cost or 0) | money }}</td>
+        <td class="text-end text-muted small">{{ (p.pack_cost or 0) | money }}</td>
         <td>
           <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
                 class="d-inline" id="imgForm_{{ p.id }}">
@@ -147,6 +151,8 @@
               <th style="width:10%">Цвет</th>
               <th style="width:8%">Кол-во</th>
               <th style="width:10%">Себест. ₽</th>
+              <th style="width:10%">Печать ₽</th>
+              <th style="width:10%">Упак. ₽</th>
               <th style="width:40px"></th>
             </tr>
           </thead>
@@ -227,6 +233,16 @@
           <label class="form-label">Себестоимость (₽)</label>
           <input type="number" name="cost_price" id="edit_cost_price" class="form-control" min="0" step="0.01">
         </div>
+        <div class="row">
+          <div class="col-6 mb-3">
+            <label class="form-label">Печать (₽)</label>
+            <input type="number" name="print_cost" id="edit_print_cost" class="form-control" min="0" step="0.01">
+          </div>
+          <div class="col-6 mb-3">
+            <label class="form-label">Упаковка (₽)</label>
+            <input type="number" name="pack_cost" id="edit_pack_cost" class="form-control" min="0" step="0.01">
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -268,7 +284,9 @@ function addReceiveRow() {
     '<td><input class="form-control form-control-sm article-input" maxlength="100" required autocomplete="off" placeholder="Артикул"></td>' +
     '<td><input class="form-control form-control-sm color-input" maxlength="100" autocomplete="off" placeholder="Цвет"></td>' +
     '<td><input type="number" min="0" value="0" class="form-control form-control-sm qty-input" placeholder="0"></td>' +
-    '<td><input type="number" min="0" step="0.01" value="0" class="form-control form-control-sm cost-input" placeholder="Себест."></td>' +
+    '<td><input type="number" min="0" step="0.01" value="0" class="form-control form-control-sm cost-input" placeholder="0"></td>' +
+    '<td><input type="number" min="0" step="0.01" value="0" class="form-control form-control-sm printcost-input" placeholder="0"></td>' +
+    '<td><input type="number" min="0" step="0.01" value="0" class="form-control form-control-sm packcost-input" placeholder="0"></td>' +
     '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
   tbody.appendChild(tr);
   _rowIdx++;
@@ -300,8 +318,11 @@ function submitReceive() {
     var color = tr.querySelector('.color-input').value.trim();
     var qty = parseInt(tr.querySelector('.qty-input').value) || 0;
     var cost = parseFloat(tr.querySelector('.cost-input').value) || 0;
+    var printCost = parseFloat(tr.querySelector('.printcost-input').value) || 0;
+    var packCost = parseFloat(tr.querySelector('.packcost-input').value) || 0;
     if (!name || !article) return;
-    rows.push({name: name, article: article, color: color, quantity: qty, cost_price: cost});
+    rows.push({name: name, article: article, color: color, quantity: qty,
+               cost_price: cost, print_cost: printCost, pack_cost: packCost});
   });
   if (rows.length === 0) {
     document.getElementById('receiveError').textContent = 'Добавьте хотя бы одну позицию';
@@ -344,6 +365,8 @@ function openEditModal(productId) {
   document.getElementById('edit_article').value = p.article || '';
   document.getElementById('edit_color').value = p.color || '';
   document.getElementById('edit_cost_price').value = p.cost_price || 0;
+  document.getElementById('edit_print_cost').value = p.print_cost || 0;
+  document.getElementById('edit_pack_cost').value = p.pack_cost || 0;
   new bootstrap.Modal(document.getElementById('editModal')).show();
 }
 
