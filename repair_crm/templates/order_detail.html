@@ -100,6 +100,11 @@
             <strong class="text-success">{{ order.prepaid | money }}</strong>
             {% else %}<span class="text-muted">—</span>{% endif %}
           </td></tr>
+          <tr><td class="text-muted">Оценка стоимости</td><td>
+            {% if order.estimated_price > 0 %}
+            <strong>{{ order.estimated_price | money }}</strong>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td></tr>
           {% if order.scheduled_at %}
           <tr><td class="text-muted">{% if order.order_type == 'print' %}Принят{% else %}Выезд{% endif %}</td><td>
             <strong>{{ order.scheduled_at.strftime('%d.%m.%Y %H:%M') if order.order_type == 'repair' else order.scheduled_at.strftime('%d.%m.%Y') }}</strong>
@@ -347,6 +352,10 @@
           <div class="col-md-4 mb-2">
             <label class="form-label">Предоплата (₽)</label>
             <input type="number" name="prepaid" class="form-control form-control-sm" min="0" step="1" value="{{ order.prepaid or 0 }}">
+          </div>
+          <div class="col-md-4 mb-2">
+            <label class="form-label">Оценка (₽)</label>
+            <input type="number" name="estimated_price" class="form-control form-control-sm" min="0" step="1" value="{{ order.estimated_price or 0 }}">
           </div>
           <div class="col-12 mb-2">
             <label class="form-label">Описание</label>
