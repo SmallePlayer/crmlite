@@ -1969,7 +1969,7 @@ def export_orders(request: Request, session: Session = Depends(get_db)):
         select(Order).options(joinedload(Order.client))
         .order_by(desc(Order.created_at))
     ).unique().scalars().all()
-    rows = [[o.id, o.client.full_name, o.order_type, o.printer, o.defect, o.status,
+    rows = [[o.id, o.client.full_name if o.client else "—", o.order_type, o.printer, o.defect, o.status,
              o.total_price, str(o.created_at), str(o.closed_at or "")] for o in orders]
     return _make_excel(["ID", "Клиент", "Тип", "Принтер", "Дефект", "Статус", "Сумма", "Создан", "Закрыт"],
                        rows, "orders.xlsx")
@@ -2068,8 +2068,8 @@ def _build_receipt_pdf(order, line_items) -> bytes:
 
     pdf.set_font(font_name, "", 10)
     details = [
-        ("Клиент:", order.client.full_name),
-        ("Телефон:", order.client.phone),
+        ("Клиент:", order.client.full_name if order.client else "—"),
+        ("Телефон:", order.client.phone if order.client else "—"),
         ("Принтер:", order.printer),
         ("Дефект:", order.defect[:80]),
     ]
@@ -2137,7 +2137,8 @@ def order_receipt(order_id: int, request: Request, format: str = Query("html"),
     for item in order.items:
         line_items.append((item.name, 1, item.price, item.price))
     for op in order.parts:
-        line_items.append((f"{op.part.name} ({op.part.article})", op.quantity, op.price, op.quantity * op.price))
+        if op.part:
+            line_items.append((f"{op.part.name} ({op.part.article})", op.quantity, op.price, op.quantity * op.price))
 
     html = templates.env.get_template("receipt.html").render(
         order=order, line_items=line_items, user=None)
@@ -2169,7 +2170,8 @@ def send_receipt(order_id: int, request: Request, email_to: str = Form(...),
     for item in order.items:
         line_items.append((item.name, 1, item.price, item.price))
     for op in order.parts:
-        line_items.append((f"{op.part.name} ({op.part.article})", op.quantity, op.price, op.quantity * op.price))
+        if op.part:
+            line_items.append((f"{op.part.name} ({op.part.article})", op.quantity, op.price, op.quantity * op.price))
 
     body = templates.env.get_template("receipt_email.html").render(
         order=order, line_items=line_items)
@@ -2984,7 +2986,8 @@ async def _tasks_api(request: Request, session: Session = Depends(get_db)):
     ).unique().scalars().all()
     return JSONResponse([{
         "id": t.id, "title": t.title, "description": t.description,
-        "created_by": t.creator.full_name, "assigned_to": t.assignee.full_name,
+        "created_by": t.creator.full_name if t.creator else "—",
+        "assigned_to": t.assignee.full_name if t.assignee else "—",
         "status": t.status, "created_at": t.created_at.isoformat(),
     } for t in tasks])
 
