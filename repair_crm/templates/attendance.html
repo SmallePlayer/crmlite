@@ -11,58 +11,79 @@
   </div>
 </div>
 
-{# ── Stats ── #}
 {% set present = 0 %}{% set working = 0 %}{% set absent = 0 %}
-{% for user in users %}
-  {% set a = today_attendance.get(user.id) %}
+{% for u in users %}
+  {% set a = today_attendance.get(u.id) %}
   {% if a and a.check_out %}{% set present = present + 1 %}
   {% elif a %}{% set working = working + 1 %}
   {% else %}{% set absent = absent + 1 %}{% endif %}
 {% endfor %}
-<div class="row g-2 mb-3">
-  <div class="col-4"><div class="card border-success bg-success bg-opacity-10 text-center py-2"><div class="fs-4 fw-bold text-success">{{ present }}</div><small class="text-muted">Завершили</small></div></div>
-  <div class="col-4"><div class="card border-warning bg-warning bg-opacity-10 text-center py-2"><div class="fs-4 fw-bold text-warning-emphasis">{{ working }}</div><small class="text-muted">Работают</small></div></div>
-  <div class="col-4"><div class="card border-secondary bg-light text-center py-2"><div class="fs-4 fw-bold text-secondary">{{ absent }}</div><small class="text-muted">Не пришли</small></div></div>
+
+{# ── Stats row ── #}
+<div class="row g-2 mb-4">
+  <div class="col-4">
+    <div class="card border-success border-2 bg-success bg-opacity-10 text-center py-3 rounded-3">
+      <div class="fs-2 fw-bold text-success">{{ present }}</div>
+      <small class="text-muted fw-semibold">✅ Завершили</small>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card border-warning border-2 bg-warning bg-opacity-10 text-center py-3 rounded-3">
+      <div class="fs-2 fw-bold text-warning-emphasis">{{ working }}</div>
+      <small class="text-muted fw-semibold">🕐 Работают</small>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card border-secondary border-2 bg-light text-center py-3 rounded-3">
+      <div class="fs-2 fw-bold text-secondary">{{ absent }}</div>
+      <small class="text-muted fw-semibold">❌ Не пришли</small>
+    </div>
+  </div>
 </div>
 
-{# ── My card ── #}
+{# ── My status block ── #}
 {% set my = today_attendance.get(current_user_id) %}
 {% set mo_first = base_month.replace(day=1) %}
 {% set mo_last = (mo_first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
 {% set total_days = mo_last.day %}
-{% set sched_start = mo_first.weekday() %}
-<div class="card shadow-sm mb-4 border-2 {% if not my %}border-secondary{% elif my.check_out %}border-success{% else %}border-warning{% endif %}">
-  <div class="card-body text-center py-4">
+<div class="card shadow-lg mb-4 border-3 {% if not my %}border-primary{% elif my.check_out %}border-success{% else %}border-warning{% endif %} rounded-4">
+  <div class="card-body p-4 text-center">
     {% if not my %}
-      <i class="bi bi-building display-5 text-muted mb-2 d-block"></i>
-      <h5>{{ today.strftime('%d.%m.%Y') }}</h5>
-      <p class="text-muted mb-3">Вы ещё не отметились</p>
-      <form method="post" action="/attendance/check-in"><button class="btn btn-success btn-lg px-5"><i class="bi bi-box-arrow-in-right me-2"></i>Я на работе</button></form>
+      <div class="text-muted mb-3 fs-5">Сегодня {{ today.strftime('%d.%m.%Y') }}</div>
+      <form method="post" action="/attendance/check-in" class="d-grid col-8 col-md-4 mx-auto">
+        <button class="btn btn-success btn-lg py-3 fs-5 fw-bold shadow-sm">
+          <i class="bi bi-box-arrow-in-right me-2"></i>Я на работе
+        </button>
+      </form>
     {% elif not my.check_out %}
-      <i class="bi bi-hourglass-split display-5 text-warning mb-2 d-block"></i>
-      <h5>Вы на работе</h5>
-      <p class="mb-1 text-muted">Начало в <strong>{{ my.check_in | tm }}</strong></p>
+      <div class="text-warning-emphasis fs-5 fw-bold mb-1">🟡 Вы на работе</div>
+      <div class="mb-1">Начало: <strong>{{ my.check_in | tm }}</strong></div>
       {% set secs = (now_utc - my.check_in).total_seconds() %}
-      <p class="mb-2"><span class="badge bg-warning text-dark fs-6">{{ (secs // 3600) | round(0, 'floor') }} ч {{ ((secs % 3600) // 60) | round(0, 'floor') }} мин</span></p>
-      <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditModal('{{ my.check_in.strftime('%H:%M') }}', '', '{{ my.report }}')"><i class="bi bi-pencil"></i></button>
-      <button class="btn btn-danger px-4 py-2 me-1" onclick="openCheckOutModal()"><i class="bi bi-box-arrow-right me-2"></i>Завершить смену</button>
-      <form method="post" action="/attendance/cancel" class="d-inline" data-confirm="Удалить отметку о приходе?"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Отменить</button></form>
+      <div class="mb-3 fs-5 fw-bold text-warning-emphasis">{{ (secs // 3600) | round(0, 'floor') }} ч {{ ((secs % 3600) // 60) | round(0, 'floor') }} мин</div>
+      <div class="d-flex justify-content-center gap-2 flex-wrap">
+        <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('{{ my.check_in.strftime('%H:%M') }}', '', '{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
+        <button class="btn btn-danger px-4 fw-bold" onclick="openCheckOutModal()"><i class="bi bi-box-arrow-right me-2"></i>Завершить смену</button>
+        <form method="post" action="/attendance/cancel" class="d-inline" data-confirm="Точно отменить?">
+          <button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg me-1"></i>Отменить</button>
+        </form>
+      </div>
     {% else %}
-      <i class="bi bi-check-circle-fill display-5 text-success mb-2 d-block"></i>
-      <h5>Смена завершена</h5>
-      <p class="mb-1 text-muted">{{ my.check_in | tm }} — {{ my.check_out | tm }}</p>
-      <p class="mb-2"><span class="badge bg-success fs-6">{{ ((my.check_out - my.check_in).total_seconds() / 3600) | round(1) }} ч.</span></p>
-      {% if my.report %}<p class="text-muted small mb-1"><i class="bi bi-journal-text me-1"></i>{{ my.report }}</p>{% endif %}
-      <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal('{{ my.check_in.strftime('%H:%M') }}', '{{ my.check_out.strftime('%H:%M') }}', '{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
+      <div class="text-success fs-5 fw-bold mb-1">✅ Смена завершена</div>
+      <div class="mb-1">{{ my.check_in | tm }} — {{ my.check_out | tm }}</div>
+      <div class="mb-2 fs-5 fw-bold text-success">{{ ((my.check_out - my.check_in).total_seconds() / 3600) | round(1) }} ч.</div>
+      {% if my.report %}<div class="alert alert-success py-1 px-3 d-inline-block mb-2 small"><i class="bi bi-journal-text me-1"></i>{{ my.report }}</div>{% endif %}
+      <div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('{{ my.check_in.strftime('%H:%M') }}', '{{ my.check_out.strftime('%H:%M') }}', '{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
+      </div>
     {% endif %}
   </div>
 </div>
 
 {# ── Tabs ── #}
-<ul class="nav nav-tabs mb-3">
-  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-today" type="button"><i class="bi bi-people me-1"></i>Сегодня</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-month" type="button"><i class="bi bi-calendar-month me-1"></i>Месяц</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-schedule" type="button"><i class="bi bi-calendar2-week me-1"></i>Расписание</button></li>
+<ul class="nav nav-pills nav-fill mb-3 gap-2">
+  <li class="nav-item"><button class="nav-link active fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-today" type="button">👥 Сегодня</button></li>
+  <li class="nav-item"><button class="nav-link fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-month" type="button">📅 Месяц</button></li>
+  <li class="nav-item"><button class="nav-link fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-schedule" type="button">📋 Расписание</button></li>
 </ul>
 
 <div class="tab-content">
@@ -70,30 +91,28 @@
 {# ── Сегодня ── #}
 <div class="tab-pane fade show active" id="tab-today">
   <div class="row g-3">
-    {% for user in users %}
-      {% set a = today_attendance.get(user.id) %}
-      <div class="col-md-6 col-lg-4">
-        <div class="card shadow-sm h-100 {% if not a %}opacity-50{% elif a.check_out %}border-success{% else %}border-warning{% endif %}">
-          <div class="card-body">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <div class="rounded-circle bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style="width:36px;height:36px">
-                <span class="fw-bold text-secondary small">{{ user.full_name[0] }}</span>
+    {% for u in users %}
+      {% set a = today_attendance.get(u.id) %}
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100 {% if a and a.check_out %}border-success border-2{% elif a %}border-warning border-2{% else %}border-light{% endif %} rounded-3">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="fw-semibold">{{ u.full_name }}</span>
+                <span class="text-muted ms-2 small">{{ u.position or u.role.name }}</span>
               </div>
-              <div class="min-width-0">
-                <div class="fw-semibold text-truncate small">{{ user.full_name }}</div>
-                <small class="text-muted">{{ user.position or user.role.name }}</small>
+              <div>
+                {% if not a %}
+                  <span class="badge bg-light text-dark">—</span>
+                {% elif a.check_out %}
+                  <span class="badge bg-success fs-6">{{ a.check_in | tm }} – {{ a.check_out | tm }} ({{ ((a.check_out - a.check_in).total_seconds() / 3600) | round(1) }} ч)</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark fs-6">🕐 с {{ a.check_in | tm }}</span>
+                {% endif %}
               </div>
             </div>
-            {% if not a %}
-              <span class="text-muted small">Не отмечен</span>
-            {% elif a.check_out %}
-              <span class="badge bg-success">{{ a.check_in | tm }} – {{ a.check_out | tm }}</span>
-              <span class="ms-1 fw-bold small">{{ ((a.check_out - a.check_in).total_seconds() / 3600) | round(1) }} ч</span>
-            {% else %}
-              <span class="badge bg-warning text-dark">Работает с {{ a.check_in | tm }}</span>
-            {% endif %}
-            {% if a and a.check_out and a.report and (is_admin or user.id == current_user_id) %}
-              <div class="mt-2 small bg-light rounded p-2 text-muted">{{ a.report }}</div>
+            {% if a and a.check_out and a.report and (is_admin or u.id == current_user_id) %}
+              <div class="mt-2 text-muted small border-start border-success border-2 ps-2">{{ a.report[:100] }}</div>
             {% endif %}
           </div>
         </div>
@@ -104,38 +123,33 @@
 
 {# ── Месяц ── #}
 <div class="tab-pane fade" id="tab-month">
-
-  <div class="card shadow-sm mb-3"><div class="card-body p-2"><div class="table-responsive">
-    <table class="table table-bordered table-sm align-middle mb-0" style="font-size:0.75rem">
-      <thead><tr class="table-light text-center">
-        <th style="min-width:140px">Сотрудник</th>
-        {% for d in range(1, total_days + 1) %}<th style="width:24px;padding:2px" class="{{ 'text-danger bg-danger bg-opacity-10' if (mo_first.replace(day=d)).weekday() >= 5 }}">{{ d }}</th>{% endfor %}
-        <th style="width:36px" class="table-secondary">Дни</th><th style="width:45px" class="table-secondary">Часы</th>
+  <div class="card shadow-sm"><div class="card-body p-2"><div class="table-responsive">
+    <table class="table table-bordered table-sm mb-0 text-center align-middle" style="font-size:0.72rem">
+      <thead><tr class="table-light">
+        <th style="min-width:130px">👤 Сотрудник</th>
+        {% for d in range(1, total_days + 1) %}<th style="width:22px;padding:2px" class="{{ 'text-danger bg-danger bg-opacity-10' if (mo_first.replace(day=d)).weekday() >= 5 }}">{{ d }}</th>{% endfor %}
+        <th style="width:30px">📆</th><th style="width:42px">⏱</th>
       </tr></thead>
       <tbody>
-      {% for user in users %}
+      {% for u in users %}
         <tr>
-          <td class="fw-semibold small text-truncate" style="max-width:140px">{{ user.full_name }}</td>
-          {% set worked = 0 %}{% set hours = 0 %}
+          <td class="fw-semibold small text-truncate" style="max-width:130px">{{ u.full_name }}</td>
+          {% set worked = 0 %}{% set hrs = 0 %}
           {% for d in range(1, total_days + 1) %}
             {% set date_str = base_month.strftime('%Y-%m') + '-%02d' % d %}
-            {% set a = by_user_date.get(user.id, {}).get(date_str) %}
+            {% set a = by_user_date.get(u.id, {}).get(date_str) %}
             {% if a and a.check_out %}
-              {% set worked = worked + 1 %}{% set delta = ((a.check_out - a.check_in).total_seconds()) %}{% set hours = hours + delta %}
-              <td class="text-center bg-success bg-opacity-10" title="{{ a.check_in | tm }} – {{ a.check_out | tm }}{% if a.report and (is_admin or current_user_id == user.id) %} | {{ a.report }}{% endif %}">
-                <i class="bi bi-check-circle-fill text-success" style="font-size:0.6rem"></i>
-              </td>
+              {% set worked = worked + 1 %}{% set delta = ((a.check_out - a.check_in).total_seconds()) %}{% set hrs = hrs + delta %}
+              <td class="bg-success bg-opacity-10" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}{% if a.report and (is_admin or u.id == current_user_id) %} | {{ a.report }}{% endif %}">✅</td>
             {% elif a %}
               {% set worked = worked + 1 %}
-              <td class="text-center bg-warning bg-opacity-10" title="с {{ a.check_in | tm }}">
-                <i class="bi bi-hourglass-split text-warning" style="font-size:0.6rem"></i>
-              </td>
+              <td class="bg-warning bg-opacity-10" title="с {{ a.check_in | tm }}">🕐</td>
             {% else %}
-              <td class="text-center text-muted" style="font-size:0.6rem">·</td>
+              <td class="text-muted" style="font-size:0.6rem">·</td>
             {% endif %}
           {% endfor %}
-          <td class="text-center fw-bold table-secondary small">{{ worked }}</td>
-          <td class="text-center fw-bold table-secondary small">{{ (hours / 3600) | round(0) if hours > 0 else '—' }}</td>
+          <td class="fw-bold table-secondary small">{{ worked }}</td>
+          <td class="fw-bold table-secondary small">{{ (hrs / 3600) | round(0) if hrs > 0 else '—' }}</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -149,6 +163,7 @@
     <button class="btn btn-outline-primary btn-sm" onclick="openBulkScheduleModal()"><i class="bi bi-calendar-plus me-1"></i>Массовое создание</button>
     <button class="btn btn-primary btn-sm" onclick="openScheduleModal()"><i class="bi bi-plus me-1"></i>Одна смена</button>
   </div>
+  {% set sched_start = mo_first.weekday() %}
   {% set ns = namespace(sched_day=1) %}
   <div class="card shadow-sm"><div class="card-body p-2"><div class="table-responsive">
     <table class="table table-bordered table-sm align-top mb-0" style="font-size:0.75rem;min-width:600px">
@@ -186,7 +201,7 @@
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-box-arrow-right me-1"></i>Завершить смену</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
       <div class="mb-3"><label class="form-label">Что сделано сегодня?</label>
-        <textarea name="report" class="form-control" rows="4" placeholder="Например: ремонт Prusa i3 — замена хотэнда, диагностика Ender 3..."></textarea>
+        <textarea name="report" class="form-control" rows="4" placeholder="Например: ремонт Prusa i3, диагностика Ender 3..."></textarea>
         <div class="form-text">Необязательно</div>
       </div>
     </div>
