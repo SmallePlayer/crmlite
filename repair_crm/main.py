@@ -209,6 +209,8 @@ class ChatMessage(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     from_user = relationship("User", foreign_keys=[from_user_id])
+    to_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    to_user = relationship("User", foreign_keys=[to_user_id])
     text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -340,6 +342,12 @@ async def lifespan(app: FastAPI):
         for col, dtype in [("last_login", "DATETIME")]:
             try:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col, dtype in [("to_user_id", "INTEGER")]:
+            try:
+                conn.execute(text(f"ALTER TABLE chat_messages ADD COLUMN {col} {dtype}"))
                 conn.commit()
             except Exception:
                 pass
@@ -2400,32 +2408,49 @@ def delete_print_job(job_id: int, request: Request, session: Session = Depends(g
 # ══════════════════════════════════════════════════════════════════
 
 @app.get("/chat", response_class=HTMLResponse)
-def chat_page(request: Request, session: Session = Depends(get_db)):
+def chat_page(request: Request, with_user: str = Query(""), session: Session = Depends(get_db)):
     u = request.state.user
     if not u:
         raise HTTPException(403)
     users = session.execute(
-        select(User).where(User.is_active == True, User.id != u.id).order_by(User.full_name)
+        select(User).where(User.is_active == True).order_by(User.full_name)
     ).scalars().all()
-    messages = session.execute(
-        select(ChatMessage).options(joinedload(ChatMessage.from_user))
-        .order_by(desc(ChatMessage.created_at)).limit(50)
-    ).unique().scalars().all()
+    peer_id = 0
+    peer_name = "Общий чат"
+    try:
+        peer_id = int(with_user.strip()) if with_user.strip() else 0
+    except ValueError:
+        peer_id = 0
+    q = select(ChatMessage).options(joinedload(ChatMessage.from_user), joinedload(ChatMessage.to_user))
+    if peer_id == 0:
+        q = q.where(ChatMessage.to_user_id.is_(None))
+    else:
+        q = q.where(
+            or_(
+                (ChatMessage.from_user_id == u.id) & (ChatMessage.to_user_id == peer_id),
+                (ChatMessage.from_user_id == peer_id) & (ChatMessage.to_user_id == u.id),
+            )
+        )
+        peer_name = (session.get(User, peer_id) or u).full_name
+    q = q.order_by(desc(ChatMessage.created_at)).limit(100)
+    messages = session.execute(q).unique().scalars().all()
     return templates.TemplateResponse(request, "chat.html", {
         **_user_context(request),
         "messages": list(reversed(messages)), "users": users,
-        "current_user_id": u.id,
+        "current_user_id": u.id, "peer_id": peer_id, "peer_name": peer_name,
     })
 
 
 @app.post("/chat/send")
-def chat_send(request: Request, text: str = Form(...), session: Session = Depends(get_db)):
+def chat_send(request: Request, text: str = Form(...), to_user_id: int = Form(0),
+              session: Session = Depends(get_db)):
     u = request.state.user
     if not u or not text.strip():
         raise HTTPException(403)
-    session.add(ChatMessage(from_user_id=u.id, text=text.strip()))
+    session.add(ChatMessage(from_user_id=u.id, to_user_id=to_user_id if to_user_id > 0 else None, text=text.strip()))
     session.commit()
-    return RedirectResponse("/chat", status_code=303)
+    redirect_url = "/chat" if to_user_id == 0 else f"/chat?with={to_user_id}"
+    return RedirectResponse(redirect_url, status_code=303)
 
 
 # ══════════════════════════════════════════════════════════════════
