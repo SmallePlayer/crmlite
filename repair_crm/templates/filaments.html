@@ -129,7 +129,9 @@ function openFilamentModal(fid) {
     document.getElementById('filamentTitle').textContent = 'Новый пластик';
     f.action = '/filaments';
     document.getElementById('fName').value = '';
-    document.getElementById('fArticle').value = '';
+    fetch('/api/filaments/next-article').then(function(r){return r.json()}).then(function(d){
+      document.getElementById('fArticle').value = d.article;
+    });
     document.getElementById('fColor').value = '';
     document.getElementById('fGps').value = 1000;
     document.getElementById('fSpools').value = 1;

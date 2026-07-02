@@ -2403,6 +2403,14 @@ def send_receipt(order_id: int, request: Request, email_to: str = Form(...),
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
 
 
+@app.get("/api/filaments/next-article")
+def next_filament_article(session: Session = Depends(get_db)):
+    max_id = session.execute(
+        select(func.max(Filament.id))
+    ).scalar() or 0
+    return JSONResponse({"article": f"FIL-{max_id + 1:03d}"})
+
+
 # ══════════════════════════════════════════════════════════════════
 #  Charts API
 # ══════════════════════════════════════════════════════════════════
