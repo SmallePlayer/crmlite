@@ -14,7 +14,7 @@
           <div><div class="fw-semibold">Общий чат</div><small class="opacity-75">Все сотрудники</small></div>
         </a>
         {% for u in users %}
-        <a href="/chat?with={{ u.id }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {{ 'active' if peer_id == u.id }}">
+        <a href="/chat?peer={{ u.id }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {{ 'active' if peer_id == u.id }}">
           <span class="badge rounded-pill {{ 'bg-success' if u.is_active else 'bg-secondary' }}" style="width:10px;height:10px;padding:0;flex-shrink:0">&nbsp;</span>
           <div class="min-width-0">
             <div class="fw-semibold text-truncate">{{ u.full_name }}{% if u.id == current_user_id %} <small class="opacity-50">(вы)</small>{% endif %}</div>

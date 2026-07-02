@@ -2408,7 +2408,7 @@ def delete_print_job(job_id: int, request: Request, session: Session = Depends(g
 # ══════════════════════════════════════════════════════════════════
 
 @app.get("/chat", response_class=HTMLResponse)
-def chat_page(request: Request, with_user: str = Query("", alias="with"), session: Session = Depends(get_db)):
+def chat_page(request: Request, peer: str = Query(""), session: Session = Depends(get_db)):
     u = request.state.user
     if not u:
         raise HTTPException(403)
@@ -2418,7 +2418,7 @@ def chat_page(request: Request, with_user: str = Query("", alias="with"), sessio
     peer_id = 0
     peer_name = "Общий чат"
     try:
-        peer_id = int(with_user.strip()) if with_user.strip() else 0
+        peer_id = int(peer.strip()) if peer.strip() else 0
     except ValueError:
         peer_id = 0
     q = select(ChatMessage).options(joinedload(ChatMessage.from_user), joinedload(ChatMessage.to_user))
@@ -2449,7 +2449,7 @@ def chat_send(request: Request, text: str = Form(...), to_user_id: int = Form(0)
         raise HTTPException(403)
     session.add(ChatMessage(from_user_id=u.id, to_user_id=to_user_id if to_user_id > 0 else None, text=text.strip()))
     session.commit()
-    redirect_url = "/chat" if to_user_id == 0 else f"/chat?with={to_user_id}"
+    redirect_url = "/chat" if to_user_id == 0 else f"/chat?peer={to_user_id}"
     return RedirectResponse(redirect_url, status_code=303)
 
 
