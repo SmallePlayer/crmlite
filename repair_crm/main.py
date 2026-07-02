@@ -145,6 +145,7 @@ class Product(Base):
     article: Mapped[str] = mapped_column(String(100), unique=True)
     color: Mapped[str] = mapped_column(String(100), default="")
     quantity: Mapped[int] = mapped_column(Integer, default=0)
+    cost_price: Mapped[float] = mapped_column(Float, default=0)
     image: Mapped[str] = mapped_column(String(300), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     movements = relationship("ProductMovement", back_populates="product",
@@ -357,6 +358,12 @@ async def lifespan(app: FastAPI):
                             ("waste_grams", "INTEGER DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE print_jobs ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col, dtype in [("cost_price", "FLOAT DEFAULT 0")]:
+            try:
+                conn.execute(text(f"ALTER TABLE products ADD COLUMN {col} {dtype}"))
                 conn.commit()
             except Exception:
                 pass
@@ -966,6 +973,7 @@ def products_page(request: Request, session: Session = Depends(get_db)):
         "products_data": [{
             "id": p.id, "name": p.name, "article": p.article,
             "color": p.color or "", "quantity": p.quantity,
+            "cost_price": p.cost_price or 0,
             "image": p.image or "",
         } for p in products],
     })
@@ -1327,6 +1335,7 @@ async def receive_products(request: Request, session: Session = Depends(get_db))
         article = row.get("article", "").strip()
         color = row.get("color", "").strip()
         qty = int(row.get("quantity", 0))
+        cost_price = float(row.get("cost_price", 0) or 0)
         if not name or not article or qty <= 0:
             continue
         existing = session.execute(
@@ -1334,11 +1343,11 @@ async def receive_products(request: Request, session: Session = Depends(get_db))
         ).scalar_one_or_none()
         if existing:
             existing.quantity += qty
-            if color:
-                existing.color = color
+            if color: existing.color = color
+            if cost_price: existing.cost_price = cost_price
             product = existing
         else:
-            product = Product(name=name, article=article, color=color, quantity=qty)
+            product = Product(name=name, article=article, color=color, quantity=qty, cost_price=cost_price)
             session.add(product)
             session.flush()
         session.add(ProductMovement(
@@ -1380,6 +1389,7 @@ def update_product(
     name: str = Form(...),
     article: str = Form(""),
     color: str = Form(""),
+    cost_price: float = Form(0),
     session: Session = Depends(get_db),
 ):
     p = session.get(Product, product_id)
@@ -1388,6 +1398,7 @@ def update_product(
     p.name = name.strip()
     p.article = article.strip()
     p.color = color.strip()
+    p.cost_price = float(cost_price or 0)
     session.commit()
     _audit("update", "product", p.id, p.name, request.state.user, session)
     return RedirectResponse("/products", status_code=303)
