@@ -567,7 +567,8 @@ def _audit(action: str, entity_type: str, entity_id: int | None = None,
         try:
             session.commit()
         except Exception:
-            pass
+            import traceback
+            traceback.print_exc()
     else:
         with Session(engine) as s:
             s.add(a)
@@ -1882,7 +1883,6 @@ def edit_order(
     order = session.get(Order, order_id)
     if not order:
         raise HTTPException(404)
-    prev_assigned = order.assigned_to
     order.client_id = client_id
     order.order_type = order_type
     order.printer = printer.strip()
@@ -2347,6 +2347,7 @@ def create_filament(
     if quantity > 0:
         session.add(FilamentMovement(filament_id=f.id, type="in", quantity=quantity, reason="Начальный остаток"))
     session.commit()
+    _audit("create", "filament", f.id, f.name, request.state.user, session)
     return RedirectResponse("/filaments", status_code=303)
 
 
@@ -2370,13 +2371,17 @@ def edit_filament(
     f.grams_per_spool = grams_per_spool
     f.min_stock = min_stock
     session.commit()
+    _audit("update", "filament", f.id, f.name, request.state.user, session)
     return RedirectResponse("/filaments", status_code=303)
 
 
 @app.post("/filaments/{fid}/delete")
 def delete_filament(fid: int, request: Request, session: Session = Depends(get_db)):
     f = session.get(Filament, fid)
-    if f: session.delete(f); session.commit()
+    if not f: raise HTTPException(404)
+    session.delete(f)
+    session.commit()
+    _audit("delete", "filament", fid, f.name, request.state.user, session)
     return RedirectResponse("/filaments", status_code=303)
 
 
@@ -2392,6 +2397,7 @@ async def receive_filament(request: Request, session: Session = Depends(get_db))
         f.quantity += qty
         session.add(FilamentMovement(filament_id=fid, type="in", quantity=qty, reason="Приход"))
     session.commit()
+    _audit("receive", "filament", None, f"+{sum(int(r.get('quantity',0)) for r in data)} г.", request.state.user, session)
     return JSONResponse({"ok": True})
 
 
@@ -2409,6 +2415,7 @@ def expense_filament(
     f.quantity -= quantity
     session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=quantity, reason=reason.strip()))
     session.commit()
+    _audit("expense", "filament", filament_id, f"{f.name} −{quantity} г.", request.state.user, session)
     return RedirectResponse("/filaments", status_code=303)
 
 
@@ -2421,15 +2428,20 @@ def add_printer(request: Request, name: str = Form(...), session: Session = Depe
     existing = session.execute(select(Printer).where(Printer.name == name.strip())).scalar_one_or_none()
     if existing:
         raise HTTPException(400, "Такой принтер уже есть")
-    session.add(Printer(name=name.strip()))
+    p = Printer(name=name.strip())
+    session.add(p)
     session.commit()
+    _audit("create", "printer", p.id, p.name, request.state.user, session)
     return RedirectResponse("/prints", status_code=303)
 
 
 @app.post("/printers/{pid}/delete")
 def delete_printer(pid: int, request: Request, session: Session = Depends(get_db)):
     p = session.get(Printer, pid)
-    if p: session.delete(p); session.commit()
+    if not p: raise HTTPException(404)
+    session.delete(p)
+    session.commit()
+    _audit("delete", "printer", pid, p.name, request.state.user, session)
     return RedirectResponse("/prints", status_code=303)
 
 
@@ -2486,6 +2498,7 @@ def create_print_job(
                          printer_name=printer_name.strip()))
     session.flush()
     session.commit()
+    _audit("create", "print_job", None, f"{name.strip()} {grams}г", u, session)
     return RedirectResponse("/prints", status_code=303)
 
 
@@ -2521,17 +2534,27 @@ def edit_print_job(job_id: int, request: Request,
     new_filament = session.get(Filament, filament_id)
     if not new_filament: raise HTTPException(400, "Пластик не найден")
     if old_filament_id == filament_id:
-        # Same filament: just adjust the difference
         delta = old_grams - grams
+        if delta < 0 and new_filament.quantity < -delta:
+            raise HTTPException(400, f"Недостаточно пластика: {new_filament.quantity} г.")
         new_filament.quantity += delta
+        if delta > 0:
+            session.add(FilamentMovement(filament_id=filament_id, type="in", quantity=delta,
+                          reason=f"Корректировка печати: {name.strip()}"))
+        elif delta < 0:
+            session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=-delta,
+                          reason=f"Корректировка печати: {name.strip()}"))
     else:
-        # Different filament: return old, deduct new
         old_f = session.get(Filament, old_filament_id)
         if old_f:
             old_f.quantity += old_grams
+            session.add(FilamentMovement(filament_id=old_filament_id, type="in", quantity=old_grams,
+                          reason=f"Возврат: {job.name}"))
         if new_filament.quantity < grams:
             raise HTTPException(400, f"Недостаточно пластика: {new_filament.quantity} г.")
         new_filament.quantity -= grams
+        session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=grams,
+                      reason=f"Печать: {name.strip()}"))
     job.name = name.strip()
     job.filament_id = filament_id
     job.grams = grams
@@ -2553,6 +2576,7 @@ def delete_print_job(job_id: int, request: Request, session: Session = Depends(g
                      reason=f"Аннулирована печать: {job.name}"))
     session.delete(job)
     session.commit()
+    _audit("delete", "print_job", job_id, f"{job.name} {job.grams}г", request.state.user, session)
     return RedirectResponse("/prints", status_code=303)
 
 # ══════════════════════════════════════════════════════════════════
@@ -2787,7 +2811,10 @@ def edit_schedule(sched_id: int, request: Request, date: str = Form(""),
 @app.post("/schedule/{sched_id}/delete")
 def delete_schedule(sched_id: int, request: Request, session: Session = Depends(get_db)):
     s = session.get(Schedule, sched_id)
-    if s: session.delete(s); session.commit()
+    if not s: raise HTTPException(404)
+    session.delete(s)
+    session.commit()
+    _audit("delete", "schedule", sched_id, s.user.full_name, request.state.user, session)
     return RedirectResponse("/attendance", status_code=303)
 
 # ══════════════════════════════════════════════════════════════════
@@ -2836,6 +2863,7 @@ def chat_send(request: Request, text: str = Form(...), to_user_id: int = Form(0)
         raise HTTPException(403)
     session.add(ChatMessage(from_user_id=u.id, to_user_id=to_user_id if to_user_id > 0 else None, text=text.strip()))
     session.commit()
+    _audit("chat", "chat", None, f"{u.full_name}: {text.strip()[:50]}", u, session)
     redirect_url = "/chat" if to_user_id == 0 else f"/chat?peer={to_user_id}"
     return RedirectResponse(redirect_url, status_code=303)
 
@@ -2971,12 +2999,7 @@ def notifications_page(request: Request, session: Session = Depends(get_db)):
 @app.post("/notifications/read-all")
 def notifications_read_all(request: Request, session: Session = Depends(get_db)):
     u = request.state.user
-    if not u:
-        raise HTTPException(403)
-    session.execute(
-        select(Notification)
-        .where(Notification.user_id == u.id, Notification.is_read == False)
-    )
+    if not u: raise HTTPException(403)
     for n in session.execute(
         select(Notification)
         .where(Notification.user_id == u.id, Notification.is_read == False)
