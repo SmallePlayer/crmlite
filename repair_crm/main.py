@@ -860,6 +860,9 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         .where(Task.assigned_to == u.id, Task.status == "pending")
         .order_by(desc(Task.created_at)).limit(5)
     ).unique().scalars().all()
+    recent_logs = session.execute(
+        select(AuditLog).order_by(desc(AuditLog.created_at)).limit(10)
+    ).scalars().all() if u.role.name == "admin" else []
     return templates.TemplateResponse(request, "index.html", {
         **_user_context(request),
         "active_orders": active, "closed_orders": closed,
@@ -868,7 +871,7 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         "low_stock": low_stock, "overdue": overdue, "due_soon": due_soon,
         "my_tasks": my_tasks, "total_tasks": total_tasks,
         "my_recent_tasks": my_recent_tasks,
-        "recent_orders": recent,
+        "recent_orders": recent, "recent_logs": recent_logs,
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES,
         "datetime": datetime,
         "last_backup": (datetime.fromtimestamp((BASE_DIR / "repair_crm.db").stat().st_mtime)

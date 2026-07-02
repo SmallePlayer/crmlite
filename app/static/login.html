@@ -3,49 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CRM — Вход</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>CRM — 3D Сервис | Вход</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-body { background: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-.card { width: 100%; max-width: 400px; }
+:root {
+  --bg: #f7f5f3;
+  --card: #fff;
+  --text: #1c1815;
+  --text2: #6b625a;
+  --accent: #d4783c;
+  --accent-hover: #b8642e;
+  --border: #e8e3dd;
+  --radius: 14px;
+  --shadow: 0 4px 24px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: linear-gradient(135deg, #1a1410 0%, #2d241d 40%, #3a2f26 100%);
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  color: var(--text);
+}
+.login-container {
+  width: 100%; max-width: 420px; padding: 20px;
+}
+.login-card {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 36px 32px;
+  border: 1px solid rgba(255,255,255,.06);
+}
+.login-brand {
+  text-align: center; margin-bottom: 32px;
+}
+.login-brand h1 {
+  font-size: 1.6rem; font-weight: 800; color: var(--text); 
+  margin-bottom: 4px; letter-spacing: -.3px;
+}
+.login-brand p { color: var(--text2); font-size: .84rem; font-weight: 500; }
+.login-brand .accent-dot { color: var(--accent); }
+.form-group { margin-bottom: 18px; }
+.form-label {
+  display: block; font-size: .8rem; font-weight: 600; 
+  color: var(--text2); margin-bottom: 6px;
+}
+.form-control {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 10px; font-size: .9rem; font-family: inherit;
+  transition: all .2s; background: #fafaf9; color: var(--text);
+}
+.form-control:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(212,120,60,.12); background: #fff;
+}
+.btn-login {
+  width: 100%; padding: 12px; background: var(--accent); color: #fff;
+  border: none; border-radius: 10px; font-size: .9rem; font-weight: 600;
+  cursor: pointer; transition: all .2s; font-family: inherit;
+  letter-spacing: .2px;
+}
+.btn-login:hover { background: var(--accent-hover); box-shadow: 0 4px 16px rgba(212,120,60,.3); transform: translateY(-1px); }
+.error-msg { color: #dc2626; font-size: .82rem; text-align: center; margin-bottom: 14px; min-height: 20px; }
+.login-footer { text-align: center; margin-top: 20px; font-size: .75rem; color: var(--text2); }
+.login-footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
 </style>
 </head>
 <body>
-<div class="card p-4">
-  <h3 class="text-center mb-4">CRM — Вход</h3>
-  <form id="loginForm" onsubmit="return login(event)">
-    <div class="mb-3">
-      <label class="form-label">Логин</label>
-      <input type="text" class="form-control" id="username" value="admin" required>
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-brand">
+      <h1>3D Сервис<span class="accent-dot">.</span></h1>
+      <p>CRM система управления мастерской</p>
     </div>
-    <div class="mb-3">
-      <label class="form-label">Пароль</label>
-      <input type="password" class="form-control" id="password" value="admin123" required>
+    <form id="loginForm" onsubmit="return login(event)">
+      <div class="form-group">
+        <label class="form-label" for="username">Логин</label>
+        <input type="text" class="form-control" id="username" value="admin" required autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Пароль</label>
+        <input type="password" class="form-control" id="password" value="admin123" required>
+      </div>
+      <div class="error-msg" id="loginError"></div>
+      <button type="submit" class="btn-login">Войти в систему</button>
+    </form>
+    <div class="login-footer">
+      Нет доступа? <a href="#" onclick="alert('Обратитесь к администратору')">Запросить доступ</a>
     </div>
-    <div id="loginError" class="text-danger mb-2"></div>
-    <button type="submit" class="btn btn-primary w-100">Войти</button>
-  </form>
+  </div>
 </div>
 <script>
 async function login(e) {
   e.preventDefault();
-  const res = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      username: document.getElementById('username').value,
-      password: document.getElementById('password').value,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    document.getElementById('loginError').textContent = err.detail || 'Ошибка входа';
-    return;
+  const btn = e.target.querySelector('button');
+  btn.textContent = 'Вход...'; btn.disabled = true;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      document.getElementById('loginError').textContent = err.detail || 'Ошибка входа';
+      btn.textContent = 'Войти в систему'; btn.disabled = false;
+      return;
+    }
+    const data = await res.json();
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    window.location.href = '/';
+  } catch(e) {
+    document.getElementById('loginError').textContent = 'Ошибка сети';
+    btn.textContent = 'Войти в систему'; btn.disabled = false;
   }
-  const data = await res.json();
-  localStorage.setItem('token', data.token);
-  localStorage.setItem('user', JSON.stringify(data.user));
-  window.location.href = '/';
 }
 </script>
 </body>

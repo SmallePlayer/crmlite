@@ -157,6 +157,29 @@
 {% else %}
 <div class="text-center py-4 text-muted">Заказов пока нет</div>
 {% endif %}
+
+{% if is_admin and recent_logs %}
+<div class="card shadow-sm mt-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong><i class="bi bi-journal-text me-1"></i>Последние действия</strong>
+    <a href="/audit" class="btn btn-sm btn-outline-secondary">Все логи</a>
+  </div>
+  <div class="card-body p-0">
+    <div class="list-group list-group-flush" style="max-height:350px;overflow-y:auto;font-size:0.8rem">
+      {% for l in recent_logs %}
+      <div class="list-group-item py-1 px-3 d-flex justify-content-between align-items-center">
+        <div class="min-width-0">
+          <span class="text-muted me-2">{{ l.created_at.strftime('%H:%M') }}</span>
+          <span class="fw-semibold me-1">{{ l.user_name or 'Система' }}</span>
+          <span class="text-muted">{{ l.action }} {{ l.entity_type }}{% if l.entity_id %} #{{ l.entity_id }}{% endif %}</span>
+          {% if l.details %}<span class="text-muted"> — {{ l.details[:60] }}</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
