@@ -2484,6 +2484,7 @@ def create_print_job(
     session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=grams, reason=f"Печать: {name.strip()}"))
     session.add(PrintJob(name=name.strip(), filament_id=filament_id, created_by=u.id, grams=grams, hours=hours,
                          printer_name=printer_name.strip()))
+    session.flush()
     session.commit()
     return RedirectResponse("/prints", status_code=303)
 
