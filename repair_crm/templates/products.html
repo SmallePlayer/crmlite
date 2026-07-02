@@ -30,7 +30,7 @@
         <th>Кол-во</th>
         <th class="text-end">Себест.</th>
         <th class="text-end">Печать</th>
-        <th class="text-end">Упаковка</th>
+        <th class="text-end">+ Упаковка</th>
         <th style="width:160px"></th>
       </tr>
     </thead>
@@ -59,7 +59,7 @@
         </td>
         <td class="text-end text-muted small">{{ (p.cost_price or 0) | money }}</td>
         <td class="text-end text-muted small">{{ (p.print_cost or 0) | money }}</td>
-        <td class="text-end text-muted small">{{ (p.pack_cost or 0) | money }}</td>
+        <td class="text-end text-muted small">{{ ((p.print_cost or 0) + (p.pack_cost or 0)) | money }}</td>
         <td>
           <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
                 class="d-inline" id="imgForm_{{ p.id }}">
@@ -73,6 +73,9 @@
           </form>
           <button class="btn btn-sm btn-warning me-1" onclick="openStockOutModal({{ p.id }})">
             <i class="bi bi-box-arrow-up"></i> Расход
+          </button>
+          <button class="btn btn-sm btn-info me-1" onclick="openSupplyModal()">
+            <i class="bi bi-truck"></i> Поставка
           </button>
           <button class="btn btn-sm btn-outline-secondary me-1 edit-product-btn" data-id="{{ p.id }}">
             <i class="bi bi-pencil"></i>
@@ -207,6 +210,29 @@
     </form>
   </div>
 </div>
+
+{# Supply Modal #}
+<div class="modal fade" id="supplyModal" tabindex="-1"><div class="modal-dialog modal-xl">
+  <div class="modal-content">
+    <div class="modal-header bg-info text-white">
+      <h5 class="modal-title"><i class="bi bi-truck me-1"></i>Поставка товаров</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body p-3">
+      <div class="row g-2 mb-3">
+        <div class="col-md-3"><label class="form-label">Куда</label><select id="supplyDest" class="form-select"><option value="Ozon">Ozon</option><option value="WB">Wildberries</option><option value="Розница">Розница</option></select></div>
+        <div class="col-md-9"><label class="form-label">Примечание</label><input type="text" id="supplyReason" class="form-control" placeholder="Номер поставки..."></div>
+      </div>
+      <table class="table table-sm align-middle mb-2">
+        <thead class="table-light"><tr><th style="width:30%">Товар</th><th style="width:10%">Склад</th><th style="width:12%">Кол-во</th><th style="width:40px"></th></tr></thead>
+        <tbody id="supplyRows"></tbody>
+      </table>
+      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addSupplyRow()"><i class="bi bi-plus"></i> Добавить строку</button>
+      <div class="text-danger small mt-2" id="supplyError"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="button" class="btn btn-info" onclick="submitSupply()">Отгрузить</button></div>
+  </div>
+</div></div>
 
 {# Edit Modal #}
 <div class="modal fade" id="editModal" tabindex="-1">
@@ -368,6 +394,59 @@ function openEditModal(productId) {
   document.getElementById('edit_print_cost').value = p.print_cost || 0;
   document.getElementById('edit_pack_cost').value = p.pack_cost || 0;
   new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+function openSupplyModal() {
+  document.getElementById('supplyRows').innerHTML = '';
+  document.getElementById('supplyReason').value = '';
+  addSupplyRow();
+  new bootstrap.Modal(document.getElementById('supplyModal')).show();
+}
+
+function addSupplyRow() {
+  var tbody = document.getElementById('supplyRows');
+  var tr = document.createElement('tr');
+  var opts = '<option value="">— Выбрать —</option>';
+  PDATA.forEach(function(p) {
+    opts += '<option value="' + p.id + '" data-stock="' + p.quantity + '">' + p.name + ' (' + p.article + ') — ' + p.quantity + ' шт.</option>';
+  });
+  tr.innerHTML =
+    '<td><select class="form-select form-select-sm">' + opts + '</select></td>' +
+    '<td><input type="number" class="form-control form-control-sm qty-input" min="1" value="1" required></td>' +
+    '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
+  tbody.appendChild(tr);
+}
+
+function submitSupply() {
+  var dest = document.getElementById('supplyDest').value;
+  var reason = document.getElementById('supplyReason').value.trim() || 'Поставка';
+  var rows = [];
+  document.querySelectorAll('#supplyRows tr').forEach(function(tr) {
+    var sel = tr.querySelector('select');
+    var pid = parseInt(sel.value) || 0;
+    var qty = parseInt(tr.querySelector('.qty-input').value) || 0;
+    if (!pid || qty <= 0) return;
+    var opt = sel.options[sel.selectedIndex];
+    var stock = parseInt(opt.dataset.stock) || 0;
+    if (qty > stock) {
+      document.getElementById('supplyError').textContent = 'Недостаточно на складе: ' + opt.text;
+      return;
+    }
+    rows.push({product_id: pid, quantity: qty, destination: dest, reason: reason});
+  });
+  if (rows.length === 0) {
+    document.getElementById('supplyError').textContent = 'Добавьте хотя бы одну позицию';
+    return;
+  }
+  document.getElementById('supplyError').textContent = '';
+  fetch('/products/supply', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(rows)
+  }).then(function(r) {
+    if (r.ok) window.location.reload();
+    else r.text().then(function(t) { document.getElementById('supplyError').textContent = 'Ошибка: ' + t; });
+  });
 }
 
 document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
