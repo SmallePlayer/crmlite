@@ -9,8 +9,8 @@
     <tr><td style="padding:4px 8px;color:#666;width:100px">Клиент:</td><td style="padding:4px 8px"><strong>{{ order.client.full_name }}</strong></td></tr>
     <tr><td style="padding:4px 8px;color:#666">Телефон:</td><td style="padding:4px 8px">{{ order.client.phone }}</td></tr>
     <tr><td style="padding:4px 8px;color:#666">Принтер:</td><td style="padding:4px 8px">{{ order.printer }}</td></tr>
-    {% if order.assignee %}
-    <tr><td style="padding:4px 8px;color:#666">Мастер:</td><td style="padding:4px 8px">{{ order.assignee.full_name }}{% if order.assignee.inn %} (ИНН {{ order.assignee.inn }}){% endif %}</td></tr>
+    {% if admin %}
+    <tr><td style="padding:4px 8px;color:#666">Мастер:</td><td style="padding:4px 8px">{{ admin.full_name }}{% if admin.inn %} (ИНН {{ admin.inn }}){% endif %}</td></tr>
     {% endif %}
   </table>
   <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;margin-bottom:12px">

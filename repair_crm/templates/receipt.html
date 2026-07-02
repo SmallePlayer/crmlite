@@ -97,9 +97,9 @@
     <div class="row">
       <div class="col-6">
         <p class="mb-1">Мастер:
-          {% if order.assignee %}
-          <strong>{{ order.assignee.full_name }}</strong>
-          {% if order.assignee.inn %}<br><small>ИНН {{ order.assignee.inn }}</small>{% endif %}
+          {% if admin %}
+          <strong>{{ admin.full_name }}</strong>
+          {% if admin.inn %}<br><small>ИНН {{ admin.inn }}</small>{% endif %}
           {% else %}
           _______________
           {% endif %}

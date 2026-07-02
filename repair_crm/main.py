@@ -2064,7 +2064,7 @@ def search_page(request: Request, q: str = Query(""), session: Session = Depends
 #  Receipt
 # ══════════════════════════════════════════════════════════════════
 
-def _build_receipt_pdf(order, line_items) -> bytes:
+def _build_receipt_pdf(order, line_items, admin=None) -> bytes:
     from fpdf.enums import XPos, YPos
     font_paths = [
         BASE_DIR / "arial.ttf",
@@ -2102,9 +2102,9 @@ def _build_receipt_pdf(order, line_items) -> bytes:
         ("Принтер:", order.printer),
         ("Дефект:", order.defect[:80]),
     ]
-    if order.assignee:
-        extra = f" (ИНН {order.assignee.inn})" if order.assignee.inn else ""
-        details.append(("Мастер:", f"{order.assignee.full_name}{extra}"))
+    if admin:
+        extra = f" (ИНН {admin.inn})" if admin.inn else ""
+        details.append(("Мастер:", f"{admin.full_name}{extra}"))
     for label, value in details:
         pdf.set_font(font_name, "B", 10)
         pdf.cell(28, 6, label)
@@ -2162,6 +2162,9 @@ def order_receipt(order_id: int, request: Request, format: str = Query("html"),
     ).unique().scalar_one_or_none()
     if not order:
         raise HTTPException(404)
+    admin = session.execute(
+        select(User).where(User.username == "admin")
+    ).scalar_one_or_none()
     line_items = []
     for item in order.items:
         line_items.append((item.name, 1, item.price, item.price))
@@ -2170,10 +2173,10 @@ def order_receipt(order_id: int, request: Request, format: str = Query("html"),
             line_items.append((f"{op.part.name} ({op.part.article})", op.quantity, op.price, op.quantity * op.price))
 
     html = templates.env.get_template("receipt.html").render(
-        order=order, line_items=line_items, user=None)
+        order=order, line_items=line_items, admin=admin)
 
     if format == "pdf":
-        pdf = _build_receipt_pdf(order, line_items)
+        pdf = _build_receipt_pdf(order, line_items, admin)
         return StreamingResponse(io.BytesIO(pdf),
                                  media_type="application/pdf",
                                  headers={"Content-Disposition": f"attachment; filename=receipt_{order.id}.pdf"})
@@ -2195,6 +2198,10 @@ def send_receipt(order_id: int, request: Request, email_to: str = Form(...),
     if not order:
         raise HTTPException(404)
 
+    admin = session.execute(
+        select(User).where(User.username == "admin")
+    ).scalar_one_or_none()
+
     line_items = []
     for item in order.items:
         line_items.append((item.name, 1, item.price, item.price))
@@ -2203,7 +2210,7 @@ def send_receipt(order_id: int, request: Request, email_to: str = Form(...),
             line_items.append((f"{op.part.name} ({op.part.article})", op.quantity, op.price, op.quantity * op.price))
 
     body = templates.env.get_template("receipt_email.html").render(
-        order=order, line_items=line_items)
+        order=order, line_items=line_items, admin=admin)
     subject = f"Квитанция №{order.id} — Ремонт 3D принтера"
 
     smtp_host = os.getenv("SMTP_HOST", "")
