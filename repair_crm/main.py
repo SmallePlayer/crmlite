@@ -517,6 +517,10 @@ def _audit(action: str, entity_type: str, entity_id: int | None = None,
     )
     if session is not None:
         session.add(a)
+        try:
+            session.commit()
+        except Exception:
+            pass
     else:
         with Session(engine) as s:
             s.add(a)
