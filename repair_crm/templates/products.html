@@ -450,7 +450,7 @@ function addSupplyRow() {
   var tr = document.createElement('tr');
   var opts = '<option value="">— Выбрать —</option>';
   PDATA.forEach(function(p) {
-    opts += '<option value="' + p.id + '" data-stock="' + p.quantity + '" data-variants="' + (p.variants||'[]').replace(/"/g,'&quot;') + '">' + p.name + ' (' + p.article + ') — ' + p.quantity + ' шт.</option>';
+    opts += '<option value="' + p.id + '" data-stock="' + p.quantity + '" data-variants="' + (p.variants||'[]').replace(/"/g,'&quot;') + '">' + p.name + ' [' + p.article + ']' + (p.color ? ' ' + p.color : '') + ' — ' + p.quantity + ' шт.</option>';
   });
   tr.innerHTML =
     '<td><select class="form-select form-select-sm prod-sel" onchange="onSupplyProduct(this)">' + opts + '</select></td>' +
