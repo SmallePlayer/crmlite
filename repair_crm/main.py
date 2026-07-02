@@ -2505,6 +2505,36 @@ def mark_print_result(job_id: int, request: Request,
     return RedirectResponse("/prints", status_code=303)
 
 
+@app.post("/prints/{job_id}/edit")
+def edit_print_job(job_id: int, request: Request,
+                   name: str = Form(...),
+                   filament_id: int = Form(...),
+                   grams: int = Form(0),
+                   hours: float = Form(0),
+                   printer_name: str = Form(""),
+                   session: Session = Depends(get_db)):
+    job = session.get(PrintJob, job_id)
+    if not job: raise HTTPException(404)
+    # Return old grams to old filament
+    old_filament = session.get(Filament, job.filament_id)
+    if old_filament:
+        old_filament.quantity += job.grams
+    # Deduct new grams from new filament
+    new_filament = session.get(Filament, filament_id)
+    if not new_filament: raise HTTPException(400, "Пластик не найден")
+    if new_filament.quantity + job.grams < grams:
+        raise HTTPException(400, f"Недостаточно пластика: {new_filament.quantity + job.grams} г.")
+    new_filament.quantity = new_filament.quantity + job.grams - grams
+    job.name = name.strip()
+    job.filament_id = filament_id
+    job.grams = grams
+    job.hours = hours
+    job.printer_name = printer_name.strip()
+    session.commit()
+    _audit("edit_print", "print_job", job_id, f"{job.name} {grams}г {hours}ч", request.state.user, session)
+    return RedirectResponse("/prints", status_code=303)
+
+
 @app.post("/prints/{job_id}/delete")
 def delete_print_job(job_id: int, request: Request, session: Session = Depends(get_db)):
     job = session.get(PrintJob, job_id)
