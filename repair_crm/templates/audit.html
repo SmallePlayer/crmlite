@@ -2,47 +2,85 @@
 {% set current_page = "audit" %}
 
 {% block content %}
-<h4 class="mb-4">Аудит действий</h4>
+<h4 class="mb-3"><i class="bi bi-journal-text me-2"></i>Аудит действий</h4>
+
+<form class="row g-2 mb-3" method="get" action="/audit">
+  <div class="col-auto">
+    <select name="action" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">Все действия</option>
+      {% for a, cnt in actions %}
+      <option value="{{ a }}" {% if current_action == a %}selected{% endif %}>{{ a }} ({{ cnt }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="user_id" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">Все пользователи</option>
+      {% for au in audit_users %}
+      <option value="{{ au.id }}" {% if current_user_id == au.id|string %}selected{% endif %}>{{ au.full_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto text-muted small d-flex align-items-center">Всего: {{ total }}</div>
+</form>
 
 {% if logs %}
 <div class="table-responsive">
-  <table class="table table-sm table-hover align-middle">
+  <table class="table table-sm table-hover align-middle" style="font-size:0.8rem">
     <thead class="table-light">
-      <tr>
-        <th>Дата</th>
-        <th>Пользователь</th>
-        <th>Действие</th>
-        <th>Тип</th>
-        <th>ID</th>
-        <th>Детали</th>
-      </tr>
+      <tr><th style="width:130px">Дата</th><th style="width:140px">Пользователь</th><th>Действие</th><th>Объект</th><th>Детали</th></tr>
     </thead>
     <tbody>
       {% for l in logs %}
       <tr>
         <td class="text-muted text-nowrap">{{ l.created_at | dt }}</td>
-        <td>{{ l.user_name or '—' }}</td>
+        <td class="text-nowrap">{{ l.user_name or 'Система' }}</td>
         <td>
           {% set act = l.action %}
           {% if act == 'create' %}<span class="badge bg-success">создание</span>
           {% elif act == 'update' %}<span class="badge bg-info">изменение</span>
           {% elif act == 'delete' %}<span class="badge bg-danger">удаление</span>
           {% elif act == 'login' %}<span class="badge bg-primary">вход</span>
+          {% elif act == 'login_failed' %}<span class="badge bg-warning text-dark">ошибка входа</span>
+          {% elif act == 'check_in' %}<span class="badge bg-success">пришёл</span>
+          {% elif act == 'check_out' %}<span class="badge bg-secondary">ушёл</span>
+          {% elif act == 'cancel_check_in' %}<span class="badge bg-dark">отмена прихода</span>
+          {% elif act == 'edit_attendance' %}<span class="badge bg-info">правка времени</span>
+          {% elif act == 'add_schedule' %}<span class="badge bg-primary">смена</span>
+          {% elif act == 'edit_schedule' %}<span class="badge bg-info">правка смены</span>
+          {% elif act == 'bulk_schedule' %}<span class="badge bg-primary">массовые смены</span>
           {% elif act == 'receive' %}<span class="badge bg-success">приход</span>
           {% elif act == 'stock_out' %}<span class="badge bg-warning text-dark">расход</span>
-          {% elif 'item' in act or 'part' in act %}<span class="badge bg-secondary">{{ act }}</span>
-          {% elif act in ('close','reopen') %}<span class="badge bg-dark">{{ act }}</span>
+          {% elif act == 'close' %}<span class="badge bg-dark">закрыт</span>
+          {% elif act == 'reopen' %}<span class="badge bg-warning">переоткрыт</span>
+          {% elif 'item' in act or 'part' in act %}<span class="badge bg-light text-dark">{{ act }}</span>
           {% else %}<span class="badge bg-light text-dark">{{ act }}</span>
           {% endif %}
         </td>
-        <td><small>{{ l.entity_type }}</small></td>
-        <td>{{ l.entity_id or '' }}</td>
+        <td><small>{{ l.entity_type }}{% if l.entity_id %} #{{ l.entity_id }}{% endif %}</small></td>
         <td class="text-muted">{{ l.details }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+{% if pages > 1 %}
+<nav class="d-flex justify-content-center mt-3">
+  <ul class="pagination pagination-sm">
+    <li class="page-item {{ 'disabled' if page <= 1 }}"><a class="page-link" href="/audit?page={{ page - 1 }}&action={{ current_action }}&user_id={{ current_user_id }}">«</a></li>
+    {% for p in range(1, pages + 1) %}
+    {% if p == page %}<li class="page-item active"><span class="page-link">{{ p }}</span></li>
+    {% elif p <= 3 or p > pages - 3 or (p >= page - 2 and p <= page + 2) %}
+    <li class="page-item"><a class="page-link" href="/audit?page={{ p }}&action={{ current_action }}&user_id={{ current_user_id }}">{{ p }}</a></li>
+    {% elif p == 4 or p == pages - 3 %}<li class="page-item disabled"><span class="page-link">…</span></li>
+    {% endif %}
+    {% endfor %}
+    <li class="page-item {{ 'disabled' if page >= pages }}"><a class="page-link" href="/audit?page={{ page + 1 }}&action={{ current_action }}&user_id={{ current_user_id }}">»</a></li>
+  </ul>
+</nav>
+{% endif %}
+
 {% else %}
 <div class="text-center py-5 text-muted">
   <i class="bi bi-journal fs-1"></i>

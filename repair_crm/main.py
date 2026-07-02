@@ -69,6 +69,7 @@ class User(Base):
     inn: Mapped[str] = mapped_column(String(20), default="")
     position: Mapped[str] = mapped_column(String(100), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_login: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -333,6 +334,12 @@ async def lifespan(app: FastAPI):
         for col, dtype in [("report", "TEXT DEFAULT ''")]:
             try:
                 conn.execute(text(f"ALTER TABLE attendance ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col, dtype in [("last_login", "DATETIME")]:
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {dtype}"))
                 conn.commit()
             except Exception:
                 pass
@@ -767,6 +774,7 @@ def login(
         select(User).where(User.username == username.strip())
     ).scalar_one_or_none()
     if not user or not _verify_password(password, user.password_hash):
+        _audit("login_failed", "user", None, f"Неудачный вход: {username.strip()}", None, session)
         return templates.TemplateResponse(request, "login.html", {
             "user": None, "error": "Неверный логин или пароль",
         }, status_code=401)
@@ -774,6 +782,8 @@ def login(
         return templates.TemplateResponse(request, "login.html", {
             "user": None, "error": "Учётная запись отключена",
         }, status_code=403)
+    user.last_login = datetime.now()
+    session.commit()
     token = _create_token(user.id)
     response = RedirectResponse("/", status_code=303)
     response.set_cookie("token", token, max_age=TOKEN_EXPIRY, httponly=True)
@@ -1047,23 +1057,55 @@ def users_page(request: Request, session: Session = Depends(get_db)):
         **_user_context(request),
         "users": users, "roles": roles,
         "user_data": [{"id": x.id, "username": x.username, "full_name": x.full_name,
-                       "role_name": x.role.name, "is_active": x.is_active,
-                       "inn": x.inn or "", "position": x.position or ""} for x in users],
+                        "role_name": x.role.name, "is_active": x.is_active,
+                        "inn": x.inn or "", "position": x.position or "",
+                        "last_login": (x.last_login + TIMEZONE_OFFSET).strftime("%d.%m.%Y %H:%M") if x.last_login else ""}
+                       for x in users],
         "roles_data": [{"id": r.id, "name": r.name, "permissions": r.permissions} for r in roles],
     })
 
 
 @app.get("/audit", response_class=HTMLResponse)
-def audit_page(request: Request, session: Session = Depends(get_db)):
+def audit_page(
+    request: Request,
+    action: str = Query(""),
+    user_id: str = Query(""),
+    page: int = Query(1),
+    session: Session = Depends(get_db),
+):
     u = request.state.user
     if not u or u.role.name != "admin":
         raise HTTPException(403)
-    logs = session.execute(
-        select(AuditLog).order_by(desc(AuditLog.created_at)).limit(200)
+
+    q = select(AuditLog)
+    if action.strip():
+        q = q.where(AuditLog.action == action.strip())
+    if user_id.strip():
+        q = q.where(AuditLog.user_id == int(user_id.strip()))
+    q = q.order_by(desc(AuditLog.created_at))
+
+    PER_PAGE = 50
+    total = session.execute(select(func.count()).select_from(q.subquery())).scalar() or 0
+    pages = max(1, math.ceil(total / PER_PAGE))
+    page = max(1, min(page, pages))
+    logs = session.execute(q.offset((page - 1) * PER_PAGE).limit(PER_PAGE)).scalars().all()
+
+    actions = session.execute(
+        select(AuditLog.action, func.count(AuditLog.id))
+        .group_by(AuditLog.action).order_by(desc(func.count(AuditLog.id)))
+    ).all()
+
+    audit_users = session.execute(
+        select(User).where(User.id.in_(
+            select(AuditLog.user_id).where(AuditLog.user_id.isnot(None)).distinct()
+        )).order_by(User.full_name)
     ).scalars().all()
+
     return templates.TemplateResponse(request, "audit.html", {
         **_user_context(request),
-        "logs": logs,
+        "logs": logs, "page": page, "pages": pages, "total": total,
+        "current_action": action.strip(), "current_user_id": user_id.strip(),
+        "actions": actions, "audit_users": audit_users, "timedelta": timedelta,
     })
 
 
