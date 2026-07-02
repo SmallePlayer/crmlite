@@ -521,6 +521,7 @@ def _audit(action: str, entity_type: str, entity_id: int | None = None,
         with Session(engine) as s:
             s.add(a)
             s.commit()
+    _notify_all(f"{action}: {entity_type}", details or "", "", session)
 
 
 def _notify(user_id: int, title: str, text: str = "", link: str = "", session: Session | None = None):
@@ -1658,9 +1659,7 @@ def create_order(
     session.add(order)
     session.commit()
     _audit("create", "order", order.id, f"#{order.id} {printer.strip()}", request.state.user, session)
-    if order.assigned_to:
-        _notify_all(f"Новый заказ #{order.id}",
-                f"{order.client.full_name} — {printer.strip()}", f"/orders/{order.id}", session)
+    _audit("create", "order", order.id, f"#{order.id} {printer.strip()}", request.state.user, session)
     return RedirectResponse(f"/orders/{order.id}", status_code=303)
 
 
@@ -1771,9 +1770,6 @@ def close_order(order_id: int, request: Request, session: Session = Depends(get_
     order.closed_at = datetime.now()
     session.commit()
     _audit("close", "order", order_id, f"#{order_id} total={order.total_price}", request.state.user, session)
-    if order.assigned_to:
-        _notify_all(f"Заказ #{order_id} закрыт",
-                f"Сумма: {order.total_price:,.0f} ₽".replace(",", " "), f"/orders/{order_id}", session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
 
 
@@ -1790,9 +1786,6 @@ def change_order_status(order_id: int, request: Request,
     session.commit()
     _audit("change_status", "order", order_id,
            f"#{order_id} → {ORDER_STATUSES[new_status][0]}", request.state.user, session)
-    if order.assigned_to:
-        _notify_all(f"Заказ #{order_id}",
-                f"Статус: {ORDER_STATUSES[new_status][0]}", f"/orders/{order_id}", session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
 
 
@@ -1805,9 +1798,6 @@ def reopen_order(order_id: int, request: Request, session: Session = Depends(get
     order.closed_at = None
     session.commit()
     _audit("reopen", "order", order_id, f"#{order_id}", request.state.user, session)
-    if order.assigned_to:
-        _notify_all(f"Заказ #{order_id} переоткрыт",
-                "Снова в работе", f"/orders/{order_id}", session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
 
 
@@ -1849,9 +1839,6 @@ def edit_order(
     order.is_warranty = is_warranty
     session.commit()
     _audit("edit", "order", order_id, f"#{order_id}", request.state.user, session)
-    if order.assigned_to and order.assigned_to != prev_assigned:
-        _notify_all(f"Заказ #{order_id}: новый исполнитель",
-                f"{order.client.full_name} — {order.printer}", f"/orders/{order_id}", session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
 
 
@@ -2790,7 +2777,6 @@ def create_task(
     session.add(task)
     session.commit()
     _audit("create", "task", task.id, f"«{task.title}» → {target.full_name}", u, session)
-    _notify_all(f"Новая задача", f"«{task.title}» → {target.full_name}", "/tasks", session)
     return RedirectResponse("/tasks", status_code=303)
 
 
@@ -2806,7 +2792,6 @@ def mark_task_done(task_id: int, request: Request, session: Session = Depends(ge
     task.completed_at = datetime.now()
     session.commit()
     _audit("done", "task", task.id, f"«{task.title}» выполнена", u, session)
-    _notify_all(f"Задача выполнена", f"«{task.title}» — {u.full_name}", "/tasks", session)
     return RedirectResponse("/tasks", status_code=303)
 
 
