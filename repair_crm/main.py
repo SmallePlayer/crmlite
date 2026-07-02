@@ -204,6 +204,14 @@ class PrintJob(Base):
     hours: Mapped[float] = mapped_column(Float, default=0)
     status: Mapped[str] = mapped_column(String(10), default="success")
     waste_grams: Mapped[int] = mapped_column(Integer, default=0)
+    printer_name: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Printer(Base):
+    __tablename__ = "printers"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -357,12 +365,23 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
         for col, dtype in [("status", "VARCHAR(10) DEFAULT 'success'"),
-                            ("waste_grams", "INTEGER DEFAULT 0")]:
+                            ("waste_grams", "INTEGER DEFAULT 0"),
+                            ("printer_name", "VARCHAR(200) DEFAULT ''")]:
             try:
                 conn.execute(text(f"ALTER TABLE print_jobs ADD COLUMN {col} {dtype}"))
                 conn.commit()
             except Exception:
                 pass
+        # Create printers table
+        with engine.connect() as pc:
+            pc.execute(text("""
+                CREATE TABLE IF NOT EXISTS printers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(200) NOT NULL UNIQUE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            pc.commit()
         for col, dtype in [("cost_price", "FLOAT DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE products ADD COLUMN {col} {dtype}"))
@@ -2394,6 +2413,27 @@ def expense_filament(
 
 
 # ══════════════════════════════════════════════════════════════════
+#  Printers
+# ══════════════════════════════════════════════════════════════════
+
+@app.post("/printers/add")
+def add_printer(request: Request, name: str = Form(...), session: Session = Depends(get_db)):
+    existing = session.execute(select(Printer).where(Printer.name == name.strip())).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, "Такой принтер уже есть")
+    session.add(Printer(name=name.strip()))
+    session.commit()
+    return RedirectResponse("/prints", status_code=303)
+
+
+@app.post("/printers/{pid}/delete")
+def delete_printer(pid: int, request: Request, session: Session = Depends(get_db)):
+    p = session.get(Printer, pid)
+    if p: session.delete(p); session.commit()
+    return RedirectResponse("/prints", status_code=303)
+
+
+# ══════════════════════════════════════════════════════════════════
 #  Print Jobs
 # ══════════════════════════════════════════════════════════════════
 
@@ -2406,6 +2446,9 @@ def print_jobs_page(request: Request, session: Session = Depends(get_db)):
     filaments = session.execute(
         select(Filament).order_by(Filament.name)
     ).scalars().all()
+    printers = session.execute(
+        select(Printer).order_by(Printer.name)
+    ).scalars().all()
     total_jobs = len(jobs)
     success_jobs = sum(1 for j in jobs if j.status == "success")
     fail_jobs = sum(1 for j in jobs if j.status == "fail")
@@ -2415,7 +2458,7 @@ def print_jobs_page(request: Request, session: Session = Depends(get_db)):
     waste_grams_total = sum(j.waste_grams for j in jobs if j.status == "fail")
     return templates.TemplateResponse(request, "prints.html", {
         **_user_context(request),
-        "jobs": jobs, "filaments": filaments,
+        "jobs": jobs, "filaments": filaments, "printers": printers,
         "total_jobs": total_jobs, "success_jobs": success_jobs, "fail_jobs": fail_jobs,
         "total_grams": total_grams, "success_grams": success_grams,
         "fail_grams": fail_grams, "waste_grams_total": waste_grams_total,
@@ -2429,6 +2472,7 @@ def create_print_job(
     filament_id: int = Form(...),
     grams: int = Form(0),
     hours: float = Form(0),
+    printer_name: str = Form(""),
     session: Session = Depends(get_db),
 ):
     u = request.state.user
@@ -2438,7 +2482,8 @@ def create_print_job(
     if f.quantity < grams: raise HTTPException(400, f"Недостаточно пластика: {f.quantity} г.")
     f.quantity -= grams
     session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=grams, reason=f"Печать: {name.strip()}"))
-    session.add(PrintJob(name=name.strip(), filament_id=filament_id, created_by=u.id, grams=grams, hours=hours))
+    session.add(PrintJob(name=name.strip(), filament_id=filament_id, created_by=u.id, grams=grams, hours=hours,
+                         printer_name=printer_name.strip()))
     session.commit()
     return RedirectResponse("/prints", status_code=303)
 

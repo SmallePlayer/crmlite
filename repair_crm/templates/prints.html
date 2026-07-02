@@ -4,7 +4,10 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4 class="mb-0"><i class="bi bi-printer me-2"></i>Печать</h4>
-  <button class="btn btn-primary" onclick="new bootstrap.Modal(document.getElementById('printModal')).show()"><i class="bi bi-plus-lg me-1"></i>Новая печать</button>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" onclick="new bootstrap.Modal(document.getElementById('printersModal')).show()"><i class="bi bi-gear me-1"></i>Принтеры</button>
+    <button class="btn btn-primary" onclick="new bootstrap.Modal(document.getElementById('printModal')).show()"><i class="bi bi-plus-lg me-1"></i>Новая печать</button>
+  </div>
 </div>
 
 {% if total_jobs > 0 %}
@@ -18,32 +21,34 @@
 
 {% if jobs %}
 <div class="table-responsive">
-  <table class="table table-hover align-middle" style="font-size:0.85rem">
+  <table class="table table-hover align-middle" style="font-size:0.82rem">
     <thead class="table-light">
-      <tr><th>Название</th><th>Пластик</th><th class="text-end">Грамм</th><th class="text-end">Часов</th><th>Результат</th><th>Кто</th><th>Дата</th><th style="width:95px"></th></tr>
+      <tr><th>Название</th><th>Пластик</th><th>Принтер</th><th class="text-end">Грамм</th><th class="text-end">Часов</th><th>Результат</th><th>Кто</th><th>Дата</th><th></th></tr>
     </thead>
     <tbody>
       {% for j in jobs %}
       <tr>
         <td><strong>{{ j.name }}</strong></td>
-        <td><span class="badge bg-primary">{{ j.filament.name }}</span></td>
+        <td>
+          <span class="badge bg-primary me-1">{{ j.filament.type }}</span>
+          {{ j.filament.name }}
+          {% if j.filament.color %}<small class="text-muted d-block">{{ j.filament.color }}</small>{% endif %}
+          {% if j.filament.article %}<small class="text-muted"><code>{{ j.filament.article }}</code></small>{% endif %}
+        </td>
+        <td>{{ j.printer_name or '—' }}</td>
         <td class="text-end">{{ j.grams }} г.</td>
         <td class="text-end">{{ j.hours }} ч.</td>
         <td>
-          {% if j.status == 'success' %}
-          <span class="badge bg-success">Успех</span>
-          {% elif j.status == 'fail' %}
-          <span class="badge bg-danger" title="Брак: {{ j.waste_grams }} г.">Брак</span>
+          {% if j.status == 'success' %}<span class="badge bg-success">Успех</span>
+          {% elif j.status == 'fail' %}<span class="badge bg-danger" title="Брак: {{ j.waste_grams }} г.">Брак</span>
           {% if j.waste_grams > 0 %}<small class="text-muted ms-1">{{ j.waste_grams }} г.</small>{% endif %}
           {% endif %}
         </td>
         <td>{{ j.creator.full_name }}</td>
         <td class="text-muted small">{{ j.created_at | dt }}</td>
         <td class="text-nowrap">
-          <button class="btn btn-sm btn-outline-secondary me-1" onclick="openResultModal({{ j.id }}, '{{ j.status }}', {{ j.waste_grams }})" title="Результат"><i class="bi bi-flag"></i></button>
-          <form method="post" action="/prints/{{ j.id }}/delete" class="d-inline" data-confirm="Аннулировать печать «{{ j.name | e }}»? Пластик вернётся на склад.">
-            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button>
-          </form>
+          <button class="btn btn-sm btn-outline-secondary me-1" onclick="openResultModal({{ j.id }},'{{ j.status }}',{{ j.waste_grams }})"><i class="bi bi-flag"></i></button>
+          <form method="post" action="/prints/{{ j.id }}/delete" class="d-inline" data-confirm="Аннулировать? Пластик вернётся на склад."><button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button></form>
         </td>
       </tr>
       {% endfor %}
@@ -60,8 +65,12 @@
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-printer me-1"></i>Новая печать</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
       <div class="mb-3"><label class="form-label">Название <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" required placeholder="Модель, деталь..."></div>
-      <div class="mb-3"><label class="form-label">Пластик <span class="text-danger">*</span></label><select name="filament_id" class="form-select" required onchange="showFilamentInfo()"><option value="">— Выбрать —</option>{% for f in filaments %}<option value="{{ f.id }}" data-type="{{ f.type | e }}" data-color="{{ f.color | e }}" data-stock="{{ f.quantity }}">{{ f.name }}{% if f.article %} [{{ f.article }}]{% endif %} ({{ f.type }}{% if f.color %}, {{ f.color }}{% endif %}, {{ f.quantity }} г.)</option>{% endfor %}</select>
+      <div class="mb-3"><label class="form-label">Пластик <span class="text-danger">*</span></label><select name="filament_id" class="form-select" required onchange="showFilamentInfo()"><option value="">— Выбрать —</option>{% for f in filaments %}<option value="{{ f.id }}" data-type="{{ f.type|e }}" data-color="{{ f.color|e }}" data-article="{{ f.article|e }}" data-stock="{{ f.quantity }}">{{ f.name }}{% if f.article %} [{{ f.article }}]{% endif %} ({{ f.type }}{% if f.color %}, {{ f.color }}{% endif %}, {{ f.quantity }} г.)</option>{% endfor %}</select>
       <small class="text-muted" id="filInfo"></small></div>
+      <div class="mb-3"><label class="form-label">Принтер</label>
+        {% if printers %}<select name="printer_name" class="form-select"><option value="">— Выбрать —</option>{% for p in printers %}<option value="{{ p.name }}">{{ p.name }}</option>{% endfor %}</select>
+        {% else %}<input type="text" name="printer_name" class="form-control" placeholder="Название принтера...">{% endif %}
+      </div>
       <div class="row"><div class="col-6 mb-3"><label class="form-label">Грамм</label><input type="number" name="grams" class="form-control" min="1" value="50"></div><div class="col-6 mb-3"><label class="form-label">Часов</label><input type="number" name="hours" class="form-control" min="0" step="0.5" value="1"></div></div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Записать</button></div></form></div></div>
@@ -71,20 +80,36 @@
   <form class="modal-content" id="resultForm" method="post" action="/prints/0/result">
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-flag me-1"></i>Результат печати</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-      <div class="mb-3">
-        <label class="form-label">Статус</label>
-        <select name="status" class="form-select" id="resultStatus" onchange="document.getElementById('wasteRow').style.display = this.value === 'fail' ? '' : 'none'">
-          <option value="success">Успешно</option>
-          <option value="fail">Брак</option>
-        </select>
-      </div>
-      <div class="mb-3" id="wasteRow" style="display:none">
-        <label class="form-label">Грамм в брак</label>
-        <input type="number" name="waste_grams" class="form-control" min="0" value="0">
-      </div>
+      <div class="mb-3"><label class="form-label">Статус</label>
+        <select name="status" class="form-select" id="resultStatus" onchange="document.getElementById('wasteRow').style.display = this.value==='fail'?'':'none'">
+          <option value="success">Успешно</option><option value="fail">Брак</option></select></div>
+      <div class="mb-3" id="wasteRow" style="display:none"><label class="form-label">Грамм в брак</label><input type="number" name="waste_grams" class="form-control" min="0" value="0"></div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
   </form>
+</div></div>
+
+{# Printers Modal #}
+<div class="modal fade" id="printersModal" tabindex="-1"><div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-gear me-1"></i>Мои принтеры</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <form class="d-flex gap-2 mb-3" method="post" action="/printers/add">
+        <input type="text" name="name" class="form-control" placeholder="Название принтера..." required autocomplete="off">
+        <button class="btn btn-primary flex-shrink-0">Добавить</button>
+      </form>
+      {% if printers %}
+      <div class="list-group list-group-flush">
+        {% for p in printers %}
+        <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-0">
+          <span>{{ p.name }}</span>
+          <form method="post" action="/printers/{{ p.id }}/delete" class="d-inline" data-confirm="Удалить принтер «{{ p.name }}»?"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}<div class="text-muted text-center py-3">Нет сохранённых принтеров</div>{% endif %}
+    </div>
+  </div>
 </div></div>
 {% endblock %}
 
@@ -94,20 +119,17 @@ function showFilamentInfo() {
   var sel = document.querySelector('[name=filament_id]');
   var opt = sel.options[sel.selectedIndex];
   if (opt.value) {
-    var parts = [];
-    parts.push('Тип: ' + opt.dataset.type);
-    parts.push('Цвет: ' + opt.dataset.color);
-    parts.push('Остаток: ' + opt.dataset.stock + ' г.');
+    var parts = ['Тип: '+opt.dataset.type];
+    if (opt.dataset.color) parts.push('Цвет: '+opt.dataset.color);
+    if (opt.dataset.article) parts.push('Артикул: '+opt.dataset.article);
+    parts.push('Остаток: '+opt.dataset.stock+' г.');
     document.getElementById('filInfo').textContent = parts.join(' · ');
-  } else {
-    document.getElementById('filInfo').textContent = '';
-  }
+  } else document.getElementById('filInfo').textContent = '';
 }
-
 function openResultModal(jobId, status, waste) {
-  document.getElementById('resultForm').action = '/prints/' + jobId + '/result';
+  document.getElementById('resultForm').action = '/prints/'+jobId+'/result';
   document.getElementById('resultStatus').value = status;
-  document.getElementById('wasteRow').style.display = status === 'fail' ? '' : 'none';
+  document.getElementById('wasteRow').style.display = status==='fail'?'':'none';
   if (waste) document.querySelector('[name=waste_grams]').value = waste;
   new bootstrap.Modal(document.getElementById('resultModal')).show();
 }
