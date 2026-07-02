@@ -2405,10 +2405,17 @@ def send_receipt(order_id: int, request: Request, email_to: str = Form(...),
 
 @app.get("/api/filaments/next-article")
 def next_filament_article(session: Session = Depends(get_db)):
-    max_id = session.execute(
-        select(func.max(Filament.id))
-    ).scalar() or 0
-    return JSONResponse({"article": f"FIL-{max_id + 1:03d}"})
+    articles = session.execute(
+        select(Filament.article).where(Filament.article.like("FIL-%"))
+    ).scalars().all()
+    max_num = 0
+    for a in articles:
+        try:
+            num = int(a.replace("FIL-", "").split()[0])
+            if num > max_num: max_num = num
+        except ValueError:
+            pass
+    return JSONResponse({"article": f"FIL-{max_num + 1:04d}"})
 
 
 # ══════════════════════════════════════════════════════════════════
