@@ -2448,6 +2448,206 @@ def delete_print_job(job_id: int, request: Request, session: Session = Depends(g
     return RedirectResponse("/prints", status_code=303)
 
 # ══════════════════════════════════════════════════════════════════
+#  Attendance
+# ══════════════════════════════════════════════════════════════════
+
+@app.get("/attendance", response_class=HTMLResponse)
+def attendance_page(request: Request, month: str = Query(""), session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    today = datetime.now() + TIMEZONE_OFFSET
+    today_str = today.strftime("%Y-%m-%d")
+    if month:
+        try:
+            year, mon = map(int, month.split("-"))
+            base = datetime(year, mon, 1)
+        except (ValueError, TypeError):
+            base = today.replace(day=1)
+    else:
+        base = today.replace(day=1)
+    next_month = (base.replace(day=28) + timedelta(days=4)).replace(day=1)
+    prev_month = (base - timedelta(days=1)).replace(day=1)
+    base_m = base.strftime("%Y-%m")
+    next_m = next_month.strftime("%Y-%m")
+
+    users = session.execute(
+        select(User).where(User.is_active == True).order_by(User.full_name)
+    ).scalars().all()
+
+    attendances = session.execute(
+        select(Attendance).options(joinedload(Attendance.user))
+        .where(Attendance.date_str >= base_m, Attendance.date_str < next_m)
+        .order_by(desc(Attendance.created_at))
+    ).unique().scalars().all()
+
+    schedules = session.execute(
+        select(Schedule).options(joinedload(Schedule.user))
+        .where(Schedule.date >= base, Schedule.date < next_month)
+        .order_by(Schedule.date, Schedule.time_from)
+    ).unique().scalars().all()
+
+    by_user_date = {}
+    today_att = {}
+    for a in attendances:
+        by_user_date.setdefault(a.user_id, {})[a.date_str] = a
+        if a.date_str == today_str:
+            today_att[a.user_id] = a
+
+    sched_map = {}
+    for s in schedules:
+        d = s.date.strftime("%Y-%m-%d") if isinstance(s.date, datetime) else str(s.date)[:10]
+        sched_map.setdefault(d, []).append(s)
+
+    return templates.TemplateResponse(request, "attendance.html", {
+        **_user_context(request),
+        "users": users, "base_month": base, "next_month": next_month, "prev_month": prev_month,
+        "by_user_date": by_user_date, "today_att": today_att, "today": today,
+        "current_user_id": u.id, "sched_map": sched_map, "timedelta": timedelta,
+        "now_utc": datetime.now(),
+    })
+
+
+@app.post("/attendance/check-in")
+def check_in(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    today_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
+    existing = session.execute(
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
+    ).scalar_one_or_none()
+    if existing:
+        return RedirectResponse("/attendance", status_code=303)
+    session.add(Attendance(user_id=u.id, date_str=today_str, check_in=datetime.now()))
+    session.commit()
+    _audit("check_in", "attendance", None, f"{u.full_name} пришёл", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/attendance/check-out")
+def check_out(request: Request, report: str = Form(""), session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    today_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
+    a = session.execute(
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
+    ).scalar_one_or_none()
+    if a and not a.check_out:
+        a.check_out = datetime.now()
+        a.report = report.strip()
+        session.commit()
+        _audit("check_out", "attendance", None, f"{u.full_name} ушёл", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/attendance/cancel")
+def cancel_check_in(request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    today_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
+    a = session.execute(
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
+    ).scalar_one_or_none()
+    if a and not a.check_out:
+        session.delete(a)
+        session.commit()
+        _audit("cancel_check_in", "attendance", None, f"{u.full_name} отменил", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/attendance/edit")
+def edit_attendance(request: Request, check_in: str = Form(""), check_out: str = Form(""),
+                    report: str = Form(""), session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    today_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
+    today_dt = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    a = session.execute(
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
+    ).scalar_one_or_none()
+    if not a: raise HTTPException(400, "Нет отметки за сегодня")
+    if check_in.strip():
+        try:
+            h, m = map(int, check_in.split(":"))
+            a.check_in = today_dt.replace(hour=h, minute=m) - TIMEZONE_OFFSET
+        except ValueError: pass
+    if check_out.strip():
+        try:
+            h, m = map(int, check_out.split(":"))
+            a.check_out = today_dt.replace(hour=h, minute=m) - TIMEZONE_OFFSET
+        except ValueError: pass
+    a.report = report.strip()
+    session.commit()
+    _audit("edit_attendance", "attendance", a.id, f"{u.full_name}", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/schedule")
+def save_schedule(request: Request, user_id: int = Form(0), date: str = Form(""),
+                  time_from: str = Form(""), time_to: str = Form(""),
+                  session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    target = session.get(User, user_id or u.id)
+    if not target: raise HTTPException(400)
+    try: d = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError: raise HTTPException(400, "Неверная дата")
+    if not time_from or not time_to: raise HTTPException(400, "Укажите время")
+    session.add(Schedule(user_id=target.id, date=d, time_from=time_from, time_to=time_to))
+    session.commit()
+    _audit("add_schedule", "schedule", None, f"{target.full_name} {date} {time_from}-{time_to}", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/schedule/bulk")
+def bulk_schedule(request: Request, user_id: int = Form(0), date_from: str = Form(""),
+                  date_to: str = Form(""), time_from: str = Form(""), time_to: str = Form(""),
+                  workdays_only: str = Form("0"), session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    target = session.get(User, user_id or u.id)
+    if not target: raise HTTPException(400)
+    if not time_from or not time_to: raise HTTPException(400, "Укажите время")
+    try:
+        d_from = datetime.strptime(date_from, "%Y-%m-%d")
+        d_to = datetime.strptime(date_to, "%Y-%m-%d")
+    except ValueError: raise HTTPException(400, "Неверная дата")
+    if d_to < d_from: raise HTTPException(400, "Дата «по» раньше даты «с»")
+    count = 0
+    cur = d_from
+    while cur <= d_to:
+        if workdays_only != "1" or cur.weekday() < 5:
+            session.add(Schedule(user_id=target.id, date=cur, time_from=time_from, time_to=time_to))
+            count += 1
+        cur += timedelta(days=1)
+    session.commit()
+    _audit("bulk_schedule", "schedule", None, f"{target.full_name} {date_from}–{date_to} ({count} см.)", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/schedule/{sched_id}/edit")
+def edit_schedule(sched_id: int, request: Request, date: str = Form(""),
+                  time_from: str = Form(""), time_to: str = Form(""),
+                  session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u: raise HTTPException(403)
+    s = session.get(Schedule, sched_id)
+    if not s: raise HTTPException(404)
+    try: d = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError: raise HTTPException(400, "Неверная дата")
+    if not time_from or not time_to: raise HTTPException(400, "Укажите время")
+    s.date = d; s.time_from = time_from; s.time_to = time_to
+    session.commit()
+    _audit("edit_schedule", "schedule", s.id, f"{s.user.full_name} {date} {time_from}-{time_to}", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/schedule/{sched_id}/delete")
+def delete_schedule(sched_id: int, request: Request, session: Session = Depends(get_db)):
+    s = session.get(Schedule, sched_id)
+    if s: session.delete(s); session.commit()
+    return RedirectResponse("/attendance", status_code=303)
+
+# ══════════════════════════════════════════════════════════════════
 #  Chat
 # ══════════════════════════════════════════════════════════════════
 

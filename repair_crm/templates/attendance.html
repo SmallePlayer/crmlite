@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% set current_page = "attendance" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-person-check me-2"></i>Посещаемость</h4>
+  <div class="d-flex gap-2 align-items-center">
+    <a href="/attendance?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
+    <span class="fw-semibold">{{ base_month | month_ru }} {{ base_month.year }}</span>
+    <a href="/attendance?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
+  </div>
+</div>
+
+{% set ns = namespace(present=0, working=0, absent=0) %}
+{% for u in users %}
+  {% set a = today_att.get(u.id) %}
+  {% if a and a.check_out %}{% set ns.present = ns.present + 1 %}
+  {% elif a %}{% set ns.working = ns.working + 1 %}
+  {% else %}{% set ns.absent = ns.absent + 1 %}{% endif %}
+{% endfor %}
+
+<div class="row g-2 mb-4">
+  <div class="col-4"><div class="card border-success border-2 bg-success bg-opacity-10 text-center py-3 rounded-3">
+    <div class="fs-2 fw-bold text-success">{{ ns.present }}</div><small class="fw-semibold text-muted">✅ Завершили</small></div></div>
+  <div class="col-4"><div class="card border-warning border-2 bg-warning bg-opacity-10 text-center py-3 rounded-3">
+    <div class="fs-2 fw-bold text-warning-emphasis">{{ ns.working }}</div><small class="fw-semibold text-muted">🕐 Работают</small></div></div>
+  <div class="col-4"><div class="card border-secondary border-2 bg-light text-center py-3 rounded-3">
+    <div class="fs-2 fw-bold text-secondary">{{ ns.absent }}</div><small class="fw-semibold text-muted">❌ Не пришли</small></div></div>
+</div>
+
+{% set my = today_att.get(current_user_id) %}
+{% set mo_first = base_month.replace(day=1) %}
+{% set mo_last = (mo_first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
+{% set total_days = mo_last.day %}
+<div class="card shadow-lg mb-4 border-3 {% if not my %}border-primary{% elif my.check_out %}border-success{% else %}border-warning{% endif %} rounded-4">
+  <div class="card-body p-4 text-center">
+    {% if not my %}
+      <div class="text-muted mb-3 fs-5">Сегодня {{ today.strftime('%d.%m.%Y') }}</div>
+      <form method="post" action="/attendance/check-in" class="d-grid col-8 col-md-4 mx-auto">
+        <button class="btn btn-success btn-lg py-3 fs-5 fw-bold shadow-sm"><i class="bi bi-box-arrow-in-right me-2"></i>Я на работе</button>
+      </form>
+    {% elif not my.check_out %}
+      <div class="text-warning-emphasis fs-5 fw-bold mb-1">🟡 Вы на работе</div>
+      <div class="mb-1">Начало: <strong>{{ my.check_in | tm }}</strong></div>
+      {% set secs = (now_utc - my.check_in).total_seconds() %}
+      <div class="mb-3 fs-5 fw-bold text-warning-emphasis">{{ (secs // 3600) | round(0,'floor') }} ч {{ ((secs % 3600) // 60) | round(0,'floor') }} мин</div>
+      <div class="d-flex justify-content-center gap-2 flex-wrap">
+        <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('{{ my.check_in.strftime('%H:%M') }}','','{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
+        <button class="btn btn-danger px-4 fw-bold" onclick="openCheckOutModal()"><i class="bi bi-box-arrow-right me-2"></i>Завершить смену</button>
+        <form method="post" action="/attendance/cancel" class="d-inline" data-confirm="Точно отменить?"><button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg me-1"></i>Отменить</button></form>
+      </div>
+    {% else %}
+      <div class="text-success fs-5 fw-bold mb-1">✅ Смена завершена</div>
+      <div class="mb-1">{{ my.check_in | tm }} — {{ my.check_out | tm }}</div>
+      <div class="mb-2 fs-5 fw-bold text-success">{{ ((my.check_out - my.check_in).total_seconds() / 3600) | round(1) }} ч.</div>
+      {% if my.report %}<div class="alert alert-success py-1 px-3 d-inline-block mb-2 small"><i class="bi bi-journal-text me-1"></i>{{ my.report }}</div>{% endif %}
+      <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('{{ my.check_in.strftime('%H:%M') }}','{{ my.check_out.strftime('%H:%M') }}','{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
+    {% endif %}
+  </div>
+</div>
+
+<ul class="nav nav-pills nav-fill mb-3 gap-2">
+  <li class="nav-item"><button class="nav-link active fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-today" type="button">👥 Сегодня</button></li>
+  <li class="nav-item"><button class="nav-link fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-month" type="button">📅 Месяц</button></li>
+  <li class="nav-item"><button class="nav-link fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-schedule" type="button">📋 Расписание</button></li>
+</ul>
+
+<div class="tab-content">
+
+<div class="tab-pane fade show active" id="tab-today">
+  <div class="row g-3">
+    {% for u in users %}
+      {% set a = today_att.get(u.id) %}
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100 {% if a and a.check_out %}border-success border-2{% elif a %}border-warning border-2{% endif %} rounded-3">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div><span class="fw-semibold">{{ u.full_name }}</span><span class="text-muted ms-2 small">{{ u.position or u.role.name }}</span></div>
+              <div>
+                {% if not a %}<span class="badge bg-light text-dark">—</span>
+                {% elif a.check_out %}<span class="badge bg-success fs-6">{{ a.check_in | tm }} – {{ a.check_out | tm }} ({{ ((a.check_out - a.check_in).total_seconds() / 3600) | round(1) }} ч)</span>
+                {% else %}<span class="badge bg-warning text-dark fs-6">🕐 с {{ a.check_in | tm }}</span>{% endif %}
+              </div>
+            </div>
+            {% if a and a.check_out and a.report and (is_admin or u.id == current_user_id) %}
+              <div class="mt-2 text-muted small border-start border-success border-2 ps-2">{{ a.report[:100] }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="tab-pane fade" id="tab-month">
+  <div class="card shadow-sm"><div class="card-body p-2"><div class="table-responsive">
+    <table class="table table-bordered table-sm mb-0 text-center align-middle" style="font-size:0.72rem">
+      <thead><tr class="table-light">
+        <th style="min-width:130px">👤 Сотрудник</th>
+        {% for d in range(1, total_days + 1) %}<th style="width:22px;padding:2px" class="{{ 'text-danger bg-danger bg-opacity-10' if (mo_first.replace(day=d)).weekday() >= 5 }}">{{ d }}</th>{% endfor %}
+        <th style="width:30px">📆</th><th style="width:42px">⏱</th>
+      </tr></thead>
+      <tbody>
+      {% for u in users %}
+        {% set ns2 = namespace(worked=0, hrs=0) %}
+        <tr>
+          <td class="fw-semibold small text-truncate" style="max-width:130px">{{ u.full_name }}</td>
+          {% for d in range(1, total_days + 1) %}
+            {% set date_str = base_month.strftime('%Y-%m') + '-%02d' % d %}
+            {% set a = by_user_date.get(u.id, {}).get(date_str) %}
+            {% if a and a.check_out %}
+              {% set ns2.worked = ns2.worked + 1 %}{% set delta = ((a.check_out - a.check_in).total_seconds()) %}{% set ns2.hrs = ns2.hrs + delta %}
+              <td class="bg-success bg-opacity-10" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}{% if a.report and (is_admin or u.id == current_user_id) %} | {{ a.report }}{% endif %}">✅</td>
+            {% elif a %}
+              {% set ns2.worked = ns2.worked + 1 %}
+              <td class="bg-warning bg-opacity-10" title="с {{ a.check_in | tm }}">🕐</td>
+            {% else %}<td class="text-muted" style="font-size:0.6rem">·</td>{% endif %}
+          {% endfor %}
+          <td class="fw-bold table-secondary small">{{ ns2.worked }}</td>
+          <td class="fw-bold table-secondary small">{{ (ns2.hrs / 3600) | round(0) if ns2.hrs > 0 else '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div></div></div>
+</div>
+
+<div class="tab-pane fade" id="tab-schedule">
+  <div class="d-flex justify-content-end mb-2 gap-2">
+    <button class="btn btn-outline-primary btn-sm" onclick="openBulkScheduleModal()"><i class="bi bi-calendar-plus me-1"></i>Массовое создание</button>
+    <button class="btn btn-primary btn-sm" onclick="openScheduleModal()"><i class="bi bi-plus me-1"></i>Одна смена</button>
+  </div>
+  {% set sched_start = mo_first.weekday() %}
+  {% set sched_ns = namespace(sched_day=1) %}
+  <div class="card shadow-sm"><div class="card-body p-2"><div class="table-responsive">
+    <table class="table table-bordered table-sm align-top mb-0" style="font-size:0.75rem;min-width:600px">
+      <thead><tr class="table-light text-center"><th style="width:14.2%">Пн</th><th style="width:14.2%">Вт</th><th style="width:14.2%">Ср</th><th style="width:14.2%">Чт</th><th style="width:14.2%">Пт</th><th style="width:14.2%" class="text-danger">Сб</th><th style="width:14.2%" class="text-danger">Вс</th></tr></thead>
+      <tbody>
+      {% for w in range(6) %}{% if sched_ns.sched_day <= total_days %}<tr>
+        {% for dow in range(7) %}
+          <td style="height:60px;vertical-align:top;padding:3px;font-size:0.7rem" class="{{ 'text-muted bg-light' if (w==0 and dow < sched_start) or sched_ns.sched_day > total_days }}">
+            {% if (w==0 and dow >= sched_start) or (w>0 and sched_ns.sched_day <= total_days) %}
+              <div class="fw-bold small">{{ sched_ns.sched_day }}</div>
+              {% set date_str = base_month.strftime('%Y-%m') + '-%02d' % sched_ns.sched_day %}
+              {% for s in sched_map.get(date_str, []) %}
+                <div class="rounded px-1 py-0 bg-primary bg-opacity-10 mt-1 d-flex justify-content-between align-items-center" style="cursor:pointer;font-size:0.65rem"
+                     onclick="openScheduleModal({{ s.id }},'{{ s.date.strftime('%Y-%m-%d') }}','{{ s.time_from }}','{{ s.time_to }}',{{ s.user_id }})" title="{{ s.user.full_name }}: {{ s.time_from }}–{{ s.time_to }}">
+                  <span class="text-truncate">{{ s.user.full_name.split()[0] }}</span>
+                  <span class="fw-bold ms-1">{{ s.time_from }}–{{ s.time_to }}</span>
+                  <form method="post" action="/schedule/{{ s.id }}/delete" class="d-inline ms-1" data-confirm="Удалить?" onclick="event.stopPropagation()"><button class="btn btn-sm text-danger p-0 border-0 bg-transparent" style="font-size:0.6rem"><i class="bi bi-x"></i></button></form>
+                </div>
+              {% endfor %}
+              {% set sched_ns.sched_day = sched_ns.sched_day + 1 %}
+            {% endif %}
+          </td>
+        {% endfor %}
+      </tr>{% endif %}{% endfor %}
+      </tbody>
+    </table>
+  </div></div></div>
+</div>
+</div>
+
+<div class="modal fade" id="checkOutModal" tabindex="-1"><div class="modal-dialog">
+  <form class="modal-content" method="post" action="/attendance/check-out">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-box-arrow-right me-1"></i>Завершить смену</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><div class="mb-3"><label class="form-label">Что сделано сегодня?</label><textarea name="report" class="form-control" rows="4" placeholder="Например: ремонт Prusa i3, диагностика Ender 3..."></textarea><div class="form-text">Необязательно</div></div></div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-danger"><i class="bi bi-box-arrow-right me-1"></i>Завершить</button></div>
+  </form>
+</div></div>
+
+<div class="modal fade" id="editModal" tabindex="-1"><div class="modal-dialog modal-sm">
+  <form class="modal-content" method="post" action="/attendance/edit">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-1"></i>Исправить время</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="row"><div class="col-6 mb-3"><label class="form-label">Пришёл</label><input type="time" name="check_in" id="editCheckIn" class="form-control"></div><div class="col-6 mb-3"><label class="form-label">Ушёл</label><input type="time" name="check_out" id="editCheckOut" class="form-control"></div></div>
+      <div class="form-text mb-3">Оставьте «Ушёл» пустым если смена не завершена</div>
+      <div class="mb-2"><label class="form-label">Что сделано</label><textarea name="report" id="editReport" class="form-control" rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+  </form>
+</div></div>
+
+<div class="modal fade" id="scheduleModal" tabindex="-1"><div class="modal-dialog modal-sm">
+  <form class="modal-content" id="schedForm" method="post" action="/schedule">
+    <div class="modal-header"><h5 class="modal-title" id="schedModalTitle"><i class="bi bi-calendar-plus me-1"></i>Новая смена</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-3"><label class="form-label">Сотрудник</label><select name="user_id" id="schedUserId" class="form-select" size="4">{% for u in users %}<option value="{{ u.id }}" {% if u.id == current_user_id %}selected{% endif %}>{{ u.full_name }}{% if u.id == current_user_id %} (я){% endif %}</option>{% endfor %}</select></div>
+      <div class="mb-3"><label class="form-label">Дата</label><input type="date" name="date" id="schedDate" class="form-control" required value="{{ today.strftime('%Y-%m-%d') }}"></div>
+      <div class="row"><div class="col-6 mb-3"><label class="form-label">С</label><input type="time" name="time_from" id="schedFrom" class="form-control" required value="09:00"></div><div class="col-6 mb-3"><label class="form-label">До</label><input type="time" name="time_to" id="schedTo" class="form-control" required value="18:00"></div></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+  </form>
+</div></div>
+
+<div class="modal fade" id="bulkScheduleModal" tabindex="-1"><div class="modal-dialog">
+  <form class="modal-content" method="post" action="/schedule/bulk">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-calendar-plus me-1"></i>Массовое создание смен</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-3"><label class="form-label">Сотрудник</label><select name="user_id" class="form-select" size="4">{% for u in users %}<option value="{{ u.id }}" {% if u.id == current_user_id %}selected{% endif %}>{{ u.full_name }}{% if u.id == current_user_id %} (я){% endif %}</option>{% endfor %}</select></div>
+      <div class="row"><div class="col-6 mb-3"><label class="form-label">Дата с</label><input type="date" name="date_from" class="form-control" required value="{{ base_month.strftime('%Y-%m-%d') }}"></div><div class="col-6 mb-3"><label class="form-label">Дата по</label><input type="date" name="date_to" class="form-control" required value="{{ mo_last.strftime('%Y-%m-%d') }}"></div></div>
+      <div class="row"><div class="col-6 mb-3"><label class="form-label">С</label><input type="time" name="time_from" class="form-control" required value="09:00"></div><div class="col-6 mb-3"><label class="form-label">До</label><input type="time" name="time_to" class="form-control" required value="18:00"></div></div>
+      <div class="form-check"><input type="checkbox" name="workdays_only" value="1" class="form-check-input" id="workdaysOnly" checked><label class="form-check-label" for="workdaysOnly">Только будние дни (Пн–Пт)</label></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Создать смены</button></div>
+  </form>
+</div></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEditModal(checkIn, checkOut, report) {
+  document.getElementById('editCheckIn').value = checkIn;
+  document.getElementById('editCheckOut').value = checkOut || '';
+  document.getElementById('editReport').value = report || '';
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+function openCheckOutModal() {
+  new bootstrap.Modal(document.getElementById('checkOutModal')).show();
+}
+function openScheduleModal(schedId, date, from, to, userId) {
+  var f = document.getElementById('schedForm');
+  if (schedId) {
+    document.getElementById('schedModalTitle').innerHTML = '<i class="bi bi-pencil me-1"></i>Редактировать';
+    f.action = '/schedule/' + schedId + '/edit';
+    document.getElementById('schedDate').value = date;
+    document.getElementById('schedFrom').value = from;
+    document.getElementById('schedTo').value = to;
+    document.getElementById('schedUserId').value = userId;
+  } else {
+    document.getElementById('schedModalTitle').innerHTML = '<i class="bi bi-calendar-plus me-1"></i>Новая смена';
+    f.action = '/schedule';
+    document.getElementById('schedDate').value = '{{ today.strftime('%Y-%m-%d') }}';
+    document.getElementById('schedFrom').value = '09:00';
+    document.getElementById('schedTo').value = '18:00';
+    document.getElementById('schedUserId').value = '{{ current_user_id }}';
+  }
+  new bootstrap.Modal(document.getElementById('scheduleModal')).show();
+}
+function openBulkScheduleModal() {
+  new bootstrap.Modal(document.getElementById('bulkScheduleModal')).show();
+}
+</script>
+{% endblock %}
