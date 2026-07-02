@@ -206,6 +206,10 @@
           <input type="text" name="name" id="edit_name" class="form-control" maxlength="200" required autocomplete="off">
         </div>
         <div class="mb-3">
+          <label class="form-label">Артикул</label>
+          <input type="text" name="article" id="edit_article" class="form-control" maxlength="100" autocomplete="off">
+        </div>
+        <div class="mb-3">
           <label class="form-label">Цвет</label>
           <input type="text" name="color" id="edit_color" class="form-control" maxlength="100" autocomplete="off">
         </div>
@@ -321,6 +325,7 @@ function openEditModal(productId) {
   document.getElementById('editModalLabel').textContent = 'Редактировать: ' + p.name;
   document.getElementById('editForm').action = '/products/' + p.id + '/edit';
   document.getElementById('edit_name').value = p.name;
+  document.getElementById('edit_article').value = p.article || '';
   document.getElementById('edit_color').value = p.color || '';
   new bootstrap.Modal(document.getElementById('editModal')).show();
 }

@@ -1378,6 +1378,7 @@ def product_stock_out(
 def update_product(
     product_id: int, request: Request,
     name: str = Form(...),
+    article: str = Form(""),
     color: str = Form(""),
     session: Session = Depends(get_db),
 ):
@@ -1385,6 +1386,7 @@ def update_product(
     if not p:
         raise HTTPException(404)
     p.name = name.strip()
+    p.article = article.strip()
     p.color = color.strip()
     session.commit()
     _audit("update", "product", p.id, p.name, request.state.user, session)
