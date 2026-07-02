@@ -220,7 +220,7 @@
         <div class="col-md-9"><label class="form-label">Примечание</label><input type="text" id="supplyReason" class="form-control" placeholder="Номер поставки..."></div>
       </div>
       <table class="table table-sm align-middle mb-2">
-        <thead class="table-light"><tr><th style="width:30%">Товар</th><th style="width:10%">Склад</th><th style="width:12%">Кол-во</th><th style="width:40px"></th></tr></thead>
+        <thead class="table-light"><tr><th style="width:28%">Товар</th><th style="width:8%">Склад</th><th style="width:10%">В наборе</th><th style="width:10%">Наборов</th><th style="width:10%">Спишется</th><th style="width:40px"></th></tr></thead>
         <tbody id="supplyRows"></tbody>
       </table>
       <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addSupplyRow()"><i class="bi bi-plus"></i> Добавить строку</button>
@@ -407,10 +407,25 @@ function addSupplyRow() {
     opts += '<option value="' + p.id + '" data-stock="' + p.quantity + '">' + p.name + ' (' + p.article + ') — ' + p.quantity + ' шт.</option>';
   });
   tr.innerHTML =
-    '<td><select class="form-select form-select-sm">' + opts + '</select></td>' +
-    '<td><input type="number" class="form-control form-control-sm qty-input" min="1" value="1" required></td>' +
+    '<td><select class="form-select form-select-sm prod-sel" onchange="updateSupplyRow(this)">' + opts + '</select></td>' +
+    '<td class="text-muted small stock-cell">—</td>' +
+    '<td><input type="number" class="form-control form-control-sm per-set" min="1" value="1" onchange="updateSupplyRow(this)" oninput="updateSupplyRow(this)"></td>' +
+    '<td><input type="number" class="form-control form-control-sm sets-input" min="1" value="1" onchange="updateSupplyRow(this)" oninput="updateSupplyRow(this)"></td>' +
+    '<td class="fw-bold small total-cell">—</td>' +
     '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
   tbody.appendChild(tr);
+}
+
+function updateSupplyRow(el) {
+  var tr = el.closest('tr');
+  var sel = tr.querySelector('select');
+  var opt = sel.options[sel.selectedIndex];
+  var stock = parseInt(opt.dataset.stock) || 0;
+  var perSet = parseInt(tr.querySelector('.per-set').value) || 1;
+  var sets = parseInt(tr.querySelector('.sets-input').value) || 1;
+  var total = perSet * sets;
+  tr.querySelector('.stock-cell').textContent = stock;
+  tr.querySelector('.total-cell').textContent = total + ' шт.';
 }
 
 function submitSupply() {
@@ -420,15 +435,17 @@ function submitSupply() {
   document.querySelectorAll('#supplyRows tr').forEach(function(tr) {
     var sel = tr.querySelector('select');
     var pid = parseInt(sel.value) || 0;
-    var qty = parseInt(tr.querySelector('.qty-input').value) || 0;
+    var perSet = parseInt(tr.querySelector('.per-set').value) || 1;
+    var sets = parseInt(tr.querySelector('.sets-input').value) || 1;
+    var qty = perSet * sets;
     if (!pid || qty <= 0) return;
     var opt = sel.options[sel.selectedIndex];
     var stock = parseInt(opt.dataset.stock) || 0;
     if (qty > stock) {
-      document.getElementById('supplyError').textContent = 'Недостаточно на складе: ' + opt.text;
+      document.getElementById('supplyError').textContent = 'Недостаточно: ' + opt.text + ' (нужно ' + qty + ', есть ' + stock + ')';
       return;
     }
-    rows.push({product_id: pid, quantity: qty, destination: dest, reason: reason});
+    rows.push({product_id: pid, quantity: qty, destination: dest, reason: reason, per_set: perSet, sets: sets});
   });
   if (rows.length === 0) {
     document.getElementById('supplyError').textContent = 'Добавьте хотя бы одну позицию';

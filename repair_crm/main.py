@@ -1373,16 +1373,19 @@ async def products_supply(request: Request, session: Session = Depends(get_db)):
     for row in data:
         pid = int(row.get("product_id", 0))
         qty = int(row.get("quantity", 0))
+        per_set = int(row.get("per_set", 1))
+        sets = int(row.get("sets", 1))
         destination = row.get("destination", "")
         reason = row.get("reason", "Поставка")
         if pid <= 0 or qty <= 0: continue
         p = session.get(Product, pid)
         if not p: continue
         if p.quantity < qty:
-            return JSONResponse({"error": f"Недостаточно на складе: {p.name} ({p.quantity} шт.)"}, status_code=400)
+            return JSONResponse({"error": f"Недостаточно: {p.name} ({p.quantity} шт.)"}, status_code=400)
         p.quantity -= qty
+        reason_text = f"{reason}: {sets} наб. × {per_set} шт." if per_set > 1 or sets > 1 else reason
         session.add(ProductMovement(product_id=pid, type="out", quantity=qty,
-                     destination=destination, reason=reason))
+                     destination=destination, reason=reason_text))
         dest = destination
         total += qty
     session.commit()
