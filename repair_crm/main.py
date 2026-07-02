@@ -2515,16 +2515,22 @@ def edit_print_job(job_id: int, request: Request,
                    session: Session = Depends(get_db)):
     job = session.get(PrintJob, job_id)
     if not job: raise HTTPException(404)
-    # Return old grams to old filament
-    old_filament = session.get(Filament, job.filament_id)
-    if old_filament:
-        old_filament.quantity += job.grams
-    # Deduct new grams from new filament
+    old_grams = job.grams
+    old_filament_id = job.filament_id
     new_filament = session.get(Filament, filament_id)
     if not new_filament: raise HTTPException(400, "Пластик не найден")
-    if new_filament.quantity + job.grams < grams:
-        raise HTTPException(400, f"Недостаточно пластика: {new_filament.quantity + job.grams} г.")
-    new_filament.quantity = new_filament.quantity + job.grams - grams
+    if old_filament_id == filament_id:
+        # Same filament: just adjust the difference
+        delta = old_grams - grams
+        new_filament.quantity += delta
+    else:
+        # Different filament: return old, deduct new
+        old_f = session.get(Filament, old_filament_id)
+        if old_f:
+            old_f.quantity += old_grams
+        if new_filament.quantity < grams:
+            raise HTTPException(400, f"Недостаточно пластика: {new_filament.quantity} г.")
+        new_filament.quantity -= grams
     job.name = name.strip()
     job.filament_id = filament_id
     job.grams = grams
