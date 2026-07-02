@@ -2492,7 +2492,17 @@ def chat_send(request: Request, text: str = Form(...), to_user_id: int = Form(0)
 def attendance_page(request: Request, month: str = Query(""), session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
+
     today = datetime.now() + TIMEZONE_OFFSET
+    today_str = today.strftime("%Y-%m-%d")
+
+    # Auto-close stale check-ins from previous days
+    session.execute(
+        text("UPDATE attendance SET check_out = date || 'T23:59:59' WHERE check_out IS NULL AND date < :today"),
+        {"today": today_str}
+    )
+    session.commit()
+
     if month:
         try:
             year, mon = map(int, month.split("-"))
