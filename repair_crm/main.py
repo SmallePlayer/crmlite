@@ -2408,7 +2408,7 @@ def delete_print_job(job_id: int, request: Request, session: Session = Depends(g
 # ══════════════════════════════════════════════════════════════════
 
 @app.get("/chat", response_class=HTMLResponse)
-def chat_page(request: Request, with_user: str = Query(""), session: Session = Depends(get_db)):
+def chat_page(request: Request, with_user: str = Query("", alias="with"), session: Session = Depends(get_db)):
     u = request.state.user
     if not u:
         raise HTTPException(403)
