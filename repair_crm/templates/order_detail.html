@@ -95,6 +95,11 @@
             <span class="badge bg-success"><i class="bi bi-shield-check me-1"></i>Гарантийный</span>
             {% else %}<span class="text-muted">—</span>{% endif %}
           </td></tr>
+          <tr><td class="text-muted">Предоплата</td><td>
+            {% if order.prepaid > 0 %}
+            <strong class="text-success">{{ order.prepaid | money }}</strong>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td></tr>
           {% if order.scheduled_at %}
           <tr><td class="text-muted">{% if order.order_type == 'print' %}Принят{% else %}Выезд{% endif %}</td><td>
             <strong>{{ order.scheduled_at.strftime('%d.%m.%Y %H:%M') if order.order_type == 'repair' else order.scheduled_at.strftime('%d.%m.%Y') }}</strong>
@@ -338,6 +343,10 @@
               <input class="form-check-input" type="checkbox" name="is_warranty" value="1" id="editWarranty" {{ 'checked' if order.is_warranty }}>
               <label class="form-check-label" for="editWarranty">Гарантийный</label>
             </div>
+          </div>
+          <div class="col-md-4 mb-2">
+            <label class="form-label">Предоплата (₽)</label>
+            <input type="number" name="prepaid" class="form-control form-control-sm" min="0" step="1" value="{{ order.prepaid or 0 }}">
           </div>
           <div class="col-12 mb-2">
             <label class="form-label">Описание</label>

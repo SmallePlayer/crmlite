@@ -76,6 +76,16 @@
         <td colspan="4" class="text-end"><strong>ИТОГО:</strong></td>
         <td class="text-end"><strong class="fs-5">{{ '{:,.0f}'.format(order.total_price).replace(',', ' ') }} ₽</strong></td>
       </tr>
+      {% if order.prepaid > 0 %}
+      <tr>
+        <td colspan="4" class="text-end text-muted">Предоплата:</td>
+        <td class="text-end text-success"><strong>{{ '{:,.0f}'.format(order.prepaid).replace(',', ' ') }} ₽</strong></td>
+      </tr>
+      <tr>
+        <td colspan="4" class="text-end"><strong>К доплате:</strong></td>
+        <td class="text-end"><strong class="fs-5">{{ '{:,.0f}'.format(order.total_price - order.prepaid).replace(',', ' ') }} ₽</strong></td>
+      </tr>
+      {% endif %}
     </tfoot>
   </table>
 

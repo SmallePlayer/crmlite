@@ -238,6 +238,7 @@ class Order(Base):
     is_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     warranty_days: Mapped[int] = mapped_column(Integer, default=0)
     is_warranty: Mapped[bool] = mapped_column(Boolean, default=False)
+    prepaid: Mapped[float] = mapped_column(Float, default=0)
     items = relationship(
         "OrderItem", back_populates="order",
         cascade="all, delete-orphan", order_by="OrderItem.id",
@@ -330,7 +331,8 @@ async def lifespan(app: FastAPI):
                            ("scheduled_at", "DATETIME"), ("schedule_location", "VARCHAR(300) DEFAULT ''"),
                            ("is_confirmed", "BOOLEAN DEFAULT 0"),
                            ("warranty_days", "INTEGER DEFAULT 0"),
-                           ("is_warranty", "BOOLEAN DEFAULT 0")]:
+                            ("is_warranty", "BOOLEAN DEFAULT 0"),
+                            ("prepaid", "FLOAT DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -1666,6 +1668,7 @@ def create_order(
     schedule_location: str = Form(""),
     warranty_days: int = Form(0),
     is_warranty: bool = Form(False),
+    prepaid: float = Form(0),
     session: Session = Depends(get_db),
 ):
     if not session.get(Client, client_id):
@@ -1694,6 +1697,7 @@ def create_order(
         schedule_location=schedule_location.strip(),
         warranty_days=warranty_days,
         is_warranty=is_warranty,
+        prepaid=prepaid,
     )
     session.add(order)
     session.commit()
@@ -1853,6 +1857,7 @@ def edit_order(
     schedule_location: str = Form(""),
     warranty_days: int = Form(0),
     is_warranty: bool = Form(False),
+    prepaid: float = Form(0),
     session: Session = Depends(get_db),
 ):
     order = session.get(Order, order_id)
@@ -1864,6 +1869,7 @@ def edit_order(
     order.printer = printer.strip()
     order.defect = defect.strip()
     order.assigned_to = assigned_to if assigned_to > 0 else None
+    order.prepaid = prepaid
     sched_str = scheduled_at.strip() or f"{scheduled_date.strip()}T{scheduled_time.strip()}"
     if sched_str and sched_str != "T":
         try:
