@@ -47,7 +47,7 @@
           <td><strong>{{ u.username }}</strong></td>
           <td>{{ u.full_name }}</td>
           <td><span class="badge bg-secondary">{{ u.role.name }}</span></td>
-          <td class="text-muted small">{{ (u.last_login + timedelta(hours=3)).strftime('%d.%m.%Y %H:%M') if u.last_login else '—' }}</td>
+          <td class="text-muted small">{{ u.last_login | dt if u.last_login else '—' }}</td>
           <td>
             {% if u.is_active %}
             <span class="badge bg-success">Активен</span>

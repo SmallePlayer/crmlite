@@ -1138,6 +1138,7 @@ def users_page(request: Request, session: Session = Depends(get_db)):
                         "last_login": (x.last_login + TIMEZONE_OFFSET).strftime("%d.%m.%Y %H:%M") if x.last_login else ""}
                        for x in users],
         "roles_data": [{"id": r.id, "name": r.name, "permissions": r.permissions} for r in roles],
+        "timedelta": timedelta,
     })
 
 
