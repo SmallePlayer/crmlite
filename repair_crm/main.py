@@ -2072,6 +2072,58 @@ def export_products(request: Request, session: Session = Depends(get_db)):
     return _make_excel(["ID", "Название", "Артикул", "Цвет", "Кол-во"], rows, "products.xlsx")
 
 
+@app.get("/export/products-weekly")
+def export_products_weekly(request: Request, session: Session = Depends(get_db)):
+    today = datetime.now() + TIMEZONE_OFFSET
+    start = today - timedelta(days=today.weekday())
+    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=7)
+    return _product_report(session, start, end, "products_weekly.xlsx", "неделя")
+
+
+@app.get("/export/products-monthly")
+def export_products_monthly(request: Request, month: str = Query(""), session: Session = Depends(get_db)):
+    today = datetime.now() + TIMEZONE_OFFSET
+    if month:
+        try:
+            year, mon = map(int, month.split("-"))
+            start = datetime(year, mon, 1)
+        except (ValueError, TypeError):
+            start = today.replace(day=1)
+    else:
+        start = today.replace(day=1)
+    end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return _product_report(session, start, end, "products_monthly.xlsx", f"{start.strftime('%Y-%m')}")
+
+
+def _product_report(session, start, end, filename, period_label):
+    products = session.execute(select(Product).order_by(Product.name)).scalars().all()
+    movements = session.execute(
+        select(ProductMovement).where(
+            ProductMovement.created_at >= start - TIMEZONE_OFFSET,
+            ProductMovement.created_at < end - TIMEZONE_OFFSET,
+        )
+    ).scalars().all()
+    by_product = {}
+    for m in movements:
+        pid = m.product_id
+        if pid not in by_product:
+            by_product[pid] = {"in": 0, "out": 0}
+        by_product[pid][m.type] += m.quantity
+    rows = []
+    for p in products:
+        mv = by_product.get(p.id, {"in": 0, "out": 0})
+        rows.append([
+            p.name, p.article or "", p.color or "", p.quantity,
+            mv["in"], mv["out"],
+            p.cost_price if p.cost_price else "",
+            round(mv["in"] * (p.cost_price or 0), 2) if p.cost_price else "",
+        ])
+    return _make_excel(
+        ["Название", "Артикул", "Цвет", "Остаток", "Приход", "Расход", "Себест./шт", "Сумма прихода"],
+        rows, filename)
+
+
 # ══════════════════════════════════════════════════════════════════
 #  Search
 # ══════════════════════════════════════════════════════════════════
