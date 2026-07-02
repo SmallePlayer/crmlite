@@ -290,7 +290,7 @@ class Attendance(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     user = relationship("User")
-    date: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    date_str: Mapped[str] = mapped_column(String(10), default="")
     check_in: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     check_out: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
     report: Mapped[str] = mapped_column(Text, default="")
@@ -357,6 +357,16 @@ async def lifespan(app: FastAPI):
                             ("waste_grams", "INTEGER DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE print_jobs ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col, dtype in [("date_str", "VARCHAR(10) DEFAULT ''")]:
+            try:
+                conn.execute(text(f"ALTER TABLE attendance ADD COLUMN {col} {dtype}"))
+                conn.commit()
+                conn.execute(text(
+                    "UPDATE attendance SET date_str = strftime('%Y-%m-%d', date) WHERE date_str = ''"
+                ))
                 conn.commit()
             except Exception:
                 pass
@@ -2493,6 +2503,7 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
     u = request.state.user
     if not u: raise HTTPException(403)
     today = datetime.now() + TIMEZONE_OFFSET
+    today_str = today.strftime("%Y-%m-%d")
     if month:
         try:
             year, mon = map(int, month.split("-"))
@@ -2503,6 +2514,8 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
         base = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     next_month = (base.replace(day=28) + timedelta(days=4)).replace(day=1)
     prev_month = (base - timedelta(days=1)).replace(day=1)
+    base_str = base.strftime("%Y-%m")
+    next_str = next_month.strftime("%Y-%m")
 
     users = session.execute(
         select(User).where(User.is_active == True).order_by(User.full_name)
@@ -2511,7 +2524,7 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
     # Get attendance for this month
     attendances = session.execute(
         select(Attendance).options(joinedload(Attendance.user))
-        .where(Attendance.date >= base, Attendance.date < next_month)
+        .where(Attendance.date_str >= base_str, Attendance.date_str < next_str)
         .order_by(desc(Attendance.created_at))
     ).unique().scalars().all()
 
@@ -2523,10 +2536,9 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
     ).unique().scalars().all()
 
     by_user_date = {}
-    today_str = today.strftime("%Y-%m-%d")
     today_attendance = {}
     for a in attendances:
-        d = a.date.strftime("%Y-%m-%d") if isinstance(a.date, datetime) else str(a.date)[:10]
+        d = a.date_str
         by_user_date.setdefault(a.user_id, {})[d] = a
         if d == today_str:
             today_attendance[a.user_id] = a
@@ -2568,13 +2580,13 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
 def check_in(request: Request, session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
-    today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
     existing = session.execute(
-        select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
     ).scalar_one_or_none()
     if existing:
         return RedirectResponse("/attendance", status_code=303)
-    session.add(Attendance(user_id=u.id, date=today, check_in=datetime.now()))
+    session.add(Attendance(user_id=u.id, date_str=today_str, check_in=datetime.now()))
     session.commit()
     _audit("check_in", "attendance", None, f"{u.full_name} пришёл", u, session)
     return RedirectResponse("/attendance", status_code=303)
@@ -2590,22 +2602,23 @@ def edit_attendance(
 ):
     u = request.state.user
     if not u: raise HTTPException(403)
-    today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
+    today_dt = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
     a = session.execute(
-        select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
     ).scalar_one_or_none()
     if not a:
         raise HTTPException(400, "Нет отметки за сегодня")
     if check_in.strip():
         try:
             h, m = map(int, check_in.split(":"))
-            a.check_in = today.replace(hour=h, minute=m) - TIMEZONE_OFFSET
+            a.check_in = today_dt.replace(hour=h, minute=m) - TIMEZONE_OFFSET
         except ValueError:
             pass
     if check_out.strip():
         try:
             h, m = map(int, check_out.split(":"))
-            a.check_out = today.replace(hour=h, minute=m) - TIMEZONE_OFFSET
+            a.check_out = today_dt.replace(hour=h, minute=m) - TIMEZONE_OFFSET
         except ValueError:
             pass
     a.report = report.strip()
@@ -2618,9 +2631,9 @@ def edit_attendance(
 def check_out(request: Request, report: str = Form(""), session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
-    today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
     existing = session.execute(
-        select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
     ).scalar_one_or_none()
     if existing and not existing.check_out:
         existing.check_out = datetime.now()
@@ -2634,9 +2647,9 @@ def check_out(request: Request, report: str = Form(""), session: Session = Depen
 def cancel_check_in(request: Request, session: Session = Depends(get_db)):
     u = request.state.user
     if not u: raise HTTPException(403)
-    today = (datetime.now() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
     a = session.execute(
-        select(Attendance).where(Attendance.user_id == u.id, Attendance.date == today)
+        select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
     ).scalar_one_or_none()
     if a and not a.check_out:
         session.delete(a)
