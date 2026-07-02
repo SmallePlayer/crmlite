@@ -122,6 +122,9 @@ function openFilamentModal(fid) {
     document.getElementById('fTotalG').value = '';
     document.getElementById('fTotalG').style.display = 'none';
     document.getElementById('fTotalG').previousElementSibling.style.display = 'none';
+    {% if is_admin %}
+    document.getElementById('fMinStock').value = d.min_stock;
+    {% endif %}
   } else {
     document.getElementById('filamentTitle').textContent = 'Новый пластик';
     f.action = '/filaments';
@@ -135,10 +138,10 @@ function openFilamentModal(fid) {
     document.getElementById('fTotalG').style.display = '';
     document.getElementById('fTotalG').previousElementSibling.style.display = '';
     document.getElementById('fTotalG').value = 1000;
-  }
     {% if is_admin %}
-    document.getElementById('fMinStock').value = d.min_stock;
+    document.getElementById('fMinStock').value = 500;
     {% endif %}
+  }
   new bootstrap.Modal(document.getElementById('filamentModal')).show();
 }
 
