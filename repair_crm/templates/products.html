@@ -208,7 +208,7 @@
 </div>
 
 {# Supply Modal #}
-<div class="modal fade" id="supplyModal" tabindex="-1"><div class="modal-dialog modal-xl">
+<div class="modal fade" id="supplyModal" tabindex="-1"><div class="modal-dialog modal-lg">
   <div class="modal-content">
     <div class="modal-header bg-info text-white">
       <h5 class="modal-title"><i class="bi bi-truck me-1"></i>Поставка товаров</h5>
@@ -216,11 +216,11 @@
     </div>
     <div class="modal-body p-3">
       <div class="row g-2 mb-3">
-        <div class="col-md-3"><label class="form-label">Куда</label><select id="supplyDest" class="form-select"><option value="Ozon">Ozon</option><option value="WB">Wildberries</option><option value="Розница">Розница</option></select></div>
-        <div class="col-md-9"><label class="form-label">Примечание</label><input type="text" id="supplyReason" class="form-control" placeholder="Номер поставки..."></div>
+        <div class="col-md-4"><label class="form-label">Куда</label><select id="supplyDest" class="form-select"><option value="Ozon">Ozon</option><option value="WB">Wildberries</option><option value="Розница">Розница</option></select></div>
+        <div class="col-md-8"><label class="form-label">Примечание</label><input type="text" id="supplyReason" class="form-control" placeholder="Номер поставки..."></div>
       </div>
       <table class="table table-sm align-middle mb-2">
-        <thead class="table-light"><tr><th style="width:28%">Товар</th><th style="width:8%">Склад</th><th style="width:10%">В наборе</th><th style="width:10%">Наборов</th><th style="width:10%">Спишется</th><th style="width:40px"></th></tr></thead>
+        <thead class="table-light"><tr><th style="width:30%">Товар</th><th>Вариант</th><th style="width:10%">Наборов</th><th style="width:10%">Спишется</th><th style="width:40px"></th></tr></thead>
         <tbody id="supplyRows"></tbody>
       </table>
       <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addSupplyRow()"><i class="bi bi-plus"></i> Добавить строку</button>
@@ -265,6 +265,12 @@
             <input type="number" name="pack_cost" id="edit_pack_cost" class="form-control" min="0" step="0.01">
           </div>
         </div>
+        <hr>
+        <div class="mb-2"><label class="form-label">Варианты наборов</label>
+          <div id="variantsList"></div>
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addVariantRow()"><i class="bi bi-plus"></i> Добавить</button>
+          <div class="form-text">Напр: 1 шт → 25 наборов, 3 шт → 8 наборов</div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -297,8 +303,8 @@ function addReceiveRow() {
   var opts = '<option value="">+ Новая позиция</option>';
   PDATA.forEach(function(p) {
     opts += '<option value="' + p.id + '" data-name="' + p.name + '" data-article="' + p.article +
-      '" data-color="' + (p.color || '') + '" data-stock="' + p.quantity + '">' +
-      p.name + ' (' + p.article + ') — склад: ' + p.quantity + '</option>';
+      '" data-color="' + (p.color || '') + '" data-stock="' + p.quantity + '" data-cost="' + (p.cost_price||0) + '" data-printcost="' + (p.print_cost||0) + '" data-packcost="' + (p.pack_cost||0) + '">' +
+      p.name + ' [' + p.article + ']' + (p.color ? ' ' + p.color : '') + ' — склад: ' + p.quantity + '</option>';
   });
   tr.innerHTML =
     '<td><select class="form-select form-select-sm prod-select" onchange="onProdSelect(this)">' + opts + '</select></td>' +
@@ -389,8 +395,48 @@ function openEditModal(productId) {
   document.getElementById('edit_cost_price').value = p.cost_price || 0;
   document.getElementById('edit_print_cost').value = p.print_cost || 0;
   document.getElementById('edit_pack_cost').value = p.pack_cost || 0;
+  // Load variants
+  var variants = [];
+  try { variants = JSON.parse(p.variants || '[]'); } catch(e) {}
+  renderVariants(variants);
+  _editProductId = p.id;
   new bootstrap.Modal(document.getElementById('editModal')).show();
 }
+
+var _editProductId = 0;
+
+function addVariantRow(perSet, article) {
+  var div = document.createElement('div');
+  div.className = 'd-flex gap-2 mb-1 align-items-center';
+  div.innerHTML = '<input class="form-control form-control-sm" style="width:70px" placeholder="Шт." value="' + (perSet||'') + '">' +
+    '<input class="form-control form-control-sm" style="width:130px" placeholder="Артикул" value="' + (article||'') + '">' +
+    '<button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>';
+  document.getElementById('variantsList').appendChild(div);
+}
+
+function renderVariants(variants) {
+  document.getElementById('variantsList').innerHTML = '';
+  if (variants.length) variants.forEach(function(v) { addVariantRow(v.per_set, v.article); });
+  else addVariantRow('', '');
+}
+
+function saveVariants() {
+  var rows = [];
+  document.querySelectorAll('#variantsList > div').forEach(function(div) {
+    var inputs = div.querySelectorAll('input');
+    var per = parseInt(inputs[0].value) || 0;
+    var art = inputs[1].value.trim();
+    if (per > 0) rows.push({per_set: per, article: art});
+  });
+  fetch('/products/' + _editProductId + '/save-variants', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(rows)
+  });
+}
+
+document.getElementById('editForm').addEventListener('submit', function(e) {
+  saveVariants();
+});
 
 function openSupplyModal() {
   document.getElementById('supplyRows').innerHTML = '';
@@ -404,28 +450,47 @@ function addSupplyRow() {
   var tr = document.createElement('tr');
   var opts = '<option value="">— Выбрать —</option>';
   PDATA.forEach(function(p) {
-    opts += '<option value="' + p.id + '" data-stock="' + p.quantity + '">' + p.name + ' (' + p.article + ') — ' + p.quantity + ' шт.</option>';
+    opts += '<option value="' + p.id + '" data-stock="' + p.quantity + '" data-variants="' + (p.variants||'[]').replace(/"/g,'&quot;') + '">' + p.name + ' (' + p.article + ') — ' + p.quantity + ' шт.</option>';
   });
   tr.innerHTML =
-    '<td><select class="form-select form-select-sm prod-sel" onchange="updateSupplyRow(this)">' + opts + '</select></td>' +
-    '<td class="text-muted small stock-cell">—</td>' +
-    '<td><input type="number" class="form-control form-control-sm per-set" min="1" value="1" onchange="updateSupplyRow(this)" oninput="updateSupplyRow(this)"></td>' +
-    '<td><input type="number" class="form-control form-control-sm sets-input" min="1" value="1" onchange="updateSupplyRow(this)" oninput="updateSupplyRow(this)"></td>' +
+    '<td><select class="form-select form-select-sm prod-sel" onchange="onSupplyProduct(this)">' + opts + '</select></td>' +
+    '<td><select class="form-select form-select-sm var-sel" style="min-width:140px" onchange="onSupplyVariant(this)"><option>—</option></select></td>' +
+    '<td><input type="number" class="form-control form-control-sm sets-input" min="1" value="1" onchange="updateSupplyTotal(this)" oninput="updateSupplyTotal(this)"></td>' +
     '<td class="fw-bold small total-cell">—</td>' +
     '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
   tbody.appendChild(tr);
 }
 
-function updateSupplyRow(el) {
-  var tr = el.closest('tr');
-  var sel = tr.querySelector('select');
+function onSupplyProduct(sel) {
+  var tr = sel.closest('tr');
   var opt = sel.options[sel.selectedIndex];
+  var varSel = tr.querySelector('.var-sel');
+  varSel.innerHTML = '<option value="">— шт.</option>';
+  if (!opt.value) return;
+  var variants = [];
+  try { variants = JSON.parse(opt.dataset.variants || '[]'); } catch(e) {}
   var stock = parseInt(opt.dataset.stock) || 0;
-  var perSet = parseInt(tr.querySelector('.per-set').value) || 1;
-  var sets = parseInt(tr.querySelector('.sets-input').value) || 1;
-  var total = perSet * sets;
-  tr.querySelector('.stock-cell').textContent = stock;
-  tr.querySelector('.total-cell').textContent = total + ' шт.';
+  if (!variants.length) {
+    // No variants defined: single-item mode
+    varSel.innerHTML = '<option value="1" data-per="1">1 шт. (можно ' + stock + ')</option>';
+  } else {
+    variants.forEach(function(v) {
+      var per = v.per_set || 1;
+      var can = Math.floor(stock / per);
+      varSel.innerHTML += '<option value="' + per + '" data-per="' + per + '" data-article="' + (v.article||'') + '">' + per + ' шт. / набор' + (v.article ? ' [' + v.article + ']' : '') + ' — можно ' + can + ' наб.</option>';
+    });
+  }
+  updateSupplyTotal(sel);
+}
+
+function onSupplyVariant(sel) { updateSupplyTotal(sel); }
+
+function updateSupplyTotal(el) {
+  var tr = el.closest('tr');
+  var varSel = tr.querySelector('.var-sel');
+  var per = parseInt(varSel.options[varSel.selectedIndex]?.dataset?.per) || 1;
+  var sets = parseInt(tr.querySelector('.sets-input').value) || 0;
+  tr.querySelector('.total-cell').textContent = per * sets + ' шт.';
 }
 
 function submitSupply() {
@@ -433,19 +498,16 @@ function submitSupply() {
   var reason = document.getElementById('supplyReason').value.trim() || 'Поставка';
   var rows = [];
   document.querySelectorAll('#supplyRows tr').forEach(function(tr) {
-    var sel = tr.querySelector('select');
+    var sel = tr.querySelector('.prod-sel');
     var pid = parseInt(sel.value) || 0;
-    var perSet = parseInt(tr.querySelector('.per-set').value) || 1;
-    var sets = parseInt(tr.querySelector('.sets-input').value) || 1;
-    var qty = perSet * sets;
+    var varSel = tr.querySelector('.var-sel');
+    var per = parseInt(varSel.options[varSel.selectedIndex]?.dataset?.per) || 1;
+    var sets = parseInt(tr.querySelector('.sets-input').value) || 0;
+    var qty = per * sets;
     if (!pid || qty <= 0) return;
-    var opt = sel.options[sel.selectedIndex];
-    var stock = parseInt(opt.dataset.stock) || 0;
-    if (qty > stock) {
-      document.getElementById('supplyError').textContent = 'Недостаточно: ' + opt.text + ' (нужно ' + qty + ', есть ' + stock + ')';
-      return;
-    }
-    rows.push({product_id: pid, quantity: qty, destination: dest, reason: reason, per_set: perSet, sets: sets});
+    var stock = parseInt(sel.options[sel.selectedIndex]?.dataset?.stock) || 0;
+    if (qty > stock) { document.getElementById('supplyError').textContent = 'Недостаточно: нужно ' + qty + ', есть ' + stock; return; }
+    rows.push({product_id: pid, quantity: qty, destination: dest, reason: reason, per_set: per, sets: sets});
   });
   if (rows.length === 0) {
     document.getElementById('supplyError').textContent = 'Добавьте хотя бы одну позицию';

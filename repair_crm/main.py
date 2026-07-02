@@ -148,6 +148,7 @@ class Product(Base):
     cost_price: Mapped[float] = mapped_column(Float, default=0)
     print_cost: Mapped[float] = mapped_column(Float, default=0)
     pack_cost: Mapped[float] = mapped_column(Float, default=0)
+    variants: Mapped[str] = mapped_column(Text, default="[]")
     image: Mapped[str] = mapped_column(String(300), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     movements = relationship("ProductMovement", back_populates="product",
@@ -388,7 +389,8 @@ async def lifespan(app: FastAPI):
             pc.commit()
         for col, dtype in [("cost_price", "FLOAT DEFAULT 0"),
                             ("print_cost", "FLOAT DEFAULT 0"),
-                            ("pack_cost", "FLOAT DEFAULT 0")]:
+                            ("pack_cost", "FLOAT DEFAULT 0"),
+                            ("variants", "TEXT DEFAULT '[]'")]:
             try:
                 conn.execute(text(f"ALTER TABLE products ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -1008,6 +1010,7 @@ def products_page(request: Request, session: Session = Depends(get_db)):
             "cost_price": p.cost_price or 0,
             "print_cost": p.print_cost or 0,
             "pack_cost": p.pack_cost or 0,
+            "variants": p.variants or "[]",
             "image": p.image or "",
         } for p in products],
     })
@@ -1480,9 +1483,20 @@ def update_product(
     p.cost_price = float(cost_price or 0)
     p.print_cost = float(print_cost or 0)
     p.pack_cost = float(pack_cost or 0)
+    # variants passed via JS as JSON string in hidden field or separate form
     session.commit()
     _audit("update", "product", p.id, p.name, request.state.user, session)
     return RedirectResponse("/products", status_code=303)
+
+
+@app.post("/products/{product_id}/save-variants")
+async def save_product_variants(product_id: int, request: Request, session: Session = Depends(get_db)):
+    data = await request.json()
+    p = session.get(Product, product_id)
+    if not p: raise HTTPException(404)
+    p.variants = json.dumps(data, ensure_ascii=False)
+    session.commit()
+    return JSONResponse({"ok": True})
 
 
 @app.post("/products/{product_id}/delete")
