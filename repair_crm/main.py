@@ -2382,6 +2382,7 @@ def edit_filament(
     name: str = Form(...),
     article: str = Form(""),
     manufacturer: str = Form(""),
+    type: str = Form("PLA"),
     color: str = Form(""),
     grams_per_spool: int = Form(1000),
     min_stock: int = Form(0),
@@ -2393,6 +2394,7 @@ def edit_filament(
     f.article = article.strip()
     f.manufacturer = manufacturer.strip()
     f.color = color.strip()
+    f.type = type
     f.grams_per_spool = grams_per_spool
     f.min_stock = min_stock
     session.commit()
