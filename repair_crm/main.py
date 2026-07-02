@@ -1367,13 +1367,14 @@ async def receive_products(request: Request, session: Session = Depends(get_db))
         color = row.get("color", "").strip()
         qty = int(row.get("quantity", 0))
         cost_price = float(row.get("cost_price", 0) or 0)
-        if not name or not article or qty <= 0:
+        if not name or not article:
             continue
         existing = session.execute(
             select(Product).where(Product.article == article)
         ).scalar_one_or_none()
         if existing:
-            existing.quantity += qty
+            if qty > 0:
+                existing.quantity += qty
             if color: existing.color = color
             if cost_price: existing.cost_price = cost_price
             product = existing
@@ -1381,11 +1382,12 @@ async def receive_products(request: Request, session: Session = Depends(get_db))
             product = Product(name=name, article=article, color=color, quantity=qty, cost_price=cost_price)
             session.add(product)
             session.flush()
-        session.add(ProductMovement(
-            product_id=product.id, type="in", quantity=qty,
-            destination="", reason="Приход",
-        ))
-        total += qty
+        if qty > 0:
+            session.add(ProductMovement(
+                product_id=product.id, type="in", quantity=qty,
+                destination="", reason="Приход",
+            ))
+            total += qty
     session.commit()
     if total > 0:
         _audit("receive", "product", None, f"+{total} шт.", request.state.user, session)
