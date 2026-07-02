@@ -1666,7 +1666,6 @@ def create_order(
     session.add(order)
     session.commit()
     _audit("create", "order", order.id, f"#{order.id} {printer.strip()}", request.state.user, session)
-    _audit("create", "order", order.id, f"#{order.id} {printer.strip()}", request.state.user, session)
     return RedirectResponse(f"/orders/{order.id}", status_code=303)
 
 
