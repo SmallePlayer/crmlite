@@ -565,6 +565,10 @@ def _audit(action: str, entity_type: str, entity_id: int | None = None,
     if session is not None:
         session.add(a)
         try:
+            _notify_all(f"{action}: {entity_type}", details or "", "", session)
+        except Exception:
+            pass
+        try:
             session.commit()
         except Exception:
             import traceback
@@ -573,7 +577,7 @@ def _audit(action: str, entity_type: str, entity_id: int | None = None,
         with Session(engine) as s:
             s.add(a)
             s.commit()
-    _notify_all(f"{action}: {entity_type}", details or "", "", session)
+        _notify_all(f"{action}: {entity_type}", details or "", "", None)
 
 
 def _notify(user_id: int, title: str, text: str = "", link: str = "", session: Session | None = None):
@@ -1286,6 +1290,7 @@ def delete_service(service_id: int, request: Request, session: Session = Depends
 @app.post("/warehouse/receive")
 async def receive_parts(request: Request, session: Session = Depends(get_db)):
     data = await request.json()
+    total = 0
     for row in data:
         name = row.get("name", "").strip()
         article = row.get("article", "").strip()
@@ -1310,8 +1315,10 @@ async def receive_parts(request: Request, session: Session = Depends(get_db)):
             price_per_unit=price or part.purchase_price,
             reason="Приход",
         ))
-        _audit("receive", "part", part.id, f"+{qty} {part.name}", request.state.user, session)
+        total += qty
     session.commit()
+    if total > 0:
+        _audit("receive", "part", None, f"+{total} шт.", request.state.user, session)
     return JSONResponse({"ok": True})
 
 
@@ -1352,6 +1359,7 @@ def delete_part(part_id: int, request: Request, session: Session = Depends(get_d
 @app.post("/products/receive")
 async def receive_products(request: Request, session: Session = Depends(get_db)):
     data = await request.json()
+    total = 0
     for row in data:
         name = row.get("name", "").strip()
         article = row.get("article", "").strip()
@@ -1376,8 +1384,10 @@ async def receive_products(request: Request, session: Session = Depends(get_db))
             product_id=product.id, type="in", quantity=qty,
             destination="", reason="Приход",
         ))
-        _audit("receive", "product", product.id, f"+{qty} {product.name}", request.state.user, session)
+        total += qty
     session.commit()
+    if total > 0:
+        _audit("receive", "product", None, f"+{total} шт.", request.state.user, session)
     return JSONResponse({"ok": True})
 
 
@@ -1889,14 +1899,22 @@ def edit_order(
     order.defect = defect.strip()
     order.assigned_to = assigned_to if assigned_to > 0 else None
     order.prepaid = prepaid
-    sched_str = scheduled_at.strip() or f"{scheduled_date.strip()}T{scheduled_time.strip()}"
-    if sched_str and sched_str != "T":
+    sched_str = scheduled_at.strip()
+    if sched_str:
         try:
             order.scheduled_at = datetime.strptime(sched_str.replace("T", " ")[:16], "%Y-%m-%d %H:%M")
         except ValueError:
             order.scheduled_at = None
     else:
-        order.scheduled_at = None
+        d = scheduled_date.strip()
+        t = scheduled_time.strip()
+        if d:
+            try:
+                order.scheduled_at = datetime.strptime(f"{d} {t or '00:00'}", "%Y-%m-%d %H:%M")
+            except ValueError:
+                order.scheduled_at = None
+        else:
+            order.scheduled_at = None
     order.schedule_location = schedule_location.strip()
     order.warranty_days = warranty_days
     order.is_warranty = is_warranty
@@ -1919,18 +1937,22 @@ def toggle_confirm(order_id: int, request: Request, session: Session = Depends(g
 
 @app.post("/orders/batch-close")
 def batch_close_orders(request: Request, ids: str = Form(""), session: Session = Depends(get_db)):
+    closed = 0
     for oid in [int(x) for x in ids.split(",") if x.strip().isdigit()]:
         order = session.get(Order, oid)
         if order and order.status != "closed":
             order.status = "closed"
             order.closed_at = datetime.now()
-            _audit("close", "order", oid, f"#{oid} (batch)", request.state.user, session)
+            closed += 1
     session.commit()
+    if closed > 0:
+        _audit("batch_close", "order", None, f"Закрыто {closed} заказов", request.state.user, session)
     return RedirectResponse("/orders", status_code=303)
 
 
 @app.post("/orders/batch-delete")
 def batch_delete_orders(request: Request, ids: str = Form(""), session: Session = Depends(get_db)):
+    deleted = 0
     for oid in [int(x) for x in ids.split(",") if x.strip().isdigit()]:
         order = session.get(Order, oid)
         if order:
@@ -1939,8 +1961,10 @@ def batch_delete_orders(request: Request, ids: str = Form(""), session: Session 
                 if part:
                     part.quantity += op.quantity
             session.delete(order)
-            _audit("delete", "order", oid, f"#{oid} (batch)", request.state.user, session)
+            deleted += 1
     session.commit()
+    if deleted > 0:
+        _audit("batch_delete", "order", None, f"Удалено {deleted} заказов", request.state.user, session)
     return RedirectResponse("/orders", status_code=303)
 
 
@@ -2388,6 +2412,7 @@ def delete_filament(fid: int, request: Request, session: Session = Depends(get_d
 @app.post("/filaments/receive")
 async def receive_filament(request: Request, session: Session = Depends(get_db)):
     data = await request.json()
+    total = 0
     for row in data:
         fid = int(row.get("id", 0))
         qty = int(row.get("quantity", 0))
@@ -2396,8 +2421,10 @@ async def receive_filament(request: Request, session: Session = Depends(get_db))
         if not f: continue
         f.quantity += qty
         session.add(FilamentMovement(filament_id=fid, type="in", quantity=qty, reason="Приход"))
+        total += qty
     session.commit()
-    _audit("receive", "filament", None, f"+{sum(int(r.get('quantity',0)) for r in data)} г.", request.state.user, session)
+    if total > 0:
+        _audit("receive", "filament", None, f"+{total} г.", request.state.user, session)
     return JSONResponse({"ok": True})
 
 
