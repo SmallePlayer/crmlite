@@ -32,6 +32,26 @@
 {% set mo_first = base_month.replace(day=1) %}
 {% set mo_last = (mo_first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) %}
 {% set total_days = mo_last.day %}
+
+{% if is_admin and work_hours %}
+<div class="card shadow-sm mb-3 border-info border-2 rounded-3">
+  <div class="card-header bg-info bg-opacity-10 fw-semibold"><i class="bi bi-clock-history me-1"></i>Итого за {{ base_month | month_ru }}</div>
+  <div class="card-body p-2"><div class="table-responsive">
+    <table class="table table-sm table-hover mb-0" style="font-size:0.8rem">
+      <thead class="table-light"><tr><th>Сотрудник</th><th class="text-end">Дней</th><th class="text-end">Часов</th><th class="text-end">В среднем</th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        {% set wh = work_hours.get(u.id, {}) %}
+        {% if wh.get('days', 0) > 0 %}
+          <tr><td>{{ u.full_name }}</td><td class="text-end">{{ wh.days }}</td><td class="text-end fw-bold">{{ wh.hours | round(1) }}</td><td class="text-end text-muted">{{ (wh.hours / wh.days) | round(1) if wh.days else '—' }} ч/д</td></tr>
+        {% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+</div>
+{% endif %}
+
 <div class="card shadow-lg mb-4 border-3 {% if not my %}border-primary{% elif my.check_out %}border-success{% else %}border-warning{% endif %} rounded-4">
   <div class="card-body p-4 text-center">
     {% if not my %}
@@ -110,7 +130,8 @@
             {% set a = by_user_date.get(u.id, {}).get(date_str) %}
             {% if a and a.check_out %}
               {% set ns2.worked = ns2.worked + 1 %}{% set delta = ((a.check_out - a.check_in).total_seconds()) %}{% set ns2.hrs = ns2.hrs + delta %}
-              <td class="bg-success bg-opacity-10" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}{% if a.report and (is_admin or u.id == current_user_id) %} | {{ a.report }}{% endif %}">✅</td>
+              <td class="bg-success bg-opacity-10 {% if is_admin %}clickable{% endif %}" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}{% if a.report and (is_admin or u.id == current_user_id) %} | {{ a.report }}{% endif %}"
+                  {% if is_admin %}onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','{{ a.check_out.strftime('%H:%M') }}','{{ a.report | e }}')"{% endif %}>✅</td>
             {% elif a %}
               {% set ns2.worked = ns2.worked + 1 %}
               <td class="bg-warning bg-opacity-10" title="с {{ a.check_in | tm }}">🕐</td>
@@ -205,6 +226,19 @@
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Создать смены</button></div>
   </form>
 </div></div>
+
+{% if is_admin %}
+<div class="modal fade" id="adminEditModal" tabindex="-1"><div class="modal-dialog modal-sm">
+  <form class="modal-content" id="adminEditForm" method="post" action="">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-1"></i>Править запись</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="row"><div class="col-6 mb-3"><label class="form-label">Пришёл</label><input type="time" name="check_in" id="adminCheckIn" class="form-control"></div><div class="col-6 mb-3"><label class="form-label">Ушёл</label><input type="time" name="check_out" id="adminCheckOut" class="form-control"></div></div>
+      <div class="mb-2"><label class="form-label">Что сделано</label><textarea name="report" id="adminReport" class="form-control" rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+  </form>
+</div></div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -217,6 +251,13 @@ function openEditModal(checkIn, checkOut, report) {
 }
 function openCheckOutModal() {
   new bootstrap.Modal(document.getElementById('checkOutModal')).show();
+}
+function openAdminEdit(attId, checkIn, checkOut, report) {
+  document.getElementById('adminEditForm').action = '/attendance/' + attId + '/admin-edit';
+  document.getElementById('adminCheckIn').value = checkIn;
+  document.getElementById('adminCheckOut').value = checkOut;
+  document.getElementById('adminReport').value = report || '';
+  new bootstrap.Modal(document.getElementById('adminEditModal')).show();
 }
 function openScheduleModal(schedId, date, from, to, userId) {
   var f = document.getElementById('schedForm');

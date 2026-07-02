@@ -2498,12 +2498,23 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
         d = s.date.strftime("%Y-%m-%d") if isinstance(s.date, datetime) else str(s.date)[:10]
         sched_map.setdefault(d, []).append(s)
 
+    work_hours = {}
+    for a in attendances:
+        if a.check_out:
+            delta = (a.check_out - a.check_in).total_seconds()
+            if delta > 0:
+                uid = a.user_id
+                if uid not in work_hours:
+                    work_hours[uid] = {"hours": 0.0, "days": 0}
+                work_hours[uid]["hours"] += delta / 3600
+                work_hours[uid]["days"] += 1
+
     return templates.TemplateResponse(request, "attendance.html", {
         **_user_context(request),
         "users": users, "base_month": base, "next_month": next_month, "prev_month": prev_month,
         "by_user_date": by_user_date, "today_att": today_att, "today": today,
         "current_user_id": u.id, "sched_map": sched_map, "timedelta": timedelta,
-        "now_utc": datetime.now(),
+        "now_utc": datetime.now(), "work_hours": work_hours,
     })
 
 
@@ -2578,6 +2589,30 @@ def edit_attendance(request: Request, check_in: str = Form(""), check_out: str =
     a.report = report.strip()
     session.commit()
     _audit("edit_attendance", "attendance", a.id, f"{u.full_name}", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/attendance/{att_id}/admin-edit")
+def admin_edit_attendance(att_id: int, request: Request, check_in: str = Form(""),
+                          check_out: str = Form(""), report: str = Form(""),
+                          session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u or u.role.name != "admin": raise HTTPException(403)
+    a = session.get(Attendance, att_id)
+    if not a: raise HTTPException(404)
+    if check_in.strip():
+        try:
+            h, m = map(int, check_in.split(":"))
+            a.check_in = datetime.now().replace(hour=h, minute=m, second=0, microsecond=0) - TIMEZONE_OFFSET
+        except ValueError: pass
+    if check_out.strip():
+        try:
+            h, m = map(int, check_out.split(":"))
+            a.check_out = datetime.now().replace(hour=h, minute=m, second=0, microsecond=0) - TIMEZONE_OFFSET
+        except ValueError: pass
+    a.report = report.strip()
+    session.commit()
+    _audit("admin_edit_attendance", "attendance", att_id, f"{u.full_name}", u, session)
     return RedirectResponse("/attendance", status_code=303)
 
 
