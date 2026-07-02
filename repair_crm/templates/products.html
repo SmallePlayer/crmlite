@@ -12,6 +12,9 @@
         <li><a class="dropdown-item" href="/export/products-monthly"><i class="bi bi-calendar-month me-1"></i>За месяц</a></li>
       </ul>
     </div>
+    <button class="btn btn-info" onclick="openSupplyModal()">
+      <i class="bi bi-truck"></i> Поставка
+    </button>
     <button class="btn btn-success" id="receiveBtn">
       <i class="bi bi-box-arrow-in-down"></i> Приход
     </button>
@@ -28,9 +31,7 @@
         <th>Артикул</th>
         <th>Цвет</th>
         <th>Кол-во</th>
-        <th class="text-end">Себест.</th>
-        <th class="text-end">Печать</th>
-        <th class="text-end">+ Упаковка</th>
+        <th class="text-end">Себест. печати</th>
         <th style="width:160px"></th>
       </tr>
     </thead>
@@ -57,9 +58,7 @@
           <span class="badge bg-success">{{ p.quantity | int }}</span>
           {% endif %}
         </td>
-        <td class="text-end text-muted small">{{ (p.cost_price or 0) | money }}</td>
         <td class="text-end text-muted small">{{ (p.print_cost or 0) | money }}</td>
-        <td class="text-end text-muted small">{{ ((p.print_cost or 0) + (p.pack_cost or 0)) | money }}</td>
         <td>
           <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
                 class="d-inline" id="imgForm_{{ p.id }}">
@@ -73,9 +72,6 @@
           </form>
           <button class="btn btn-sm btn-warning me-1" onclick="openStockOutModal({{ p.id }})">
             <i class="bi bi-box-arrow-up"></i> Расход
-          </button>
-          <button class="btn btn-sm btn-info me-1" onclick="openSupplyModal()">
-            <i class="bi bi-truck"></i> Поставка
           </button>
           <button class="btn btn-sm btn-outline-secondary me-1 edit-product-btn" data-id="{{ p.id }}">
             <i class="bi bi-pencil"></i>
