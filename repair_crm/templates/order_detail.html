@@ -2,16 +2,15 @@
 {% set current_page = "orders" %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-4">
-  <a href="/orders" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Назад</a>
+<div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+  <a href="/orders" class="btn btn-outline-secondary btn-sm py-0"><i class="bi bi-arrow-left"></i></a>
   <h4 class="mb-0">Заказ #{{ order.id }}</h4>
   <span class="badge bg-secondary">{{ ORDER_TYPES[order.order_type][0] }}</span>
-  {% if order.is_confirmed %}
-  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Подтверждён</span>
-  {% else %}
-  <span class="badge bg-warning text-dark"><i class="bi bi-x-circle me-1"></i>Не подтверждён</span>
-  {% endif %}
   <span class="badge bg-{{ ORDER_STATUSES[order.status][1] }}">{{ ORDER_STATUSES[order.status][0] }}</span>
+  {% if order.is_confirmed %}
+  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i></span>
+  {% endif %}
+  {% if order.source %}<span class="badge bg-info small">{{ order.source }}</span>{% endif %}
 </div>
 
 <div class="row g-4">
@@ -19,35 +18,22 @@
     <div class="card shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
         <strong>Информация о заказе</strong>
-        <div class="d-flex gap-1">
-          <button class="btn btn-outline-secondary btn-sm" onclick="openEditOrderModal()"
-                  title="Редактировать">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <a href="/orders/{{ order.id }}/receipt" class="btn btn-outline-secondary btn-sm"
-             title="Квитанция" target="_blank">
-            <i class="bi bi-receipt"></i>
-          </a>
-          <button class="btn btn-outline-secondary btn-sm" onclick="openEmailModal()"
-                  title="Отправить на почту">
-            <i class="bi bi-envelope"></i>
-          </button>
+        <div class="d-flex gap-1 flex-wrap">
+          <button class="btn btn-outline-secondary btn-sm py-0" onclick="openEditOrderModal()" title="Ред."><i class="bi bi-pencil"></i></button>
+          <a href="/orders/{{ order.id }}/receipt" class="btn btn-outline-secondary btn-sm py-0" title="Квитанция" target="_blank"><i class="bi bi-receipt"></i></a>
+          <button class="btn btn-outline-secondary btn-sm py-0" onclick="openEmailModal()" title="На почту"><i class="bi bi-envelope"></i></button>
           <form method="post" action="/orders/{{ order.id }}/confirm" class="d-inline">
-            <button class="btn btn-{{ 'outline-warning' if order.is_confirmed else 'outline-success' }} btn-sm"
-                    title="{{ 'Отменить подтверждение' if order.is_confirmed else 'Подтвердить заказ' }}">
+            <button class="btn btn-{{ 'outline-warning' if order.is_confirmed else 'outline-success' }} btn-sm py-0" title="{{ 'Отменить' if order.is_confirmed else 'Подтвердить' }}">
               <i class="bi bi-{{ 'x-circle' if order.is_confirmed else 'check-circle' }}"></i>
-              {{ 'Отменить' if order.is_confirmed else 'Подтвердить' }}
             </button>
           </form>
           {% if order.status == "closed" %}
-          <form method="post" action="/orders/{{ order.id }}/reopen" class="d-inline"
-                data-confirm="Вернуть заказ #{{ order.id }} в работу?">
-            <button class="btn btn-warning btn-sm"><i class="bi bi-arrow-repeat"></i> В работу</button>
+          <form method="post" action="/orders/{{ order.id }}/reopen" class="d-inline" data-confirm="Вернуть #{{ order.id }} в работу?">
+            <button class="btn btn-warning btn-sm py-0"><i class="bi bi-arrow-repeat"></i> В работу</button>
           </form>
           {% else %}
-          <form method="post" action="/orders/{{ order.id }}/close" class="d-inline"
-                data-confirm="Закрыть заказ #{{ order.id }}? Итоговая сумма: {{ order.total_price | money }}">
-            <button class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Закрыть заказ</button>
+          <form method="post" action="/orders/{{ order.id }}/close" class="d-inline" data-confirm="Закрыть #{{ order.id }}?">
+            <button class="btn btn-success btn-sm py-0"><i class="bi bi-check-lg"></i> Закрыть</button>
           </form>
           {% endif %}
         </div>
@@ -61,8 +47,8 @@
             {% if next_status != "closed" %}
             <form method="post" action="/orders/{{ order.id }}/status" class="d-inline">
               <input type="hidden" name="new_status" value="{{ next_status }}">
-              <button class="btn btn-sm btn-outline-{{ ORDER_STATUSES[next_status][1].split()[0] if ' ' in ORDER_STATUSES[next_status][1] else ORDER_STATUSES[next_status][1] }} mb-1">
-                <i class="bi bi-arrow-right"></i> {{ ORDER_STATUSES[next_status][0] }}
+              <button class="btn btn-sm btn-outline-{{ ORDER_STATUSES[next_status][1].split()[0] if ' ' in ORDER_STATUSES[next_status][1] else ORDER_STATUSES[next_status][1] }} mb-1 py-0">
+                {{ ORDER_STATUSES[next_status][0] }}
               </button>
             </form>
             {% endif %}
