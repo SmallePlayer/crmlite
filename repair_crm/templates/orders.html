@@ -90,29 +90,27 @@
     <thead class="table-light">
       <tr>
         <th style="width:30px" class="hide-mobile"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"></th>
-        <th class="hide-mobile">#</th>
-        <th>Заказ</th>
+        <th>#</th>
         <th class="hide-mobile">Тип</th>
+        <th>Клиент</th>
         <th class="hide-mobile">Принтер</th>
         <th>Статус</th>
         <th class="hide-mobile">Срок</th>
-        <th class="hide-mobile">Сумма</th>
+        <th>Сумма</th>
         <th class="hide-mobile">Дата</th>
-        <th style="width:60px"></th>
+        <th style="width:90px"></th>
       </tr>
     </thead>
     <tbody>
       {% for o in orders %}
       <tr class="clickable" onclick="location.href='/orders/{{ o.id }}'">
         <td class="hide-mobile"><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()" onclick="event.stopPropagation()"></td>
-        <td class="hide-mobile"><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a>
+        <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a>
           {% if o.is_confirmed %}<i class="bi bi-check-circle-fill text-success ms-1 small" title="Подтверждён"></i>{% else %}<i class="bi bi-x-circle-fill text-warning ms-1 small" title="Не подтверждён"></i>{% endif %}
           {% if o.is_warranty %}<span class="badge bg-success ms-1" style="font-size:0.6rem" title="Гарантийный">🛡</span>{% endif %}
           {% if o.source %}<span class="badge bg-info ms-1" style="font-size:0.6rem">{{ o.source }}</span>{% endif %}</td>
-        <td>
-          <a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.client.full_name }}</a>
-          <span class="d-md-none text-muted small d-block">#{{ o.id }} · {{ o.total_price | money }}</span>
-        </td>
+        <td class="hide-mobile"><span class="badge bg-light text-dark border">{{ ORDER_TYPES[o.order_type][0] }}</span></td>
+        <td>{{ o.client.full_name }}</td>
         <td class="text-truncate-cell hide-mobile">{{ o.printer }}</td>
         <td style="white-space:normal"><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
         <td class="hide-mobile">
@@ -121,9 +119,9 @@
           <span class="badge bg-{{ 'danger' if days_left < 0 else 'warning text-dark' if days_left < 3 else 'success' }}">{{ o.deadline.strftime('%d.%m') }}</span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
-        <td><strong class="hide-mobile">{{ o.total_price | money }}</strong></td>
+        <td><strong>{{ o.total_price | money }}</strong></td>
         <td class="text-muted hide-mobile">{{ o.created_at | dt }}</td>
-        <td class="text-nowrap" style="width:60px">
+        <td class="text-nowrap">
           <a href="/orders/{{ o.id }}" class="btn btn-outline-secondary btn-icon" onclick="event.stopPropagation()"><i class="bi bi-eye"></i></a>
           {% if o.status == "closed" %}
           <form method="post" action="/orders/{{ o.id }}/reopen" class="d-inline" data-confirm="Вернуть #{{ o.id }}?">
