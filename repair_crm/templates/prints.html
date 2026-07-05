@@ -47,9 +47,9 @@
         <td>{{ j.creator.full_name }}</td>
         <td class="text-muted small">{{ j.created_at | dt }}</td>
         <td class="text-nowrap">
-          <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditModal({{ j.id }},'{{ j.name|e }}',{{ j.filament_id }},{{ j.grams }},{{ j.hours }},'{{ j.printer_name|e }}')"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-outline-secondary me-1" onclick="openResultModal({{ j.id }},'{{ j.status }}',{{ j.waste_grams }})"><i class="bi bi-flag"></i></button>
-          <form method="post" action="/prints/{{ j.id }}/delete" class="d-inline" data-confirm="Аннулировать? Пластик вернётся на склад."><button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button></form>
+          <button class="btn btn-outline-secondary btn-icon me-1" onclick="openEditModal({{ j.id }},'{{ j.name|e }}',{{ j.filament_id }},{{ j.grams }},{{ j.hours }},'{{ j.printer_name|e }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-outline-secondary btn-icon me-1" onclick="openResultModal({{ j.id }},'{{ j.status }}',{{ j.waste_grams }})"><i class="bi bi-flag"></i></button>
+          <form method="post" action="/prints/{{ j.id }}/delete" class="d-inline" data-confirm="Аннулировать?"><button class="btn btn-outline-danger btn-icon"><i class="bi bi-x-lg"></i></button></form>
         </td>
       </tr>
       {% endfor %}
