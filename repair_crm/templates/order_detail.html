@@ -105,6 +105,10 @@
             <strong>{{ order.estimated_price | money }}</strong>
             {% else %}<span class="text-muted">—</span>{% endif %}
           </td></tr>
+          <tr><td class="text-muted">Источник</td><td>
+            {% if order.source %}<span class="badge bg-info">{{ order.source }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td></tr>
           {% if order.scheduled_at %}
           <tr><td class="text-muted">{% if order.order_type == 'print' %}Принят{% else %}Выезд{% endif %}</td><td>
             <strong>{{ order.scheduled_at.strftime('%d.%m.%Y %H:%M') if order.order_type == 'repair' else order.scheduled_at.strftime('%d.%m.%Y') }}</strong>
@@ -357,6 +361,17 @@
             <label class="form-label">Оценка (₽)</label>
             <input type="number" name="estimated_price" class="form-control form-control-sm" min="0" step="1" value="{{ order.estimated_price or 0 }}">
           </div>
+          <div class="col-md-4 mb-2">
+            <label class="form-label">Источник</label>
+            <select name="source" class="form-select form-select-sm" onchange="toggleEditSource(this)">
+              <option value="">— —</option>
+              <option value="Профи.ру" {{ 'selected' if order.source == 'Профи.ру' }}>Профи.ру</option>
+              <option value="Авито" {{ 'selected' if order.source == 'Авито' }}>Авито</option>
+              <option value="Сарафанка" {{ 'selected' if order.source == 'Сарафанка' }}>Сарафанка</option>
+              <option value="__other__" {{ 'selected' if order.source and order.source not in ['Профи.ру','Авито','Сарафанка'] }}>Другое</option>
+            </select>
+            <input type="text" name="source_custom" class="form-control form-control-sm mt-1" value="{{ order.source if order.source and order.source not in ['Профи.ру','Авито','Сарафанка'] }}" style="{{ 'display:none' if not order.source or order.source in ['Профи.ру','Авито','Сарафанка',''] }}">
+          </div>
           <div class="col-12 mb-2">
             <label class="form-label">Описание</label>
             <textarea name="defect" class="form-control form-control-sm" rows="3" required>{{ order.defect }}</textarea>
@@ -422,6 +437,10 @@ function fillPartPrice(sel) {
   if (opt.value) {
     document.getElementById('partPrice').value = opt.dataset.price;
   }
+}
+function toggleEditSource(el) {
+  var inp = el.parentElement.querySelector('[name=source_custom]');
+  inp.style.display = el.value === '__other__' ? '' : 'none';
 }
 </script>
 {% endblock %}

@@ -107,7 +107,8 @@
         <td class="hide-mobile"><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()" onclick="event.stopPropagation()"></td>
         <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a>
           {% if o.is_confirmed %}<i class="bi bi-check-circle-fill text-success ms-1 small" title="Подтверждён"></i>{% else %}<i class="bi bi-x-circle-fill text-warning ms-1 small" title="Не подтверждён"></i>{% endif %}
-          {% if o.is_warranty %}<span class="badge bg-success ms-1" style="font-size:0.6rem" title="Гарантийный">🛡</span>{% endif %}</td>
+          {% if o.is_warranty %}<span class="badge bg-success ms-1" style="font-size:0.6rem" title="Гарантийный">🛡</span>{% endif %}
+          {% if o.source %}<span class="badge bg-info ms-1" style="font-size:0.6rem">{{ o.source }}</span>{% endif %}</td>
         <td class="hide-mobile"><span class="badge bg-light text-dark border">{{ ORDER_TYPES[o.order_type][0] }}</span></td>
         <td>{{ o.client.full_name }}</td>
         <td class="text-truncate-cell hide-mobile">{{ o.printer }}</td>

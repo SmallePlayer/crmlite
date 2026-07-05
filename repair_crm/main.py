@@ -251,6 +251,7 @@ class Order(Base):
     is_warranty: Mapped[bool] = mapped_column(Boolean, default=False)
     prepaid: Mapped[float] = mapped_column(Float, default=0)
     estimated_price: Mapped[float] = mapped_column(Float, default=0)
+    source: Mapped[str] = mapped_column(String(100), default="")
     items = relationship(
         "OrderItem", back_populates="order",
         cascade="all, delete-orphan", order_by="OrderItem.id",
@@ -345,7 +346,8 @@ async def lifespan(app: FastAPI):
                            ("warranty_days", "INTEGER DEFAULT 0"),
                             ("is_warranty", "BOOLEAN DEFAULT 0"),
                             ("prepaid", "FLOAT DEFAULT 0"),
-                            ("estimated_price", "FLOAT DEFAULT 0")]:
+                            ("estimated_price", "FLOAT DEFAULT 0"),
+                            ("source", "VARCHAR(100) DEFAULT ''")]:
             try:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col} {dtype}"))
                 conn.commit()
@@ -1763,6 +1765,8 @@ def create_order(
     is_warranty: bool = Form(False),
     prepaid: float = Form(0),
     estimated_price: float = Form(0),
+    source: str = Form(""),
+    source_custom: str = Form(""),
     session: Session = Depends(get_db),
 ):
     if not session.get(Client, client_id):
@@ -1793,6 +1797,7 @@ def create_order(
         is_warranty=is_warranty,
         prepaid=prepaid,
         estimated_price=estimated_price,
+        source=source_custom.strip() or source.strip(),
     )
     session.add(order)
     session.commit()
@@ -1954,6 +1959,8 @@ def edit_order(
     is_warranty: bool = Form(False),
     prepaid: float = Form(0),
     estimated_price: float = Form(0),
+    source: str = Form(""),
+    source_custom: str = Form(""),
     session: Session = Depends(get_db),
 ):
     order = session.get(Order, order_id)
@@ -1966,6 +1973,7 @@ def edit_order(
     order.assigned_to = assigned_to if assigned_to > 0 else None
     order.prepaid = prepaid
     order.estimated_price = estimated_price
+    order.source = source_custom.strip() or source.strip()
     sched_str = scheduled_at.strip()
     if sched_str:
         try:
