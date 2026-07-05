@@ -46,15 +46,58 @@ def export_clients(request: Request, session: Session = Depends(get_db)):
 
 
 @router.get("/export/orders")
-def export_orders(request: Request, session: Session = Depends(get_db)):
-    orders = session.execute(
-        select(Order).options(joinedload(Order.client))
-        .order_by(desc(Order.created_at))
-    ).unique().scalars().all()
-    rows = [[o.id, o.client.full_name if o.client else "—", o.order_type, o.printer, o.defect, o.status,
-             o.total_price, str(o.created_at), str(o.closed_at or "")] for o in orders]
-    return _make_excel(["ID", "Клиент", "Тип", "Принтер", "Дефект", "Статус", "Сумма", "Создан", "Закрыт"],
-                       rows, "orders.xlsx")
+def export_orders(request: Request, status: str = Query(""), date_from: str = Query(""), 
+                  date_to: str = Query(""), session: Session = Depends(get_db)):
+    q = select(Order).options(joinedload(Order.client))
+    
+    if status:
+        q = q.where(Order.status == status)
+    if date_from:
+        try:
+            df = datetime.strptime(date_from, "%Y-%m-%d")
+            q = q.where(Order.created_at >= df)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt = datetime.strptime(date_to, "%Y-%m-%d")
+            q = q.where(Order.created_at < dt + timedelta(days=1))
+        except ValueError:
+            pass
+    
+    orders = session.execute(q.order_by(desc(Order.created_at))).unique().scalars().all()
+    
+    status_names = {
+        "in_progress": "В работе",
+        "waiting_parts": "Ожидает запчастей",
+        "ready": "Готов к выдаче",
+        "closed": "Закрыт"
+    }
+    
+    rows = []
+    for o in orders:
+        rows.append([
+            o.id,
+            o.client.full_name if o.client else "—",
+            o.client.phone if o.client else "—",
+            "Ремонт" if o.order_type == "repair" else "Печать",
+            o.printer,
+            o.defect,
+            status_names.get(o.status, o.status),
+            o.total_price,
+            o.prepaid or 0,
+            o.estimated_price or 0,
+            o.source or "",
+            str(o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else ""),
+            str(o.closed_at.strftime("%d.%m.%Y %H:%M") if o.closed_at else ""),
+            str(o.deadline.strftime("%d.%m.%Y") if o.deadline else ""),
+        ])
+    
+    return _make_excel(
+        ["ID", "Клиент", "Телефон", "Тип", "Принтер/Модель", "Дефект", "Статус", "Сумма", "Предоплата", "Оценка", "Источник", "Создан", "Закрыт", "Срок"],
+        rows,
+        f"orders_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    )
 
 
 @router.get("/export/services")

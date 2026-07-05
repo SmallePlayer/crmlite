@@ -9,6 +9,16 @@
     <a href="/orders/new" class="btn btn-sm btn-primary">
     <i class="bi bi-plus-lg"></i> Новый
   </a>
+    <div class="dropdown">
+      <button class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-download"></i> Экспорт
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="/export/orders{% if current_status %}?status={{ current_status }}{% endif %}{% if date_from %}{{ '&' if current_status else '?' }}date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Все заказы</a></li>
+        <li><a class="dropdown-item" href="/export/orders?status=in_progress">В работе</a></li>
+        <li><a class="dropdown-item" href="/export/orders?status=closed">Закрытые</a></li>
+      </ul>
+    </div>
   </div>
 </div>
 
@@ -79,14 +89,17 @@
 
 <div class="d-md-none">
   {% for o in orders %}
+  {% set is_overdue = o.deadline and o.deadline < now and o.status != 'closed' %}
   <a href="/orders/{{ o.id }}" class="text-decoration-none">
-    <div class="card shadow-sm mb-2 clickable" style="border-left: 4px solid {{ '#ffc107' if o.status == 'in_progress' else '#0dcaf0' if o.status == 'waiting_parts' else '#0d6efd' if o.status == 'ready' else '#198754' }}">
+    <div class="card shadow-sm mb-2 clickable {{ 'border-danger' if is_overdue else '' }}" 
+         style="border-left: 4px solid {{ '#dc3545' if is_overdue else '#ffc107' if o.status == 'in_progress' else '#0dcaf0' if o.status == 'waiting_parts' else '#0d6efd' if o.status == 'ready' else '#198754' }}; {{ 'background: #fff5f5;' if is_overdue else '' }}">
       <div class="card-body py-2 px-3">
         <div class="d-flex justify-content-between align-items-start mb-1">
           <div>
             <strong style="font-size:1rem">#{{ o.id }}</strong>
             {% if o.is_confirmed %}<i class="bi bi-check-circle-fill text-success ms-1 small"></i>{% endif %}
             {% if o.is_warranty %}<span class="badge bg-success ms-1" style="font-size:0.6rem">🛡</span>{% endif %}
+            {% if is_overdue %}<span class="badge bg-danger ms-1" style="font-size:0.6rem"><i class="bi bi-exclamation-triangle"></i> Просрочен</span>{% endif %}
           </div>
           <span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}" style="font-size:0.7rem">{{ ORDER_STATUSES[o.status][0] }}</span>
         </div>
@@ -97,7 +110,10 @@
           <div class="d-flex align-items-center gap-2">
             {% if o.deadline %}
             {% set days_left = (o.deadline - now).days %}
-            <span class="badge bg-{{ 'danger' if days_left < 0 else 'warning text-dark' if days_left < 3 else 'success' }}" style="font-size:0.7rem">{{ o.deadline.strftime('%d.%m') }}</span>
+            <span class="badge bg-{{ 'danger' if days_left < 0 else 'warning text-dark' if days_left < 3 else 'success' }}" style="font-size:0.7rem">
+              {{ o.deadline.strftime('%d.%m') }}
+              {% if days_left < 0 %}({{ (-days_left) }} дн. назад){% elif days_left < 3 %}({{ days_left }} дн.){% endif %}
+            </span>
             {% endif %}
             {% if o.source %}<span class="badge bg-info" style="font-size:0.65rem">{{ o.source }}</span>{% endif %}
           </div>
@@ -126,11 +142,13 @@
     </thead>
     <tbody>
       {% for o in orders %}
-      <tr class="clickable" onclick="location.href='/orders/{{ o.id }}'">
+      {% set is_overdue = o.deadline and o.deadline < now and o.status != 'closed' %}
+      <tr class="clickable {{ 'table-danger' if is_overdue else '' }}" onclick="location.href='/orders/{{ o.id }}'">
         <td><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()" onclick="event.stopPropagation()"></td>
         <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a>
           {% if o.is_confirmed %}<i class="bi bi-check-circle-fill text-success ms-1 small" title="Подтверждён"></i>{% else %}<i class="bi bi-x-circle-fill text-warning ms-1 small" title="Не подтверждён"></i>{% endif %}
           {% if o.is_warranty %}<span class="badge bg-success ms-1" style="font-size:0.6rem" title="Гарантийный">🛡</span>{% endif %}
+          {% if is_overdue %}<span class="badge bg-danger ms-1" style="font-size:0.6rem" title="Просрочен"><i class="bi bi-exclamation-triangle"></i></span>{% endif %}
           {% if o.source %}<span class="badge bg-info ms-1" style="font-size:0.6rem">{{ o.source }}</span>{% endif %}</td>
         <td><span class="badge bg-light text-dark border">{{ ORDER_TYPES[o.order_type][0] }}</span></td>
         <td>{{ o.client.full_name }}</td>
@@ -139,7 +157,10 @@
         <td>
           {% if o.deadline %}
           {% set days_left = (o.deadline - now).days %}
-          <span class="badge bg-{{ 'danger' if days_left < 0 else 'warning text-dark' if days_left < 3 else 'success' }}">{{ o.deadline.strftime('%d.%m') }}</span>
+          <span class="badge bg-{{ 'danger' if days_left < 0 else 'warning text-dark' if days_left < 3 else 'success' }}">
+            {{ o.deadline.strftime('%d.%m') }}
+            {% if days_left < 0 %}<br><small>({{ (-days_left) }} дн.)</small>{% elif days_left < 3 %}<br><small>({{ days_left }} дн.)</small>{% endif %}
+          </span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td><strong>{{ o.total_price | money }}</strong></td>

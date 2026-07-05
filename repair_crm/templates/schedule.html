@@ -2,7 +2,7 @@
 {% set current_page = "schedule" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h4 class="mb-0"><i class="bi bi-calendar2-week me-2"></i>Расписание заказов</h4>
   <div class="d-flex gap-2 align-items-center">
     <a href="/schedule?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
@@ -18,8 +18,34 @@
 {% set total_orders = 0 %}{% for d, olist in orders_by_date.items() %}{% set total_orders = total_orders + olist|length %}{% endfor %}
 
 <div class="row g-2 mb-3">
-  <div class="col-6 col-sm-3"><div class="card border-primary bg-primary bg-opacity-10 text-center py-2"><div class="text-primary fw-bold fs-5">{{ total_orders }}</div><small class="text-muted">Всего заказов</small></div></div>
-  <div class="col-6 col-sm-3"><div class="card border-success bg-success bg-opacity-10 text-center py-2"><div class="text-success fw-bold fs-5">{{ orders_by_date|length }}</div><small class="text-muted">Дней с заказами</small></div></div>
+  <div class="col-6 col-sm-3">
+    <div class="card border-primary bg-primary bg-opacity-10 text-center py-2">
+      <div class="text-primary fw-bold fs-5">{{ total_orders }}</div>
+      <small class="text-muted">Всего заказов</small>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card border-success bg-success bg-opacity-10 text-center py-2">
+      <div class="text-success fw-bold fs-5">{{ orders_by_date|length }}</div>
+      <small class="text-muted">Дней с заказами</small>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card border-warning bg-warning bg-opacity-10 text-center py-2">
+      <div class="text-warning fw-bold fs-5">
+        {% set repair_count = 0 %}{% for d, olist in orders_by_date.items() %}{% for o in olist %}{% if o.order_type == 'repair' %}{% set repair_count = repair_count + 1 %}{% endif %}{% endfor %}{% endfor %}{{ repair_count }}
+      </div>
+      <small class="text-muted">Ремонт</small>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card border-info bg-info bg-opacity-10 text-center py-2">
+      <div class="text-info fw-bold fs-5">
+        {% set print_count = 0 %}{% for d, olist in orders_by_date.items() %}{% for o in olist %}{% if o.order_type == 'print' %}{% set print_count = print_count + 1 %}{% endif %}{% endfor %}{% endfor %}{{ print_count }}
+      </div>
+      <small class="text-muted">Печать</small>
+    </div>
+  </div>
 </div>
 
 <div class="card shadow-sm mb-4">
@@ -47,14 +73,26 @@
             {% set has_repair = false %}{% set has_print = false %}
             {% for o in day_orders %}{% if o.order_type == 'print' %}{% set has_print = true %}{% else %}{% set has_repair = true %}{% endif %}{% endfor %}
 
-            <td style="height:62px;vertical-align:top;padding:4px 3px;cursor:{{ 'pointer' if is_cell and day_orders else 'default' }}"
+            <td style="height:70px;vertical-align:top;padding:6px 4px;cursor:{{ 'pointer' if is_cell and day_orders else 'default' }}"
                 class="position-relative {{ 'text-muted bg-light' if not is_cell }}{% if is_cell and not day_orders %} text-muted{% endif %}{% if is_today %} border-primary border-2{% endif %}"
                 {% if is_cell and day_orders %}onclick="selectDay('{{ date_key }}')" id="cell-{{ date_key }}"{% endif %}>
               {% if is_cell %}
               <div class="small fw-bold mb-1 {{ 'text-primary' if is_today }}">{{ ns.day }}</div>
-              {% if has_repair %}<span class="d-inline-block rounded-circle bg-warning me-1" style="width:8px;height:8px" title="Ремонт"></span>{% endif %}
-              {% if has_print %}<span class="d-inline-block rounded-circle bg-info" style="width:8px;height:8px" title="Печать"></span>{% endif %}
-              {% if day_orders|length > 0 %}<span class="badge bg-secondary rounded-pill position-absolute" style="top:3px;right:3px;font-size:0.55rem;padding:2px 5px">{{ day_orders|length }}</span>{% endif %}
+              {% if day_orders|length > 0 %}
+                <div class="d-flex flex-column gap-1">
+                  {% if has_repair %}
+                  <span class="badge bg-warning text-dark" style="font-size:0.65rem;padding:2px 4px">
+                    <i class="bi bi-tools"></i>
+                  </span>
+                  {% endif %}
+                  {% if has_print %}
+                  <span class="badge bg-info" style="font-size:0.65rem;padding:2px 4px">
+                    <i class="bi bi-box-seam"></i>
+                  </span>
+                  {% endif %}
+                </div>
+                <span class="badge bg-secondary rounded-pill position-absolute" style="top:3px;right:3px;font-size:0.6rem;padding:2px 6px">{{ day_orders|length }}</span>
+              {% endif %}
               {% set ns.day = ns.day + 1 %}
               {% endif %}
             </td>
@@ -80,7 +118,11 @@
 </div>
 
 {% if not orders_by_date %}
-<div class="text-center py-5"><i class="bi bi-calendar2-week fs-1 text-muted"></i><p class="mt-3 text-muted">Нет заказов с назначенной датой</p><p class="text-muted small">При создании заказа укажите дату выезда или срок сдачи</p></div>
+<div class="text-center py-5">
+  <i class="bi bi-calendar2-week fs-1 text-muted"></i>
+  <p class="mt-3 text-muted">Нет заказов с назначенной датой</p>
+  <p class="text-muted small">При создании заказа укажите дату выезда или срок сдачи</p>
+</div>
 {% endif %}
 {% endblock %}
 
