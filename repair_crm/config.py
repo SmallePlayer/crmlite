@@ -50,5 +50,5 @@ AVAILABLE_PERMISSIONS = [
     ("view_audit", "Просмотр аудита"),
 ]
 
-PUBLIC_PATHS = {"/login", "/api/sse/events", "/api/dashboard",
+PUBLIC_PATHS = {"/login", "/health", "/api/sse/events", "/api/dashboard",
                 "/api/task-assignments", "/api/warehouse/products"}

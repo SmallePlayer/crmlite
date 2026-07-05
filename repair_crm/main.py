@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
@@ -19,6 +19,19 @@ from routers import (
     tasks_router, users_router, audit_router, export_router,
     search_router, api_router,
 )
+
+
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+    except ImportError:
+        pass
 
 
 @asynccontextmanager
@@ -184,6 +197,19 @@ app.include_router(audit_router)
 app.include_router(export_router)
 app.include_router(search_router)
 app.include_router(api_router)
+
+
+@app.get("/health")
+def health_check():
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "database": "disconnected", "detail": str(e)},
+            status_code=503,
+        )
 
 
 @app.middleware("http")

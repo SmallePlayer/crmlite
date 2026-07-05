@@ -13,3 +13,5 @@ venv/
 arial.ttf
 static/uploads/*
 !static/uploads/.gitkeep
+backups/
+nohup.out

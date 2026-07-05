@@ -44,7 +44,7 @@ def login(
     session.commit()
     token = _create_token(user.id)
     response = RedirectResponse("/", status_code=303)
-    response.set_cookie("token", token, max_age=TOKEN_EXPIRY, httponly=True)
+    response.set_cookie("token", token, max_age=TOKEN_EXPIRY, httponly=True, samesite="lax")
     _audit("login", "user", user.id, user.full_name, user, session)
     return response
 
