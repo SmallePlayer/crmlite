@@ -10,13 +10,42 @@
 </div>
 
 {% if clients %}
-<div class="table-responsive">
+<div class="d-md-none">
+  {% for c in clients %}
+  <div class="card shadow-sm mb-2" style="border-left: 4px solid #0d6efd">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div style="min-width:0;flex:1" onclick="location.href='/clients/{{ c.id }}/orders'">
+          <strong style="font-size:0.95rem">{{ c.full_name }}</strong>
+          <div class="text-muted" style="font-size:0.85rem">
+            <a href="tel:{{ c.phone }}" class="text-decoration-none text-muted">
+              <i class="bi bi-telephone me-1"></i>{{ c.phone }}
+            </a>
+          </div>
+          {% if c.comment %}
+          <div class="text-muted text-truncate" style="font-size:0.8rem">{{ c.comment }}</div>
+          {% endif %}
+        </div>
+        <div class="text-end flex-shrink-0 ms-2">
+          {% set n = c.orders | length %}
+          {% if n %}<span class="badge bg-secondary mb-1">{{ n }} заказ{{ 'ов' if n >= 5 else 'а' if n >= 2 else '' }}</span>{% else %}<div class="text-muted mb-1" style="font-size:0.8rem">0 заказов</div>{% endif %}
+          <button class="btn btn-outline-secondary btn-icon btn-sm edit-client-btn" data-id="{{ c.id }}">
+            <i class="bi bi-pencil"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="table-responsive d-none d-md-block">
   <table class="table table-hover align-middle">
     <thead class="table-light">
       <tr>
         <th>ФИО</th>
         <th>Телефон</th>
-        <th class="hide-mobile">Комментарий</th>
+        <th>Комментарий</th>
         <th style="width:90px">Заказов</th>
         <th style="width:90px"></th>
       </tr>
@@ -28,7 +57,7 @@
           <a href="/clients/{{ c.id }}/orders" class="text-decoration-none"><strong>{{ c.full_name }}</strong></a>
         </td>
         <td><a href="tel:{{ c.phone }}" class="text-decoration-none">{{ c.phone }}</a></td>
-        <td class="text-muted text-truncate-cell hide-mobile">{{ c.comment or '—' }}</td>
+        <td class="text-muted text-truncate-cell">{{ c.comment or '—' }}</td>
         <td>
           {% set n = c.orders | length %}
           {% if n %}<a href="/orders?status=active" class="badge bg-secondary text-decoration-none">{{ n }}</a>{% else %}<span class="text-muted">0</span>{% endif %}
