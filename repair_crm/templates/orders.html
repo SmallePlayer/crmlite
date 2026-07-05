@@ -2,12 +2,12 @@
 {% set current_page = "orders" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h4 class="mb-0">Заказы</h4>
-  <div>
-    <a href="/orders" class="btn btn-sm btn-outline-secondary me-1">Сбросить всё</a>
-    <a href="/orders/new" class="btn btn-primary">
-    <i class="bi bi-plus-lg"></i> Новый заказ
+  <div class="d-flex gap-2">
+    <a href="/orders" class="btn btn-sm btn-outline-secondary">Сбросить</a>
+    <a href="/orders/new" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-lg"></i> Новый
   </a>
   </div>
 </div>
@@ -76,12 +76,12 @@
   <form method="post" action="/orders/batch-close" id="batchCloseForm" class="d-inline"
         data-confirm="Закрыть выбранные заказы?">
     <input type="hidden" name="ids" id="batchCloseIds">
-    <button class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Закрыть</button>
+    <button class="btn btn-sm btn-success py-0"><i class="bi bi-check-lg"></i> Закрыть</button>
   </form>
   <form method="post" action="/orders/batch-delete" id="batchDelForm" class="d-inline"
-        data-confirm="Удалить выбранные заказы? Запчасти вернутся на склад.">
+        data-confirm="Удалить выбранные?">
     <input type="hidden" name="ids" id="batchDelIds">
-    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Удалить</button>
+    <button class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-trash"></i> Удалить</button>
   </form>
 </div>
 
@@ -96,9 +96,9 @@
         <th class="hide-mobile">Принтер</th>
         <th>Статус</th>
         <th class="hide-mobile">Срок</th>
-        <th class="hide-mobile">Сумма</th>
-        <th>Дата</th>
-        <th style="width:120px"></th>
+        <th>Сумма</th>
+        <th class="hide-mobile">Дата</th>
+        <th style="width:90px"></th>
       </tr>
     </thead>
     <tbody>
@@ -112,7 +112,7 @@
         <td class="hide-mobile"><span class="badge bg-light text-dark border">{{ ORDER_TYPES[o.order_type][0] }}</span></td>
         <td>{{ o.client.full_name }}</td>
         <td class="text-truncate-cell hide-mobile">{{ o.printer }}</td>
-        <td><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
+        <td style="white-space:normal"><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
         <td class="hide-mobile">
           {% if o.deadline %}
           {% set days_left = (o.deadline - now).days %}
@@ -120,18 +120,18 @@
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td><strong>{{ o.total_price | money }}</strong></td>
-        <td class="text-muted">{{ o.created_at | dt }}</td>
-        <td>
-          <a href="/orders/{{ o.id }}" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation()"><i class="bi bi-eye"></i></a>
+        <td class="text-muted hide-mobile">{{ o.created_at | dt }}</td>
+        <td class="text-nowrap">
+          <a href="/orders/{{ o.id }}" class="btn btn-outline-secondary py-0 px-1" onclick="event.stopPropagation()"><i class="bi bi-eye"></i></a>
           {% if o.status == "closed" %}
           <form method="post" action="/orders/{{ o.id }}/reopen" class="d-inline"
                 data-confirm="Вернуть заказ #{{ o.id }} в работу?">
-            <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation()"><i class="bi bi-arrow-repeat"></i></button>
+            <button class="btn btn-outline-warning py-0 px-1" onclick="event.stopPropagation()"><i class="bi bi-arrow-repeat"></i></button>
           </form>
           {% endif %}
           <form method="post" action="/orders/{{ o.id }}/delete" class="d-inline"
                 data-confirm="Удалить заказ #{{ o.id }}?{% if o.parts %} Все запчасти вернутся на склад.{% endif %}">
-            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation()"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-outline-danger py-0 px-1" onclick="event.stopPropagation()"><i class="bi bi-trash"></i></button>
           </form>
         </td>
       </tr>
