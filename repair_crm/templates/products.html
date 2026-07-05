@@ -64,21 +64,14 @@
                 class="d-inline" id="imgForm_{{ p.id }}">
             <input type="file" name="file" accept="image/*" class="d-none"
                    id="imgInput_{{ p.id }}" onchange="document.getElementById('imgForm_{{ p.id }}').submit()">
-            <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+            <button type="button" class="btn btn-outline-secondary btn-icon me-1"
                     onclick="document.getElementById('imgInput_{{ p.id }}').click()"
-                    title="Загрузить фото">
-              <i class="bi bi-camera"></i>
-            </button>
+                    title="Фото"><i class="bi bi-camera"></i></button>
           </form>
-          <button class="btn btn-sm btn-warning me-1" onclick="openStockOutModal({{ p.id }})">
-            <i class="bi bi-box-arrow-up"></i> Расход
-          </button>
-          <button class="btn btn-sm btn-outline-secondary me-1 edit-product-btn" data-id="{{ p.id }}">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <form method="post" action="/products/{{ p.id }}/delete" class="d-inline"
-                data-confirm="Удалить товар «{{ p.name }}» ({{ p.article }})?">
-            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-warning btn-icon me-1" onclick="openStockOutModal({{ p.id }})" title="Расход"><i class="bi bi-box-arrow-up"></i></button>
+          <button class="btn btn-outline-secondary btn-icon me-1 edit-product-btn" data-id="{{ p.id }}" title="Ред."><i class="bi bi-pencil"></i></button>
+          <form method="post" action="/products/{{ p.id }}/delete" class="d-inline" data-confirm="Удалить {{ p.name }}?">
+            <button class="btn btn-outline-danger btn-icon"><i class="bi bi-trash"></i></button>
           </form>
         </td>
       </tr>

@@ -26,10 +26,10 @@
         </div>
         <small class="text-muted">{{ spools }} кат. × {{ f.grams_per_spool }} г. · Мин: {{ f.min_stock }} г.</small>
         <div class="d-flex justify-content-center gap-1 mt-3">
-          <button class="btn btn-sm btn-outline-success" onclick="openExpenseModal({{ f.id }}, '{{ f.name | e }}', {{ f.quantity }})" title="Расход"><i class="bi bi-dash-circle"></i></button>
-          <button class="btn btn-sm btn-outline-primary" onclick="openReceiveModal({{ f.id }}, '{{ f.name | e }}', {{ f.grams_per_spool }})" title="Приход"><i class="bi bi-plus-circle"></i></button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="openFilamentModal({{ f.id }})" title="Ред."><i class="bi bi-pencil"></i></button>
-          <form method="post" action="/filaments/{{ f.id }}/delete" class="d-inline" data-confirm="Удалить {{ f.name }}?"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+          <button class="btn btn-outline-success btn-icon" onclick="openExpenseModal({{ f.id }}, '{{ f.name | e }}', {{ f.quantity }})" title="Расход"><i class="bi bi-dash-circle"></i></button>
+          <button class="btn btn-outline-primary btn-icon" onclick="openReceiveModal({{ f.id }}, '{{ f.name | e }}', {{ f.grams_per_spool }})" title="Приход"><i class="bi bi-plus-circle"></i></button>
+          <button class="btn btn-outline-secondary btn-icon" onclick="openFilamentModal({{ f.id }})" title="Ред."><i class="bi bi-pencil"></i></button>
+          <form method="post" action="/filaments/{{ f.id }}/delete" class="d-inline" data-confirm="Удалить {{ f.name }}?"><button class="btn btn-outline-danger btn-icon"><i class="bi bi-trash"></i></button></form>
         </div>
       </div>
     </div>
