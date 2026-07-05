@@ -2,7 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Form, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from templates_env import templates
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import Session, joinedload
 
@@ -13,7 +13,6 @@ from models.user import User
 from models.task import Task
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @router.get("/tasks", response_class=HTMLResponse)

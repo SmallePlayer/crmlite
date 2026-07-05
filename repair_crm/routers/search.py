@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, Query
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from templates_env import templates
 from sqlalchemy import select, desc, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -13,7 +13,6 @@ from models.warehouse import Part, Product
 from models.service import Service
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @router.get("/search", response_class=HTMLResponse)

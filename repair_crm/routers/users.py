@@ -3,7 +3,7 @@ import json
 
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from templates_env import templates
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -17,7 +17,6 @@ from models.attendance import Attendance, Schedule
 from models.order import Order
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @router.get("/users", response_class=HTMLResponse)

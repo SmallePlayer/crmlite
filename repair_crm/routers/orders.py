@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from templates_env import templates
 from sqlalchemy import select, func, desc, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -16,7 +16,6 @@ from models.warehouse import Part, StockMovement
 from models.order import Order, OrderItem, OrderPart
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @router.get("/orders", response_class=HTMLResponse)

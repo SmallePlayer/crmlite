@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Query, Form
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from templates_env import templates
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import Session, joinedload
 from fpdf import FPDF
@@ -23,7 +23,6 @@ from models.task import Task
 from models.filament import Filament
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @router.get("/orders/{order_id}/receipt", response_class=HTMLResponse)

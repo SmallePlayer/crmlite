@@ -5,12 +5,12 @@ from datetime import timedelta
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 
 from config import BASE_DIR, TIMEZONE_OFFSET, PUBLIC_PATHS
 from database import engine, Base, get_db
 from helpers import _get_user_from_request, _seed_data
+from templates_env import templates
 from models import *
 from routers import (
     auth_router, dashboard_router, clients_router, services_router,
@@ -164,13 +164,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CRM — Ремонт 3D принтеров", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-templates.env.filters["money"] = lambda x: f"{x:,.0f}".replace(",", " ") + " ₽"
-templates.env.filters["dt"] = lambda x: (x + TIMEZONE_OFFSET).strftime("%d.%m.%Y %H:%M") if x else "—"
-templates.env.filters["tm"] = lambda x: (x + TIMEZONE_OFFSET).strftime("%H:%M") if x else "—"
-templates.env.filters["int"] = lambda x: f"{x:,}".replace(",", " ") if x else "0"
-_MONTHS_RU = ["","январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"]
-templates.env.filters["month_ru"] = lambda dt: _MONTHS_RU[(dt + TIMEZONE_OFFSET).month] if dt else "—"
 
 
 app.include_router(auth_router)

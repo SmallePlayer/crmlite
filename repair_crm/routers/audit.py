@@ -2,7 +2,7 @@ import math
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from templates_env import templates
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import Session
 
@@ -13,7 +13,6 @@ from models.user import User
 from models.audit import AuditLog
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @router.get("/audit", response_class=HTMLResponse)

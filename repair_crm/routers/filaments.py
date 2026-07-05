@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from templates_env import templates
 from sqlalchemy import select, desc
 from sqlalchemy.orm import Session, joinedload
 
@@ -10,7 +10,6 @@ from helpers import _audit, _user_context
 from models.filament import Filament, FilamentMovement
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @router.get("/filaments", response_class=HTMLResponse)

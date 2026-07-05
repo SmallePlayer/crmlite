@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from templates_env import templates
 from sqlalchemy import select, desc
 from sqlalchemy.orm import Session, joinedload
 
@@ -14,7 +14,6 @@ from helpers import _audit, _user_context
 from models.warehouse import Product, ProductMovement
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @router.get("/products", response_class=HTMLResponse)
