@@ -22,16 +22,71 @@
 </div>
 
 {% if products %}
-<div class="table-responsive mb-4">
+<div class="d-md-none">
+  {% for p in products %}
+  <div class="card shadow-sm mb-2" style="border-left: 4px solid #0d6efd">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div style="min-width:0;flex:1">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            {% if p.image %}
+            <img src="/static/uploads/{{ p.image }}" width="36" height="36"
+                 style="object-fit:cover; border-radius:4px; cursor:pointer"
+                 onclick="showImage('/static/uploads/{{ p.image }}')">
+            {% else %}
+            <span class="text-muted" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;
+                         background:#f0f0f0;border-radius:4px;font-size:11px">—</span>
+            {% endif %}
+            <div style="min-width:0;flex:1">
+              <strong style="font-size:0.9rem">{{ p.name }}</strong>
+              <div class="text-muted" style="font-size:0.75rem">
+                <code>{{ p.article }}</code>
+                {% if p.color %} • {{ p.color }}{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="text-end flex-shrink-0 ms-2">
+          {% if p.quantity <= 0 %}
+          <span class="badge bg-danger mb-1">0</span>
+          {% else %}
+          <span class="badge bg-success mb-1">{{ p.quantity | int }} шт.</span>
+          {% endif %}
+          {% if p.print_cost %}
+          <div class="text-muted" style="font-size:0.7rem">{{ "%.2f"|format(p.print_cost) }} ₽</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="btn-group-icon mt-2">
+        <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
+              class="d-inline" id="imgForm_{{ p.id }}">
+          <input type="file" name="file" accept="image/*" class="d-none"
+                 id="imgInput_{{ p.id }}" onchange="document.getElementById('imgForm_{{ p.id }}').submit()">
+          <button type="button" class="btn btn-outline-secondary btn-icon btn-sm"
+                  onclick="document.getElementById('imgInput_{{ p.id }}').click()"
+                  title="Фото"><i class="bi bi-camera"></i></button>
+        </form>
+        <button class="btn btn-warning btn-icon btn-sm" onclick="openStockOutModal({{ p.id }})" title="Расход"><i class="bi bi-box-arrow-up"></i></button>
+        <button class="btn btn-outline-secondary btn-icon btn-sm edit-product-btn" data-id="{{ p.id }}" title="Ред."><i class="bi bi-pencil"></i></button>
+        <form method="post" action="/products/{{ p.id }}/delete" class="d-inline" data-confirm="Удалить {{ p.name }}?">
+          <button class="btn btn-outline-danger btn-icon btn-sm"><i class="bi bi-trash"></i></button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="table-responsive d-none d-md-block mb-4">
   <table class="table table-hover align-middle">
     <thead class="table-light">
       <tr>
         <th></th>
         <th>Название</th>
-        <th class="hide-mobile">Артикул</th>
-        <th class="hide-mobile">Цвет</th>
+        <th>Артикул</th>
+        <th>Цвет</th>
         <th>Кол-во</th>
-        <th class="text-end hide-mobile">Себест. печати</th>
+        <th class="text-end">Себест. печати</th>
         <th style="width:160px"></th>
       </tr>
     </thead>
@@ -45,12 +100,12 @@
                onclick="showImage('/static/uploads/{{ p.image }}')">
           {% else %}
           <span class="text-muted" style="width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;
-                       background:#f0f0f0;border-radius:4px;font-size:12px">—</span>
+                        background:#f0f0f0;border-radius:4px;font-size:12px">—</span>
           {% endif %}
         </td>
         <td><strong>{{ p.name }}</strong></td>
-        <td class="hide-mobile"><code>{{ p.article }}</code></td>
-        <td class="hide-mobile">{{ p.color or '—' }}</td>
+        <td><code>{{ p.article }}</code></td>
+        <td>{{ p.color or '—' }}</td>
         <td>
           {% if p.quantity <= 0 %}
           <span class="badge bg-danger">0</span>
@@ -58,21 +113,23 @@
           <span class="badge bg-success">{{ p.quantity | int }}</span>
           {% endif %}
         </td>
-        <td class="text-end text-muted small hide-mobile">{{ "%.2f"|format(p.print_cost or 0) }} ₽</td>
+        <td class="text-end text-muted small">{{ "%.2f"|format(p.print_cost or 0) }} ₽</td>
         <td>
-          <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
-                class="d-inline" id="imgForm_{{ p.id }}">
-            <input type="file" name="file" accept="image/*" class="d-none"
-                   id="imgInput_{{ p.id }}" onchange="document.getElementById('imgForm_{{ p.id }}').submit()">
-            <button type="button" class="btn btn-outline-secondary btn-icon me-1"
-                    onclick="document.getElementById('imgInput_{{ p.id }}').click()"
-                    title="Фото"><i class="bi bi-camera"></i></button>
-          </form>
-          <button class="btn btn-warning btn-icon me-1" onclick="openStockOutModal({{ p.id }})" title="Расход"><i class="bi bi-box-arrow-up"></i></button>
-          <button class="btn btn-outline-secondary btn-icon me-1 edit-product-btn" data-id="{{ p.id }}" title="Ред."><i class="bi bi-pencil"></i></button>
-          <form method="post" action="/products/{{ p.id }}/delete" class="d-inline" data-confirm="Удалить {{ p.name }}?">
-            <button class="btn btn-outline-danger btn-icon"><i class="bi bi-trash"></i></button>
-          </form>
+          <div class="btn-group-icon">
+            <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
+                  class="d-inline" id="imgForm_{{ p.id }}">
+              <input type="file" name="file" accept="image/*" class="d-none"
+                     id="imgInput_{{ p.id }}" onchange="document.getElementById('imgForm_{{ p.id }}').submit()">
+              <button type="button" class="btn btn-outline-secondary btn-icon"
+                      onclick="document.getElementById('imgInput_{{ p.id }}').click()"
+                      title="Фото"><i class="bi bi-camera"></i></button>
+            </form>
+            <button class="btn btn-warning btn-icon" onclick="openStockOutModal({{ p.id }})" title="Расход"><i class="bi bi-box-arrow-up"></i></button>
+            <button class="btn btn-outline-secondary btn-icon edit-product-btn" data-id="{{ p.id }}" title="Ред."><i class="bi bi-pencil"></i></button>
+            <form method="post" action="/products/{{ p.id }}/delete" class="d-inline" data-confirm="Удалить {{ p.name }}?">
+              <button class="btn btn-outline-danger btn-icon"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
         </td>
       </tr>
       {% endfor %}

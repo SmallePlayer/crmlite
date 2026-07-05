@@ -145,15 +145,17 @@
         <td><strong>{{ o.total_price | money }}</strong></td>
         <td class="text-muted">{{ o.created_at | dt }}</td>
         <td class="text-nowrap">
-          <a href="/orders/{{ o.id }}" class="btn btn-outline-secondary btn-icon" onclick="event.stopPropagation()"><i class="bi bi-eye"></i></a>
-          {% if o.status == "closed" %}
-          <form method="post" action="/orders/{{ o.id }}/reopen" class="d-inline" data-confirm="Вернуть #{{ o.id }}?">
-            <button class="btn btn-outline-warning btn-icon" onclick="event.stopPropagation()"><i class="bi bi-arrow-repeat"></i></button>
-          </form>
-          {% endif %}
-          <form method="post" action="/orders/{{ o.id }}/delete" class="d-inline" data-confirm="Удалить #{{ o.id }}?">
-            <button class="btn btn-outline-danger btn-icon" onclick="event.stopPropagation()"><i class="bi bi-trash"></i></button>
-          </form>
+          <div class="btn-group-icon">
+            <a href="/orders/{{ o.id }}" class="btn btn-outline-secondary btn-icon" onclick="event.stopPropagation()"><i class="bi bi-eye"></i></a>
+            {% if o.status == "closed" %}
+            <form method="post" action="/orders/{{ o.id }}/reopen" class="d-inline" data-confirm="Вернуть #{{ o.id }}?">
+              <button class="btn btn-outline-warning btn-icon" onclick="event.stopPropagation()"><i class="bi bi-arrow-repeat"></i></button>
+            </form>
+            {% endif %}
+            <form method="post" action="/orders/{{ o.id }}/delete" class="d-inline" data-confirm="Удалить #{{ o.id }}?">
+              <button class="btn btn-outline-danger btn-icon" onclick="event.stopPropagation()"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
         </td>
       </tr>
       {% endfor %}
