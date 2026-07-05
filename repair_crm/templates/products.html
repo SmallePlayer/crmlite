@@ -2,9 +2,9 @@
 {% set current_page = "products" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h4 class="mb-0">Склад товаров <span class="text-muted fs-6">({{ products | length }})</span></h4>
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2 flex-wrap">
     <div class="dropdown">
       <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Отчёты</button>
       <ul class="dropdown-menu dropdown-menu-end">
