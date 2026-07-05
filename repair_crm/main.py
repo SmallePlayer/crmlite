@@ -2903,15 +2903,18 @@ def admin_edit_attendance(att_id: int, request: Request, check_in: str = Form(""
     if not u or u.role.name != "admin": raise HTTPException(403)
     a = session.get(Attendance, att_id)
     if not a: raise HTTPException(404)
+    base_date = a.date_str  # YYYY-MM-DD
     if check_in.strip():
         try:
             h, m = map(int, check_in.split(":"))
-            a.check_in = datetime.now().replace(hour=h, minute=m, second=0, microsecond=0) - TIMEZONE_OFFSET
+            dt = datetime.strptime(f"{base_date} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M")
+            a.check_in = dt - TIMEZONE_OFFSET
         except ValueError: pass
     if check_out.strip():
         try:
             h, m = map(int, check_out.split(":"))
-            a.check_out = datetime.now().replace(hour=h, minute=m, second=0, microsecond=0) - TIMEZONE_OFFSET
+            dt = datetime.strptime(f"{base_date} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M")
+            a.check_out = dt - TIMEZONE_OFFSET
         except ValueError: pass
     a.report = report.strip()
     session.commit()
