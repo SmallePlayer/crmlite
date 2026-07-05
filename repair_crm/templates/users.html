@@ -56,18 +56,18 @@
             {% endif %}
           </td>
           <td>
-            <button class="btn btn-sm btn-outline-secondary me-1" onclick="openUserModal({{ u.id }})">
+            <button class="btn btn-outline-secondary btn-icon me-1" onclick="openUserModal({{ u.id }})">
               <i class="bi bi-pencil"></i>
             </button>
             {% if u.username != 'admin' and u.id != user.id %}
             <form method="post" action="/users/{{ u.id }}/toggle" class="d-inline">
-              <button class="btn btn-sm btn-outline-warning" title="Вкл/Выкл">
+              <button class="btn btn-outline-warning btn-icon" title="Вкл/Выкл">
                 <i class="bi bi-power"></i>
               </button>
             </form>
             <form method="post" action="/users/{{ u.id }}/delete" class="d-inline"
                   data-confirm="Удалить пользователя «{{ u.full_name }}»?">
-              <button class="btn btn-sm btn-outline-danger" title="Удалить">
+              <button class="btn btn-outline-danger btn-icon" title="Удалить">
                 <i class="bi bi-trash"></i>
               </button>
             </form>
@@ -115,12 +115,12 @@
           </td>
           <td>
             {% if r.name != 'admin' %}
-            <button class="btn btn-sm btn-outline-secondary me-1" onclick="openRoleModal({{ r.id }})">
+            <button class="btn btn-outline-secondary btn-icon me-1" onclick="openRoleModal({{ r.id }})">
               <i class="bi bi-pencil"></i>
             </button>
             <form method="post" action="/roles/{{ r.id }}/delete" class="d-inline"
                   data-confirm="Удалить роль «{{ r.name }}»?">
-              <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-danger btn-icon"><i class="bi bi-trash"></i></button>
             </form>
             {% endif %}
           </td>

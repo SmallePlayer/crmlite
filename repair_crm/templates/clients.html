@@ -34,12 +34,12 @@
           {% if n %}<a href="/orders?status=active" class="badge bg-secondary text-decoration-none">{{ n }}</a>{% else %}<span class="text-muted">0</span>{% endif %}
         </td>
         <td>
-          <button class="btn btn-sm btn-outline-secondary me-1 edit-client-btn" data-id="{{ c.id }}">
+          <button class="btn btn-outline-secondary btn-icon me-1 edit-client-btn" data-id="{{ c.id }}">
             <i class="bi bi-pencil"></i>
           </button>
           <form method="post" action="/clients/{{ c.id }}/delete" class="d-inline"
                 data-confirm="Удалить клиента «{{ c.full_name }}»? При этом удалятся все его заказы.">
-            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-outline-danger btn-icon"><i class="bi bi-trash"></i></button>
           </form>
         </td>
       </tr>

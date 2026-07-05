@@ -64,7 +64,7 @@
           <div class="d-flex gap-1">
             {% if t.status == 'pending' %}
             <form method="post" action="/tasks/{{ t.id }}/done" class="d-inline">
-              <button class="btn btn-sm btn-outline-success" title="Выполнено">
+              <button class="btn btn-outline-success btn-icon" title="Выполнено">
                 <i class="bi bi-check-lg"></i>
               </button>
             </form>
@@ -72,7 +72,7 @@
             {% if t.created_by == user.id or is_admin %}
             <form method="post" action="/tasks/{{ t.id }}/delete" class="d-inline"
                   data-confirm="Удалить задачу «{{ t.title }}»?">
-              <button class="btn btn-sm btn-outline-danger" title="Удалить">
+              <button class="btn btn-outline-danger btn-icon" title="Удалить">
                 <i class="bi bi-trash"></i>
               </button>
             </form>
