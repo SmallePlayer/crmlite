@@ -7,9 +7,9 @@ __pycache__/
 *.db-journal
 venv/
 .env
-app/static/uploads/
 .pytest_cache/
-test.db
-test.db-journal
-crm.log
 *.bak
+*.log
+arial.ttf
+static/uploads/*
+!static/uploads/.gitkeep

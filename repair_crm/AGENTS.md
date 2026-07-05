@@ -48,15 +48,70 @@ with e.connect() as c:
 "
 ```
 
+**Миграции Alembic**:
+```bash
+cd repair_crm
+# Создать миграцию после изменения моделей
+python3 -m alembic revision --autogenerate -m "description"
+# Применить миграции
+python3 -m alembic upgrade head
+# Откатить последнюю миграцию
+python3 -m alembic downgrade -1
+```
+
 ---
 
 ## 3. Файловая структура
 
 ```
 repair_crm/
-├── main.py                 # ВСЯ логика (~3300 строк) — модели, роуты, middleware, хелперы
-├── requirements.txt        # fastapi, uvicorn, sqlalchemy, jinja2, python-jose, openpyxl, fpdf2, python-dotenv
-├── .env                    # SECRET_KEY, DATABASE_URL
+├── main.py                 # Создание app, middleware, exception handlers, lifespan
+├── config.py               # Настройки, константы, TIMEZONE_OFFSET
+├── database.py             # Engine, get_db, Base
+├── helpers.py              # _audit, _notify, _hash_password, _user_context, _paginate и т.д.
+├── models/                 # ORM-модели по доменам
+│   ├── __init__.py         # Экспорт всех моделей
+│   ├── user.py             # User, Role
+│   ├── audit.py            # AuditLog
+│   ├── client.py           # Client
+│   ├── service.py          # Service
+│   ├── warehouse.py        # Part, StockMovement, Product, ProductMovement
+│   ├── filament.py         # Filament, FilamentMovement
+│   ├── print_job.py        # PrintJob, Printer
+│   ├── order.py            # Order, OrderItem, OrderPart
+│   ├── task.py             # Task
+│   ├── attendance.py       # Attendance, Schedule
+│   ├── notification.py     # Notification
+│   └── chat.py             # ChatMessage
+├── routers/                # Роуты по доменам
+│   ├── __init__.py         # Экспорт всех роутеров
+│   ├── auth.py             # login, logout, profile
+│   ├── dashboard.py        # Главная страница
+│   ├── clients.py          # Клиенты CRUD
+│   ├── services.py         # Услуги CRUD
+│   ├── orders.py           # Заказы CRUD
+│   ├── warehouse.py        # Склад запчастей
+│   ├── products.py         # Склад товаров
+│   ├── filaments.py        # Пластик
+│   ├── prints.py           # Печать + принтеры
+│   ├── attendance.py       # Посещаемость
+│   ├── schedule.py         # Расписание + календарь
+│   ├── chat.py             # Чат
+│   ├── tasks.py            # Задачи
+│   ├── users.py            # Пользователи + роли (admin)
+│   ├── audit.py            # Аудит
+│   ├── export.py           # Экспорт в Excel
+│   ├── search.py           # Поиск
+│   └── api.py              # Receipt, Charts API, Notifications, API stubs
+├── services/               # Бизнес-логика (для будущего использования)
+├── alembic/                # Миграции БД
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+├── alembic.ini             # Конфигурация Alembic
+├── requirements.txt        # fastapi, uvicorn, sqlalchemy, jinja2, python-jose, openpyxl, fpdf2, python-dotenv, alembic
+├── .env                    # SECRET_KEY, DATABASE_URL (НЕ коммитится)
+├── .env.example            # Пример .env
 ├── repair_crm.db           # SQLite (НЕ коммитится)
 ├── templates/              # 20+ Jinja2 шаблонов
 │   ├── base.html           # Главный layout: sidebar, mobile header, CSS
@@ -111,6 +166,19 @@ templates.env.filters["int"] = lambda x: f"{x:,}".replace(",", " ") if x else "0
 - `.hide-mobile` скрывает колонки на телефоне
 - Табы заказов: скроллятся горизонтально, короткие названия
 
+### 4.6 Импорт моделей в роутерах
+Модели импортируются из `models/` напрямую. Например:
+```python
+from models.user import User, Role
+from models.order import Order, OrderItem, OrderPart
+```
+
+### 4.7 Миграции
+При изменении моделей нужно:
+1. Создать миграцию: `python3 -m alembic revision --autogenerate -m "description"`
+2. Проверить сгенерированный файл в `alembic/versions/`
+3. Применить: `python3 -m alembic upgrade head`
+
 ---
 
 ## 5. Модели БД (текущие)
@@ -155,7 +223,7 @@ templates.env.filters["int"] = lambda x: f"{x:,}".replace(",", " ") if x else "0
 
 ---
 
-## 6. Ключевые роуты (новые)
+## 6. Ключевые роуты
 
 ### Посещаемость
 - `GET /attendance` — страница (чек-ин, месяц, расписание)
@@ -235,3 +303,4 @@ templates.env.filters["int"] = lambda x: f"{x:,}".replace(",", " ") if x else "0
 - ❌ НЕ коммитить `*.db`, `.env`, `arial.ttf`
 - ❌ НЕ вызывать `_audit` внутри циклов до общего `session.commit()`
 - ❌ НЕ трогать БД без явной команды пользователя
+- ❌ НЕ запускать `alembic upgrade head` на продакшене без бэкапа БД
