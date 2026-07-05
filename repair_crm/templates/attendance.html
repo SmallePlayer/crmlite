@@ -79,10 +79,10 @@
   </div>
 </div>
 
-<ul class="nav nav-pills nav-fill mb-3 gap-2">
-  <li class="nav-item"><button class="nav-link active fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-today" type="button">👥 Сегодня</button></li>
-  <li class="nav-item"><button class="nav-link fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-month" type="button">📅 Месяц</button></li>
-  <li class="nav-item"><button class="nav-link fw-semibold px-4" data-bs-toggle="tab" data-bs-target="#tab-schedule" type="button">📋 Расписание</button></li>
+<ul class="nav nav-pills nav-fill mb-3 gap-1">
+  <li class="nav-item"><button class="nav-link active fw-semibold px-3" data-bs-toggle="tab" data-bs-target="#tab-today" type="button">👥 Сегодня</button></li>
+  <li class="nav-item"><button class="nav-link fw-semibold px-3" data-bs-toggle="tab" data-bs-target="#tab-month" type="button">📅 Месяц</button></li>
+  <li class="nav-item"><button class="nav-link fw-semibold px-3" data-bs-toggle="tab" data-bs-target="#tab-schedule" type="button">📋 Расписание</button></li>
 </ul>
 
 <div class="tab-content">
@@ -91,18 +91,49 @@
   <div class="row g-3">
     {% for u in users %}
       {% set a = today_att.get(u.id) %}
-      <div class="col-md-6">
+      <div class="col-12 col-md-6">
         <div class="card shadow-sm h-100 {% if a and a.check_out %}border-success border-2{% elif a %}border-warning border-2{% endif %} rounded-3">
           <div class="card-body py-2 px-3">
-            <div class="d-flex justify-content-between align-items-center">
-              <div><span class="fw-semibold">{{ u.full_name }}</span><span class="text-muted ms-2 small">{{ u.position or u.role.name }}</span></div>
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+              <div>
+                <span class="fw-semibold">{{ u.full_name }}</span>
+                <span class="text-muted ms-2 small">{{ u.position or u.role.name }}</span>
+              </div>
               <div>
                 {% if not a %}<span class="badge bg-light text-dark">—</span>
                 {% elif a.check_out %}<span class="badge bg-success fs-6">{{ a.check_in | tm }} – {{ a.check_out | tm }} ({{ ((a.check_out - a.check_in).total_seconds() / 3600) | round(1) }} ч)</span>
                 {% else %}<span class="badge bg-warning text-dark fs-6">🕐 с {{ a.check_in | tm }}</span>{% endif %}
               </div>
             </div>
-            {% if a and a.check_out and a.report and (is_admin or u.id == current_user_id) %}
+            {% if is_admin and not a %}
+            <div class="mt-2 d-flex gap-1">
+              <button class="btn btn-outline-success btn-sm py-0" onclick="openAdminCheckIn({{ u.id }},'{{ u.full_name|e }}')" title="Отметить приход">
+                <i class="bi bi-box-arrow-in-right me-1"></i>Отметить
+              </button>
+            </div>
+            {% elif is_admin and a and not a.check_out %}
+            <div class="mt-2 d-flex gap-1 flex-wrap">
+              <button class="btn btn-outline-danger btn-sm py-0" onclick="openAdminCloseShift({{ a.id }},'{{ u.full_name|e }}')" title="Завершить смену">
+                <i class="bi bi-box-arrow-right me-1"></i>Завершить
+              </button>
+              <button class="btn btn-outline-secondary btn-sm py-0" onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','','{{ a.report|e }}')" title="Исправить время">
+                <i class="bi bi-pencil me-1"></i>Исправить
+              </button>
+              <form method="post" action="/attendance/{{ a.id }}/admin-cancel" class="d-inline" data-confirm="Отменить отметку {{ u.full_name }}?">
+                <button class="btn btn-outline-danger btn-sm py-0"><i class="bi bi-x-lg me-1"></i>Отменить</button>
+              </form>
+            </div>
+            {% elif is_admin and a and a.check_out %}
+            <div class="mt-2 d-flex gap-1">
+              <button class="btn btn-outline-secondary btn-sm py-0" onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','{{ a.check_out.strftime('%H:%M') }}','{{ a.report|e }}')" title="Исправить время">
+                <i class="bi bi-pencil me-1"></i>Исправить
+              </button>
+              <form method="post" action="/attendance/{{ a.id }}/admin-cancel" class="d-inline" data-confirm="Удалить запись {{ u.full_name }}?">
+                <button class="btn btn-outline-danger btn-sm py-0"><i class="bi bi-trash me-1"></i>Удалить</button>
+              </form>
+            </div>
+            {% endif %}
+            {% if a and a.report and (is_admin or u.id == current_user_id) %}
               <div class="mt-2 text-muted small border-start border-success border-2 ps-2">{{ a.report[:100] }}</div>
             {% endif %}
           </div>
@@ -134,8 +165,12 @@
                   {% if is_admin %}onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','{{ a.check_out.strftime('%H:%M') }}','{{ a.report | e }}')"{% endif %}>✅</td>
             {% elif a %}
               {% set ns2.worked = ns2.worked + 1 %}
-              <td class="bg-warning bg-opacity-10" title="с {{ a.check_in | tm }}">🕐</td>
-            {% else %}<td class="text-muted" style="font-size:0.6rem">·</td>{% endif %}
+              <td class="bg-warning bg-opacity-10 {% if is_admin %}clickable{% endif %}" title="с {{ a.check_in | tm }}"
+                  {% if is_admin %}onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','','{{ a.report | e }}')"{% endif %}>🕐</td>
+            {% else %}
+              <td class="text-muted {% if is_admin %}clickable{% endif %}" style="font-size:0.6rem"
+                  {% if is_admin %}onclick="openAdminCheckIn({{ u.id }},'{{ u.full_name|e }}','{{ date_str }}')" title="Отметить {{ u.full_name }}"{% endif %}>·</td>
+            {% endif %}
           {% endfor %}
           <td class="fw-bold table-secondary small">{{ ns2.worked }}</td>
           <td class="fw-bold table-secondary small">{{ (ns2.hrs / 3600) | round(0) if ns2.hrs > 0 else '—' }}</td>
@@ -144,7 +179,7 @@
       </tbody>
     </table>
   </div></div></div>
-  {% if is_admin %}<small class="text-muted d-block mt-1">Нажмите на ✅ чтобы править время</small>{% endif %}
+  {% if is_admin %}<small class="text-muted d-block mt-1">✅ — править время · 🕐 — править/завершить · <b>·</b> — отметить приход</small>{% endif %}
 </div>
 
 <div class="tab-pane fade" id="tab-schedule">
@@ -239,6 +274,33 @@
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
   </form>
 </div></div>
+
+<div class="modal fade" id="adminCheckInModal" tabindex="-1"><div class="modal-dialog modal-sm">
+  <form class="modal-content" method="post" action="/attendance/admin/check-in">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-box-arrow-in-right me-1"></i>Отметить приход</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <input type="hidden" name="user_id" id="adminCheckInUserId">
+      <p class="mb-2"><strong id="adminCheckInUserName"></strong></p>
+      <div class="mb-3"><label class="form-label">Дата</label><input type="date" name="date_str" id="adminCheckInDate" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}"></div>
+      <div class="row">
+        <div class="col-6 mb-3"><label class="form-label">Пришёл</label><input type="time" name="check_in_time" id="adminCheckInTime" class="form-control" value="09:00"></div>
+        <div class="col-6 mb-3"><label class="form-label">Ушёл</label><input type="time" name="check_out_time" id="adminCheckOutTime" class="form-control"><div class="form-text" style="font-size:0.7rem">Оставьте пустым если смена не завершена</div></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-success">Сохранить</button></div>
+  </form>
+</div></div>
+
+<div class="modal fade" id="adminCloseShiftModal" tabindex="-1"><div class="modal-dialog modal-sm">
+  <form class="modal-content" method="post" action="" id="adminCloseShiftForm">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-box-arrow-right me-1"></i>Завершить смену</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <p class="mb-2"><strong id="adminCloseUserName"></strong></p>
+      <div class="mb-3"><label class="form-label">Что сделано</label><textarea name="report" class="form-control" rows="3" placeholder="Например: ремонт, диагностика..."></textarea></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-danger">Завершить</button></div>
+  </form>
+</div></div>
 {% endif %}
 {% endblock %}
 
@@ -259,6 +321,19 @@ function openAdminEdit(attId, checkIn, checkOut, report) {
   document.getElementById('adminCheckOut').value = checkOut;
   document.getElementById('adminReport').value = report || '';
   new bootstrap.Modal(document.getElementById('adminEditModal')).show();
+}
+function openAdminCheckIn(userId, userName, dateStr) {
+  document.getElementById('adminCheckInUserId').value = userId;
+  document.getElementById('adminCheckInUserName').textContent = userName;
+  document.getElementById('adminCheckInDate').value = dateStr || '{{ today.strftime('%Y-%m-%d') }}';
+  document.getElementById('adminCheckInTime').value = '09:00';
+  document.getElementById('adminCheckOutTime').value = '';
+  new bootstrap.Modal(document.getElementById('adminCheckInModal')).show();
+}
+function openAdminCloseShift(attId, userName) {
+  document.getElementById('adminCloseShiftForm').action = '/attendance/' + attId + '/admin-check-out';
+  document.getElementById('adminCloseUserName').textContent = userName;
+  new bootstrap.Modal(document.getElementById('adminCloseShiftModal')).show();
 }
 function openScheduleModal(schedId, date, from, to, userId) {
   var f = document.getElementById('schedForm');

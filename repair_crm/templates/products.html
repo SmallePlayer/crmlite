@@ -28,10 +28,10 @@
       <tr>
         <th></th>
         <th>Название</th>
-        <th>Артикул</th>
-        <th>Цвет</th>
+        <th class="hide-mobile">Артикул</th>
+        <th class="hide-mobile">Цвет</th>
         <th>Кол-во</th>
-        <th class="text-end">Себест. печати</th>
+        <th class="text-end hide-mobile">Себест. печати</th>
         <th style="width:160px"></th>
       </tr>
     </thead>
@@ -49,8 +49,8 @@
           {% endif %}
         </td>
         <td><strong>{{ p.name }}</strong></td>
-        <td><code>{{ p.article }}</code></td>
-        <td>{{ p.color or '—' }}</td>
+        <td class="hide-mobile"><code>{{ p.article }}</code></td>
+        <td class="hide-mobile">{{ p.color or '—' }}</td>
         <td>
           {% if p.quantity <= 0 %}
           <span class="badge bg-danger">0</span>
@@ -58,7 +58,7 @@
           <span class="badge bg-success">{{ p.quantity | int }}</span>
           {% endif %}
         </td>
-        <td class="text-end text-muted small">{{ "%.2f"|format(p.print_cost or 0) }} ₽</td>
+        <td class="text-end text-muted small hide-mobile">{{ "%.2f"|format(p.print_cost or 0) }} ₽</td>
         <td>
           <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
                 class="d-inline" id="imgForm_{{ p.id }}">
@@ -96,8 +96,8 @@
         <th>Товар</th>
         <th>Тип</th>
         <th>Кол-во</th>
-        <th>Куда</th>
-        <th>Причина</th>
+        <th class="hide-mobile">Куда</th>
+        <th class="hide-mobile">Причина</th>
       </tr>
     </thead>
     <tbody>
@@ -113,8 +113,8 @@
           {% endif %}
         </td>
         <td>{{ m.quantity | int }}</td>
-        <td>{{ m.destination or '—' }}</td>
-        <td class="text-muted">{{ m.reason or '—' }}</td>
+        <td class="hide-mobile">{{ m.destination or '—' }}</td>
+        <td class="text-muted hide-mobile">{{ m.reason or '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>

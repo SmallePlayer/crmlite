@@ -4,7 +4,7 @@
 {% block content %}
 <h4 class="mb-4">Панель управления</h4>
 
-<div class="row g-3 mb-4">
+<div class="row g-2 g-md-3 mb-3 mb-md-4">
   {% set cards = [
     (active_orders, 'Заказов в работе', 'tools', 'primary', '/orders?status=in_progress'),
     (closed_orders,  'Закрыто заказов','check-circle', 'success', '/orders?status=closed'),
@@ -12,16 +12,16 @@
     (total_clients,  'Клиентов',       'people',        'info', '/clients'),
   ] %}
   {% for count, label, icon, color, link in cards %}
-  <div class="col-md-3 col-6">
+  <div class="col-6 col-md-3">
     <a href="{{ link }}" class="text-decoration-none">
-    <div class="card border-{{ color }} shadow-sm clickable">
-      <div class="card-body">
+    <div class="card border-{{ color }} shadow-sm clickable h-100">
+      <div class="card-body py-2 py-md-3">
         <div class="d-flex justify-content-between align-items-center">
           <div>
-            <small class="text-muted">{{ label }}</small>
-            <h3 class="mb-0 text-dark">{{ count }}</h3>
+            <small class="text-muted d-block" style="font-size:0.75rem">{{ label }}</small>
+            <span class="d-block text-dark fw-bold" style="font-size:1.4rem;line-height:1.2">{{ count }}</span>
           </div>
-          <i class="bi bi-{{ icon }} text-{{ color }} fs-1 opacity-50"></i>
+          <i class="bi bi-{{ icon }} text-{{ color }} opacity-50" style="font-size:1.8rem"></i>
         </div>
       </div>
     </div>
@@ -30,19 +30,19 @@
   {% endfor %}
 </div>
 
-<div class="row g-3 mb-4">
+<div class="row g-2 g-md-3 mb-3 mb-md-4">
   {% if overdue > 0 or due_soon > 0 %}
-  <div class="col-md-6">
+  <div class="col-12 col-md-6">
     <div class="card border-danger shadow-sm">
-      <div class="card-body py-2">
-        <div class="d-flex align-items-center gap-2">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
-          <div class="flex-grow-1">
+          <div class="flex-grow-1" style="min-width:150px">
             <strong class="text-danger">Сроки!</strong>
             {% if overdue > 0 %}<span class="badge bg-danger me-1">{{ overdue }} просрочено</span>{% endif %}
             {% if due_soon > 0 %}<span class="badge bg-warning text-dark">{{ due_soon }} до 3 дней</span>{% endif %}
           </div>
-          <a href="/orders" class="btn btn-sm btn-outline-danger">Проверить</a>
+          <a href="/orders" class="btn btn-sm btn-outline-danger ms-auto">Проверить</a>
         </div>
       </div>
     </div>
@@ -50,12 +50,12 @@
   {% endif %}
 
   {% if low_stock > 0 %}
-  <div class="col-md-6">
+  <div class="col-12 col-md-6">
     <div class="card border-danger shadow-sm">
-      <div class="card-body py-2">
-        <div class="d-flex align-items-center gap-2">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
-          <div>
+          <div style="min-width:150px">
             <strong class="text-danger">Склад!</strong>
             <span class="text-muted small ms-1">{{ low_stock }} позиций ниже мин. остатка.</span>
           </div>
@@ -67,12 +67,12 @@
   {% endif %}
 
   {% if is_admin and backup_days > 7 %}
-  <div class="col-md-6">
+  <div class="col-12 col-md-6">
     <div class="card border-warning shadow-sm">
-      <div class="card-body py-2">
-        <div class="d-flex align-items-center gap-2">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           <i class="bi bi-cloud-upload text-warning fs-4"></i>
-          <div>
+          <div style="min-width:150px">
             <strong class="text-warning">Бэкап!</strong>
             <span class="text-muted small ms-1">Последний {{ backup_days }} дн. назад.</span>
           </div>
@@ -84,12 +84,12 @@
   {% endif %}
 
   {% if is_admin %}
-  <div class="col-md-6">
+  <div class="col-12 col-md-6">
     <div class="card border-primary shadow-sm">
-      <div class="card-body py-2">
-        <div class="d-flex align-items-center gap-2">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           <i class="bi bi-database text-primary fs-4"></i>
-          <div>
+          <div style="min-width:150px">
             <strong>База данных</strong>
             <span class="text-muted small ms-1">Сохранить копию на компьютер.</span>
           </div>
@@ -109,15 +109,15 @@
   </div>
   <div class="list-group list-group-flush">
     {% for t in my_recent_tasks %}
-    <div class="list-group-item d-flex justify-content-between align-items-center">
-      <div>
-        <span>{{ t.title }}</span>
-        <small class="text-muted ms-2">от {{ t.creator.full_name }}</small>
+    <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div style="min-width:0;flex:1">
+        <span class="text-break">{{ t.title }}</span>
+        <small class="text-muted ms-2 text-nowrap">от {{ t.creator.full_name }}</small>
         {% if t.description %}
-        <br><small class="text-muted">{{ t.description[:80] }}</small>
+        <br><small class="text-muted text-break">{{ t.description[:80] }}</small>
         {% endif %}
       </div>
-      <form method="post" action="/tasks/{{ t.id }}/done">
+      <form method="post" action="/tasks/{{ t.id }}/done" class="flex-shrink-0">
         <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg me-1"></i>Готово</button>
       </form>
     </div>
@@ -129,18 +129,18 @@
 <h5>Последние заказы</h5>
 {% if recent_orders %}
 <div class="table-responsive">
-  <table class="table table-hover align-middle">
+  <table class="table table-hover align-middle mb-0">
     <thead class="table-light">
-      <tr><th>#</th><th>Клиент</th><th>Принтер</th><th>Статус</th><th>Срок</th><th>Сумма</th><th>Создан</th></tr>
+      <tr><th>#</th><th>Клиент</th><th class="hide-mobile">Принтер</th><th>Статус</th><th class="hide-mobile">Срок</th><th>Сумма</th><th class="hide-mobile">Создан</th></tr>
     </thead>
     <tbody>
       {% for o in recent_orders %}
       <tr class="clickable" onclick="location.href='/orders/{{ o.id }}'">
         <td><strong>{{ o.id }}</strong></td>
         <td>{{ o.client.full_name }}</td>
-        <td class="text-truncate-cell">{{ o.printer }}</td>
+        <td class="text-truncate-cell hide-mobile">{{ o.printer }}</td>
         <td><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
-        <td>
+        <td class="hide-mobile">
           {% if o.deadline %}
           <span class="badge bg-{{ 'danger' if o.deadline < datetime.now() else 'warning' if (o.deadline - datetime.now()).days < 3 else 'success' }}">
             {{ o.deadline.strftime('%d.%m') }}
@@ -148,7 +148,7 @@
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td>{{ o.total_price | money }}</td>
-        <td class="text-muted">{{ o.created_at | dt }}</td>
+        <td class="text-muted hide-mobile">{{ o.created_at | dt }}</td>
       </tr>
       {% endfor %}
     </tbody>

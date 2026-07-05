@@ -157,7 +157,7 @@
         {% if order.status != "closed" %}
         <hr>
         <form method="post" action="/orders/{{ order.id }}/items" class="row g-2 align-items-end">
-          <div class="col-md-4">
+          <div class="col-12 col-md-4">
             <label class="form-label small">Выбрать из услуг</label>
             <select class="form-select form-select-sm" id="serviceSelect" onchange="fillFromService()">
               <option value="">— Ввести вручную —</option>
@@ -168,17 +168,17 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-12 col-md-4">
             <label class="form-label small">Название <span class="text-danger">*</span></label>
             <input type="text" name="name" id="itemName" class="form-control form-control-sm"
                    maxlength="300" required autocomplete="off">
           </div>
-          <div class="col-md-2">
+          <div class="col-6 col-md-2">
             <label class="form-label small">Цена <span class="text-danger">*</span></label>
             <input type="number" name="price" id="itemPrice" class="form-control form-control-sm"
                    step="0.01" min="0" value="0" required>
           </div>
-          <div class="col-md-2">
+          <div class="col-6 col-md-2">
             <button type="submit" class="btn btn-primary btn-sm w-100">
               <i class="bi bi-plus"></i> Добавить
             </button>
@@ -231,7 +231,7 @@
         {% if order.status != "closed" and parts %}
         <hr>
         <form method="post" action="/orders/{{ order.id }}/parts" class="row g-2 align-items-end">
-          <div class="col-md-4">
+          <div class="col-12 col-md-4">
             <label class="form-label small">Запчасть <span class="text-danger">*</span></label>
             <select name="part_id" class="form-select form-select-sm" required
                     onchange="fillPartPrice(this)">
@@ -244,17 +244,17 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-6 col-md-2">
             <label class="form-label small">Кол-во</label>
             <input type="number" name="quantity" id="partQty" class="form-control form-control-sm"
                    min="1" value="1" required>
           </div>
-          <div class="col-md-3">
+          <div class="col-6 col-md-3">
             <label class="form-label small">Цена за шт.</label>
             <input type="number" name="price" id="partPrice" class="form-control form-control-sm"
                    step="0.01" min="0" value="0" required>
           </div>
-          <div class="col-md-3">
+          <div class="col-12 col-md-3">
             <button type="submit" class="btn btn-primary btn-sm w-100">
               <i class="bi bi-plus"></i> Добавить запчасть
             </button>

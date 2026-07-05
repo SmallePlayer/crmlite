@@ -4,11 +4,14 @@
 {% block content %}
 <h4 class="mb-3"><i class="bi bi-chat-dots me-2"></i>Чат</h4>
 
-<div class="row g-3">
-  <div class="col-md-4 col-lg-3">
+<div class="row g-3" id="chatLayout">
+  <div class="col-md-4 col-lg-3" id="chatPeersCol" style="{{ 'display:none' if peer_id and peer_id != 0 and not messages }}">
     <div class="card shadow-sm">
-      <div class="card-header"><strong><i class="bi bi-people me-1"></i>Чаты</strong></div>
-      <div class="list-group list-group-flush" style="max-height:65vh;overflow-y:auto">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-people me-1"></i>Чаты</strong>
+        <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="showChatView()" title="К чату"><i class="bi bi-arrow-right"></i></button>
+      </div>
+      <div class="list-group list-group-flush" style="max-height:65vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
         <a href="/chat" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {{ 'active' if peer_id == 0 }}">
           <i class="bi bi-people-fill"></i>
           <div><div class="fw-semibold">Общий чат</div><small class="opacity-75">Все сотрудники</small></div>
@@ -26,22 +29,25 @@
     </div>
   </div>
 
-  <div class="col-md-8 col-lg-9">
+  <div class="col-md-8 col-lg-9" id="chatMessagesCol">
     <div class="card shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>
-          {% if peer_id == 0 %}
-          <i class="bi bi-people-fill me-1"></i>Общий чат
-          {% else %}
-          <i class="bi bi-person me-1"></i>{{ peer_name }}
-          {% endif %}
-        </strong>
+        <div class="d-flex align-items-center gap-2">
+          <a href="/chat" class="btn btn-sm btn-outline-secondary d-md-none" title="К списку чатов"><i class="bi bi-arrow-left"></i></a>
+          <strong>
+            {% if peer_id == 0 %}
+            <i class="bi bi-people-fill me-1"></i>Общий чат
+            {% else %}
+            <i class="bi bi-person me-1"></i>{{ peer_name }}
+            {% endif %}
+          </strong>
+        </div>
         {% if peer_id != 0 %}
         <small class="text-muted">Личные сообщения</small>
         {% endif %}
       </div>
       <div class="card-body p-0">
-        <div style="height:55vh;overflow-y:auto;display:flex;flex-direction:column" id="chatMessages">
+        <div style="height:55vh;overflow-y:auto;display:flex;flex-direction:column;-webkit-overflow-scrolling:touch" id="chatMessages">
           {% if messages %}
           {% for m in messages %}
           <div class="d-flex px-3 py-2 {{ 'bg-light bg-opacity-50' if loop.index % 2 == 0 }}">
@@ -53,7 +59,7 @@
                 </strong>
                 <small class="text-muted">{{ m.created_at.strftime('%d.%m %H:%M') }}</small>
               </div>
-              <div class="mt-1">{{ m.text }}</div>
+              <div class="mt-1" style="word-break:break-word">{{ m.text }}</div>
             </div>
           </div>
           {% endfor %}
@@ -70,10 +76,29 @@
         <form method="post" action="/chat/send" class="d-flex gap-2">
           {% if peer_id != 0 %}<input type="hidden" name="to_user_id" value="{{ peer_id }}">{% endif %}
           <input type="text" name="text" class="form-control" placeholder="{{ 'Написать в общий чат...' if peer_id == 0 else 'Написать ' + peer_name + '...' }}" required autocomplete="off" autofocus>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i></button>
+          <button type="submit" class="btn btn-primary flex-shrink-0"><i class="bi bi-send"></i></button>
         </form>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showChatView() {
+  document.getElementById('chatPeersCol').style.display = 'none';
+  document.getElementById('chatMessagesCol').classList.remove('d-none');
+}
+(function() {
+  if (window.innerWidth < 768) {
+    var hasPeer = {{ 'true' if peer_id and peer_id != 0 else 'false' }};
+    if (hasPeer) {
+      var peersCol = document.getElementById('chatPeersCol');
+      peersCol.style.display = 'none';
+      document.getElementById('chatMessagesCol').style.display = '';
+    }
+  }
+})();
+</script>
 {% endblock %}

@@ -2942,6 +2942,72 @@ def admin_edit_attendance(att_id: int, request: Request, check_in: str = Form(""
     return RedirectResponse("/attendance", status_code=303)
 
 
+@app.post("/attendance/admin/check-in")
+def admin_check_in(request: Request, user_id: int = Form(...), date_str: str = Form(""),
+                   check_in_time: str = Form(""), check_out_time: str = Form(""),
+                   session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u or u.role.name != "admin": raise HTTPException(403)
+    target_user = session.get(User, user_id)
+    if not target_user: raise HTTPException(404, "Пользователь не найден")
+    if not date_str:
+        date_str = (datetime.now() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
+    existing = session.execute(
+        select(Attendance).where(Attendance.user_id == user_id, Attendance.date_str == date_str)
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, f"У {target_user.full_name} уже есть отметка на {date_str}")
+    if check_in_time.strip():
+        try:
+            h, m = map(int, check_in_time.split(":"))
+            dt = datetime.strptime(f"{date_str} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M") - TIMEZONE_OFFSET
+        except ValueError:
+            dt = datetime.now()
+    else:
+        dt = datetime.now()
+    att = Attendance(user_id=user_id, date_str=date_str, check_in=dt)
+    if check_out_time.strip():
+        try:
+            h, m = map(int, check_out_time.split(":"))
+            att.check_out = datetime.strptime(f"{date_str} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M") - TIMEZONE_OFFSET
+        except ValueError:
+            pass
+    session.add(att)
+    session.commit()
+    action = "отметил" if not check_out_time.strip() else "создал смену для"
+    _audit("admin_check_in", "attendance", att.id, f"{u.full_name} {action} {target_user.full_name}", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/attendance/{att_id}/admin-cancel")
+def admin_cancel_attendance(att_id: int, request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u or u.role.name != "admin": raise HTTPException(403)
+    a = session.get(Attendance, att_id)
+    if not a: raise HTTPException(404)
+    user_name = a.user.full_name if a.user else "?"
+    session.delete(a)
+    session.commit()
+    _audit("admin_cancel_attendance", "attendance", att_id, f"{u.full_name} отменил для {user_name}", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
+@app.post("/attendance/{att_id}/admin-check-out")
+def admin_check_out(att_id: int, request: Request, report: str = Form(""),
+                    session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u or u.role.name != "admin": raise HTTPException(403)
+    a = session.get(Attendance, att_id)
+    if not a: raise HTTPException(404)
+    a.check_out = datetime.now()
+    if report.strip():
+        a.report = report.strip()
+    session.commit()
+    user_name = a.user.full_name if a.user else "?"
+    _audit("admin_check_out", "attendance", att_id, f"{u.full_name} завершил смену {user_name}", u, session)
+    return RedirectResponse("/attendance", status_code=303)
+
+
 @app.post("/schedule")
 def save_schedule(request: Request, user_id: int = Form(0), date: str = Form(""),
                   time_from: str = Form(""), time_to: str = Form(""),

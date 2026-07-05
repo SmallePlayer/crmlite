@@ -4,8 +4,8 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h4 class="mb-0">Учёт пластика</h4>
-  <div class="d-flex gap-2">
-    <input type="text" id="filSearch" class="form-control form-control-sm" style="width:160px" placeholder="Поиск..." oninput="filterFilaments()">
+  <div class="d-flex gap-2 flex-wrap">
+    <input type="text" id="filSearch" class="form-control form-control-sm" style="min-width:130px;flex:1;max-width:200px" placeholder="Поиск..." oninput="filterFilaments()">
     <button class="btn btn-primary btn-sm" onclick="openFilamentModal()"><i class="bi bi-plus-lg"></i></button>
   </div>
 </div>
@@ -13,7 +13,7 @@
 <div class="row g-3 mb-4" id="filCards">
   {% for f in filaments %}
   {% set spools = (f.quantity // f.grams_per_spool) %}
-  <div class="col-md-6 col-lg-3">
+  <div class="col-6 col-sm-6 col-md-4 col-lg-3">
     <div class="card shadow-sm border {% if f.quantity <= f.min_stock %}border-danger border-2{% endif %} h-100">
       <div class="card-body text-center py-3">
         <div class="mb-2">
@@ -213,7 +213,7 @@ function doReceive() {
 
 function filterFilaments() {
   var q = document.getElementById('filSearch').value.toLowerCase();
-  document.querySelectorAll('#filCards .col-md-6').forEach(function(card) {
+  document.querySelectorAll('#filCards > .col-6').forEach(function(card) {
     var name = (card.querySelector('h5')?.textContent || '').toLowerCase();
     var article = (card.querySelector('code')?.textContent || '').toLowerCase();
     card.style.display = (!q || name.includes(q) || article.includes(q)) ? '' : 'none';

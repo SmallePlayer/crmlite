@@ -35,8 +35,8 @@
       <tr>
         <th>Задача</th>
         <th>Кому</th>
-        <th>От кого</th>
-        <th>Создана</th>
+        <th class="hide-mobile">От кого</th>
+        <th class="hide-mobile">Создана</th>
         <th style="width:80px"></th>
       </tr>
     </thead>
@@ -58,8 +58,8 @@
           {% endif %}
         </td>
         <td><span class="badge bg-info">{{ t.assignee.full_name }}</span></td>
-        <td><small class="text-muted">{{ t.creator.full_name }}</small></td>
-        <td><small class="text-muted">{{ t.created_at | dt }}</small></td>
+        <td class="hide-mobile"><small class="text-muted">{{ t.creator.full_name }}</small></td>
+        <td class="hide-mobile"><small class="text-muted">{{ t.created_at | dt }}</small></td>
         <td>
           <div class="d-flex gap-1">
             {% if t.status == 'pending' %}

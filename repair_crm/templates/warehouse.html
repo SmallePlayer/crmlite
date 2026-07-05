@@ -15,8 +15,8 @@
     <thead class="table-light">
       <tr>
         <th>Название</th>
-        <th>Артикул</th>
-        <th>Цена закупки</th>
+        <th class="hide-mobile">Артикул</th>
+        <th class="hide-mobile">Цена закупки</th>
         <th>На складе</th>
         <th style="width:90px"></th>
       </tr>
@@ -25,8 +25,8 @@
       {% for p in parts %}
       <tr>
         <td><strong>{{ p.name }}</strong></td>
-        <td><code>{{ p.article }}</code></td>
-        <td>{{ p.purchase_price | money }}</td>
+        <td class="hide-mobile"><code>{{ p.article }}</code></td>
+        <td class="hide-mobile">{{ p.purchase_price | money }}</td>
         <td>
           {% if p.quantity <= 0 %}
           <span class="badge bg-danger">0</span>
@@ -70,8 +70,8 @@
         <th>Запчасть</th>
         <th>Тип</th>
         <th>Кол-во</th>
-        <th>Цена</th>
-        <th>Причина</th>
+        <th class="hide-mobile">Цена</th>
+        <th class="hide-mobile">Причина</th>
       </tr>
     </thead>
     <tbody>
@@ -87,8 +87,8 @@
           {% endif %}
         </td>
         <td>{{ m.quantity | int }}</td>
-        <td>{{ m.price_per_unit | money }}</td>
-        <td class="text-muted">{{ m.reason or '—' }}</td>
+        <td class="hide-mobile">{{ m.price_per_unit | money }}</td>
+        <td class="text-muted hide-mobile">{{ m.reason or '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>

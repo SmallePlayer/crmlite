@@ -23,7 +23,7 @@
 <div class="table-responsive">
   <table class="table table-hover align-middle" style="font-size:0.82rem">
     <thead class="table-light">
-      <tr><th>Название</th><th>Пластик</th><th>Принтер</th><th class="text-end">Грамм</th><th class="text-end">Часов</th><th>Результат</th><th>Кто</th><th>Дата</th><th></th></tr>
+      <tr><th>Название</th><th>Пластик</th><th class="hide-mobile">Принтер</th><th class="text-end">Грамм</th><th class="text-end hide-mobile">Часов</th><th>Результат</th><th class="hide-mobile">Кто</th><th class="hide-mobile">Дата</th><th></th></tr>
     </thead>
     <tbody>
       {% for j in jobs %}
@@ -35,17 +35,17 @@
           {% if j.filament.color %}<small class="text-muted d-block">{{ j.filament.color }}</small>{% endif %}
           {% if j.filament.article %}<small class="text-muted"><code>{{ j.filament.article }}</code></small>{% endif %}
         </td>
-        <td>{{ j.printer_name or '—' }}</td>
+        <td class="hide-mobile">{{ j.printer_name or '—' }}</td>
         <td class="text-end">{{ j.grams }} г.</td>
-        <td class="text-end">{{ j.hours }} ч.</td>
+        <td class="text-end hide-mobile">{{ j.hours }} ч.</td>
         <td>
           {% if j.status == 'success' %}<span class="badge bg-success">Успех</span>
           {% elif j.status == 'fail' %}<span class="badge bg-danger" title="Брак: {{ j.waste_grams }} г.">Брак</span>
           {% if j.waste_grams > 0 %}<small class="text-muted ms-1">{{ j.waste_grams }} г.</small>{% endif %}
           {% endif %}
         </td>
-        <td>{{ j.creator.full_name }}</td>
-        <td class="text-muted small">{{ j.created_at | dt }}</td>
+        <td class="hide-mobile">{{ j.creator.full_name }}</td>
+        <td class="text-muted small hide-mobile">{{ j.created_at | dt }}</td>
         <td class="text-nowrap">
           <button class="btn btn-outline-secondary btn-icon me-1" onclick="openEditModal({{ j.id }},'{{ j.name|e }}',{{ j.filament_id }},{{ j.grams }},{{ j.hours }},'{{ j.printer_name|e }}')"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-outline-secondary btn-icon me-1" onclick="openResultModal({{ j.id }},'{{ j.status }}',{{ j.waste_grams }})"><i class="bi bi-flag"></i></button>
