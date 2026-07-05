@@ -43,6 +43,9 @@ engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 @event.listens_for(engine, "connect")
 def _set_wal(dbapi_connection, _connection_record):
     dbapi_connection.execute("PRAGMA journal_mode=WAL")
+    dbapi_connection.execute("PRAGMA synchronous=NORMAL")
+    dbapi_connection.execute("PRAGMA cache_size=-8000")
+    dbapi_connection.execute("PRAGMA temp_store=MEMORY")
 
 
 def get_db():
@@ -601,10 +604,16 @@ def _notify(user_id: int, title: str, text: str = "", link: str = "", session: S
 
 
 def _notify_all(title: str, text: str = "", link: str = "", session: Session | None = None):
-    with Session(engine) as s2:
-        users = s2.execute(select(User.id).where(User.is_active == True)).scalars().all()
-    for uid in users:
-        _notify(uid, title, text, link, session)
+    if session is not None:
+        users = session.execute(select(User.id).where(User.is_active == True)).scalars().all()
+        for uid in users:
+            session.add(Notification(user_id=uid, title=title, text=text, link=link))
+    else:
+        with Session(engine) as s:
+            users = s.execute(select(User.id).where(User.is_active == True)).scalars().all()
+            for uid in users:
+                s.add(Notification(user_id=uid, title=title, text=text, link=link))
+            s.commit()
 
 
 def _seed_data():
@@ -707,7 +716,11 @@ PUBLIC_PATHS = {"/login", "/api/sse/events", "/api/dashboard",
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     path = request.url.path
-    if path in PUBLIC_PATHS or path.startswith("/api/") or path.startswith("/static/") or path == "/favicon.ico":
+    if path.startswith("/static/"):
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        return response
+    if path in PUBLIC_PATHS or path.startswith("/api/") or path == "/favicon.ico":
         return await call_next(request)
 
     user = _get_user_from_request(request)
@@ -762,19 +775,25 @@ async def internal_error(request: Request, exc: Exception):
 #  Helpers
 # ══════════════════════════════════════════════════════════════════
 
-def _user_context(request: Request) -> dict:
+def _user_context(request: Request, session: Session | None = None) -> dict:
     u = getattr(request.state, "user", None)
     if not u:
         return {"user": None, "is_admin": False, "can_manage_users": False, "unread_count": 0}
     unread = 0
-    try:
-        with Session(engine) as s:
-            unread = s.execute(
-                select(func.count(Notification.id))
-                .where(Notification.user_id == u.id, Notification.is_read == False)
-            ).scalar() or 0
-    except Exception:
-        pass
+    if session is not None:
+        unread = session.execute(
+            select(func.count(Notification.id))
+            .where(Notification.user_id == u.id, Notification.is_read == False)
+        ).scalar() or 0
+    else:
+        try:
+            with Session(engine) as s:
+                unread = s.execute(
+                    select(func.count(Notification.id))
+                    .where(Notification.user_id == u.id, Notification.is_read == False)
+                ).scalar() or 0
+        except Exception:
+            pass
     return {
         "user": u,
         "is_admin": u.role.name == "admin",
@@ -930,7 +949,7 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         select(AuditLog).order_by(desc(AuditLog.created_at)).limit(10)
     ).scalars().all() if u.role.name == "admin" else []
     return templates.TemplateResponse(request, "index.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "active_orders": active, "closed_orders": closed,
         "total_clients": total_clients, "total_services": total_services,
         "total_parts": total_parts, "total_products": total_products,
@@ -953,7 +972,7 @@ def clients_page(request: Request, session: Session = Depends(get_db)):
         select(Client).order_by(desc(Client.created_at))
     ).scalars().all()
     return templates.TemplateResponse(request, "clients.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "clients": clients,
         "clients_data": [_client_dict(c) for c in clients],
     })
@@ -965,7 +984,7 @@ def services_page(request: Request, session: Session = Depends(get_db)):
         select(Service).order_by(Service.name)
     ).scalars().all()
     return templates.TemplateResponse(request, "services.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "services": services,
         "services_data": [{
             "id": s.id, "name": s.name, "price": s.price,
@@ -984,7 +1003,7 @@ def warehouse_page(request: Request, session: Session = Depends(get_db)):
         .order_by(desc(StockMovement.created_at)).limit(40)
     ).unique().scalars().all()
     return templates.TemplateResponse(request, "warehouse.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "parts": parts, "movements": movements,
         "parts_data": [{
             "id": p.id, "name": p.name, "article": p.article,
@@ -1004,7 +1023,7 @@ def products_page(request: Request, session: Session = Depends(get_db)):
         .order_by(desc(ProductMovement.created_at)).limit(40)
     ).unique().scalars().all()
     return templates.TemplateResponse(request, "products.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "products": products, "movements": movements,
         "products_data": [{
             "id": p.id, "name": p.name, "article": p.article,
@@ -1068,14 +1087,15 @@ def orders_page(
         q = base_q.join(Order.client).order_by(Client.full_name)
     orders, page, pages, total = _paginate(session, q, page)
 
-    counts = {}
+    rows = session.execute(
+        select(Order.status, func.count(Order.id)).group_by(Order.status)
+    ).all()
+    counts = {row[0]: row[1] for row in rows}
     for s_val in ["in_progress", "waiting_parts", "ready", "closed"]:
-        counts[s_val] = session.execute(
-            select(func.count(Order.id)).where(Order.status == s_val)
-        ).scalar() or 0
+        counts.setdefault(s_val, 0)
 
     return templates.TemplateResponse(request, "orders.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "orders": orders, "current_status": status, "current_type": order_type,
         "current_sort": sort,
         "counts": counts, "page": page, "pages": pages, "total": total,
@@ -1094,7 +1114,7 @@ def order_create_page(request: Request, session: Session = Depends(get_db)):
         select(User).where(User.is_active == True).order_by(User.full_name)
     ).scalars().all()
     return templates.TemplateResponse(request, "order_create.html", {
-        **_user_context(request), "clients": clients, "users": users,
+        **_user_context(request, session), "clients": clients, "users": users,
         "ORDER_TYPES": ORDER_TYPES,
     })
 
@@ -1117,7 +1137,7 @@ def order_detail_page(order_id: int, request: Request, session: Session = Depend
         select(Part).order_by(Part.name, Part.article)
     ).scalars().all()
     return templates.TemplateResponse(request, "order_detail.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "order": order, "services": services, "parts": parts,
         "clients": session.execute(
             select(Client).order_by(Client.full_name)
@@ -1143,7 +1163,7 @@ def users_page(request: Request, session: Session = Depends(get_db)):
     ).unique().scalars().all()
     roles = session.execute(select(Role).order_by(Role.name)).scalars().all()
     return templates.TemplateResponse(request, "users.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "users": users, "roles": roles,
         "user_data": [{"id": x.id, "username": x.username, "full_name": x.full_name,
                         "role_name": x.role.name, "is_active": x.is_active,
@@ -1192,7 +1212,7 @@ def audit_page(
     ).scalars().all()
 
     return templates.TemplateResponse(request, "audit.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "logs": logs, "page": page, "pages": pages, "total": total,
         "current_action": action.strip(), "current_user_id": user_id.strip(),
         "actions": actions, "audit_users": audit_users, "timedelta": timedelta,
@@ -1714,7 +1734,7 @@ def profile_page(request: Request, session: Session = Depends(get_db)):
         raise HTTPException(403)
     u = session.get(User, current.id)
     return templates.TemplateResponse(request, "profile.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "profile": u,
     })
 
@@ -2054,7 +2074,7 @@ def client_history(client_id: int, request: Request, session: Session = Depends(
         .order_by(desc(Order.created_at))
     ).unique().scalars().all()
     return templates.TemplateResponse(request, "client_history.html", {
-        **_user_context(request), "client": client, "orders": orders,
+        **_user_context(request, session), "client": client, "orders": orders,
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES, "timedelta": timedelta,
     })
 
@@ -2225,7 +2245,7 @@ def search_page(request: Request, q: str = Query(""), session: Session = Depends
             select(Service).where(Service.name.ilike(like)).limit(20)
         ).scalars().all()
     return templates.TemplateResponse(request, "search.html", {
-        **_user_context(request), "q": q.strip(), "results": results,
+        **_user_context(request, session), "q": q.strip(), "results": results,
         "total": sum(len(v) for v in results.values()),
     })
 
@@ -2489,7 +2509,7 @@ def filaments_page(request: Request, session: Session = Depends(get_db)):
         .order_by(desc(FilamentMovement.created_at)).limit(30)
     ).unique().scalars().all()
     return templates.TemplateResponse(request, "filaments.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "filaments": filaments, "movements": movements,
     })
 
@@ -2640,7 +2660,7 @@ def print_jobs_page(request: Request, session: Session = Depends(get_db)):
     fail_grams = sum(j.grams for j in jobs if j.status == "fail")
     waste_grams_total = sum(j.waste_grams for j in jobs if j.status == "fail")
     return templates.TemplateResponse(request, "prints.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "jobs": jobs, "filaments": filaments, "printers": printers,
         "total_jobs": total_jobs, "success_jobs": success_jobs, "fail_jobs": fail_jobs,
         "total_grams": total_grams, "success_grams": success_grams,
@@ -2813,7 +2833,7 @@ def attendance_page(request: Request, month: str = Query(""), session: Session =
                 work_hours[uid]["days"] += 1
 
     return templates.TemplateResponse(request, "attendance.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "users": users, "base_month": base, "next_month": next_month, "prev_month": prev_month,
         "by_user_date": by_user_date, "today_att": today_att, "today": today,
         "current_user_id": u.id, "sched_map": sched_map, "timedelta": timedelta,
@@ -3023,7 +3043,7 @@ def chat_page(request: Request, peer: str = Query(""), session: Session = Depend
     q = q.order_by(desc(ChatMessage.created_at)).limit(100)
     messages = session.execute(q).unique().scalars().all()
     return templates.TemplateResponse(request, "chat.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "messages": list(reversed(messages)), "users": users,
         "current_user_id": u.id, "peer_id": peer_id, "peer_name": peer_name,
     })
@@ -3089,7 +3109,7 @@ def tasks_page(
         counts[f_val] = session.execute(cnt_q).scalar() or 0
 
     return templates.TemplateResponse(request, "tasks.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "tasks": tasks, "users": users, "filter": filter, "counts": counts,
     })
 
@@ -3166,7 +3186,7 @@ def notifications_page(request: Request, session: Session = Depends(get_db)):
         .order_by(desc(Notification.created_at)).limit(50)
     ).scalars().all()
     return templates.TemplateResponse(request, "notifications.html", {
-        **_user_context(request), "notifications": notifs,
+        **_user_context(request, session), "notifications": notifs,
     })
 
 
@@ -3243,7 +3263,7 @@ def schedule_calendar_page(request: Request, month: str = Query(""), session: Se
                 })
 
     return templates.TemplateResponse(request, "schedule.html", {
-        **_user_context(request),
+        **_user_context(request, session),
         "orders_by_date": by_date, "orders_json": orders_json,
         "base_month": base, "next_month": next_month,
         "prev_month": prev_month, "today": today,
