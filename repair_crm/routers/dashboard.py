@@ -6,7 +6,7 @@ from templates_env import templates
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import Session, joinedload
 
-from config import BASE_DIR, ORDER_STATUSES, ORDER_TYPES
+from config import BASE_DIR, ORDER_STATUSES, ORDER_TYPES, TIMEZONE_OFFSET
 from database import get_db
 from helpers import _user_context
 from models.user import User
@@ -16,6 +16,7 @@ from models.warehouse import Part, Product
 from models.order import Order
 from models.task import Task
 from models.audit import AuditLog
+from models.attendance import Attendance
 
 router = APIRouter()
 
@@ -65,6 +66,13 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
     recent_logs = session.execute(
         select(AuditLog).order_by(desc(AuditLog.created_at)).limit(10)
     ).scalars().all() if u.role.name == "admin" else []
+    
+    today_str = (datetime.utcnow() + TIMEZONE_OFFSET).strftime("%Y-%m-%d")
+    attendance_today = session.execute(
+        select(func.count(Attendance.id))
+        .where(Attendance.date_str == today_str)
+    ).scalar() or 0
+    
     return templates.TemplateResponse(request, "index.html", {
         **_user_context(request, session),
         "active_orders": active, "closed_orders": closed,
@@ -74,6 +82,7 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
         "my_tasks": my_tasks, "total_tasks": total_tasks,
         "my_recent_tasks": my_recent_tasks,
         "recent_orders": recent, "recent_logs": recent_logs,
+        "attendance_today": attendance_today,
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES,
         "datetime": datetime,
         "last_backup": (datetime.fromtimestamp((BASE_DIR / "repair_crm.db").stat().st_mtime)

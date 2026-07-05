@@ -126,7 +126,14 @@
   <div class="col-12 col-lg-7">
     {# Services card #}
     <div class="card shadow-sm mb-4">
-      <div class="card-header"><strong>Выполненные услуги</strong></div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Выполненные услуги</strong>
+        {% if order.status != "closed" %}
+        <button class="btn btn-sm btn-outline-primary" onclick="openBatchServicesModal()">
+          <i class="bi bi-plus-lg"></i> Добавить несколько
+        </button>
+        {% endif %}
+      </div>
       <div class="card-body">
         {% if order.items %}
         <table class="table table-sm align-middle mb-3">
@@ -190,7 +197,14 @@
 
     {# Parts card #}
     <div class="card shadow-sm">
-      <div class="card-header"><strong>Использованные запчасти</strong></div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Использованные запчасти</strong>
+        {% if order.status != "closed" and parts %}
+        <button class="btn btn-sm btn-outline-primary" onclick="openBatchPartsModal()">
+          <i class="bi bi-plus-lg"></i> Добавить несколько
+        </button>
+        {% endif %}
+      </div>
       <div class="card-body">
         {% if order.parts %}
         <table class="table table-sm align-middle mb-3">
@@ -393,8 +407,80 @@
   </div>
 </div>
 
+{# Batch Services Modal #}
+<div class="modal fade" id="batchServicesModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-plus-lg me-1"></i>Добавить несколько услуг</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <table class="table table-sm align-middle mb-2">
+          <thead class="table-light">
+            <tr>
+              <th style="width:40%">Услуга</th>
+              <th style="width:35%">Название</th>
+              <th style="width:15%">Цена ₽</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="batchServiceRows"></tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addBatchServiceRow()">
+          <i class="bi bi-plus"></i> Добавить строку
+        </button>
+        <div class="text-danger small mt-2" id="batchServiceError"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-primary" onclick="submitBatchServices()">
+          <i class="bi bi-check-lg"></i> Добавить все
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Batch Parts Modal #}
+<div class="modal fade" id="batchPartsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-plus-lg me-1"></i>Добавить несколько запчастей</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <table class="table table-sm align-middle mb-2">
+          <thead class="table-light">
+            <tr>
+              <th style="width:35%">Запчасть</th>
+              <th style="width:15%">Кол-во</th>
+              <th style="width:20%">Цена ₽</th>
+              <th style="width:20%">Сумма</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="batchPartRows"></tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addBatchPartRow()">
+          <i class="bi bi-plus"></i> Добавить строку
+        </button>
+        <div class="text-danger small mt-2" id="batchPartError"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-primary" onclick="submitBatchParts()">
+          <i class="bi bi-check-lg"></i> Добавить все
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 var SRV = {{ services_data | tojson }};
+var PARTS = {{ parts_data | tojson }};
 
 function openEditOrderModal() {
   new bootstrap.Modal(document.getElementById('editOrderModal')).show();
@@ -427,6 +513,136 @@ function fillPartPrice(sel) {
 function toggleEditSource(el) {
   var inp = el.parentElement.querySelector('[name=source_custom]');
   inp.style.display = el.value === '__other__' ? '' : 'none';
+}
+
+// Batch Services
+function openBatchServicesModal() {
+  document.getElementById('batchServiceRows').innerHTML = '';
+  addBatchServiceRow();
+  new bootstrap.Modal(document.getElementById('batchServicesModal')).show();
+}
+
+function addBatchServiceRow() {
+  var tbody = document.getElementById('batchServiceRows');
+  var tr = document.createElement('tr');
+  var opts = '<option value="">— Ввести вручную —</option>';
+  SRV.forEach(function(s) {
+    opts += '<option value="' + s.id + '" data-name="' + s.name + '" data-price="' + s.price + '">' + s.name + ' — ' + s.price + ' ₽</option>';
+  });
+  tr.innerHTML =
+    '<td><select class="form-select form-select-sm svc-select" onchange="onBatchSvcSelect(this)">' + opts + '</select></td>' +
+    '<td><input class="form-control form-control-sm svc-name" maxlength="300" required autocomplete="off" placeholder="Название"></td>' +
+    '<td><input type="number" class="form-control form-control-sm svc-price" step="0.01" min="0" value="0" required></td>' +
+    '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
+  tbody.appendChild(tr);
+}
+
+function onBatchSvcSelect(sel) {
+  var row = sel.closest('tr');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    row.querySelector('.svc-name').value = opt.dataset.name || '';
+    row.querySelector('.svc-price').value = opt.dataset.price || 0;
+  } else {
+    row.querySelector('.svc-name').value = '';
+    row.querySelector('.svc-price').value = 0;
+  }
+}
+
+function submitBatchServices() {
+  var rows = [];
+  document.querySelectorAll('#batchServiceRows tr').forEach(function(tr) {
+    var name = tr.querySelector('.svc-name').value.trim();
+    var price = parseFloat(tr.querySelector('.svc-price').value) || 0;
+    if (name) rows.push({name: name, price: price});
+  });
+  if (rows.length === 0) {
+    document.getElementById('batchServiceError').textContent = 'Добавьте хотя бы одну услугу';
+    return;
+  }
+  document.getElementById('batchServiceError').textContent = '';
+  
+  var promises = rows.map(function(row) {
+    return fetch('/orders/{{ order.id }}/items', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'name=' + encodeURIComponent(row.name) + '&price=' + row.price
+    });
+  });
+  
+  Promise.all(promises).then(function() {
+    window.location.reload();
+  }).catch(function(err) {
+    document.getElementById('batchServiceError').textContent = 'Ошибка: ' + err;
+  });
+}
+
+// Batch Parts
+function openBatchPartsModal() {
+  document.getElementById('batchPartRows').innerHTML = '';
+  addBatchPartRow();
+  new bootstrap.Modal(document.getElementById('batchPartsModal')).show();
+}
+
+function addBatchPartRow() {
+  var tbody = document.getElementById('batchPartRows');
+  var tr = document.createElement('tr');
+  var opts = '<option value="">— Выбрать —</option>';
+  PARTS.forEach(function(p) {
+    opts += '<option value="' + p.id + '" data-price="' + p.purchase_price + '" data-stock="' + p.quantity + '">' + p.name + ' (' + p.article + ') — ' + p.quantity + ' шт.</option>';
+  });
+  tr.innerHTML =
+    '<td><select class="form-select form-select-sm part-select" onchange="onBatchPartSelect(this)">' + opts + '</select></td>' +
+    '<td><input type="number" class="form-control form-control-sm part-qty" min="1" value="1" required onchange="updateBatchPartTotal(this)" oninput="updateBatchPartTotal(this)"></td>' +
+    '<td><input type="number" class="form-control form-control-sm part-price" step="0.01" min="0" value="0" required onchange="updateBatchPartTotal(this)" oninput="updateBatchPartTotal(this)"></td>' +
+    '<td class="fw-bold small part-total">0 ₽</td>' +
+    '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
+  tbody.appendChild(tr);
+}
+
+function onBatchPartSelect(sel) {
+  var row = sel.closest('tr');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    row.querySelector('.part-price').value = opt.dataset.price || 0;
+    updateBatchPartTotal(row.querySelector('.part-qty'));
+  }
+}
+
+function updateBatchPartTotal(el) {
+  var row = el.closest('tr');
+  var qty = parseInt(row.querySelector('.part-qty').value) || 0;
+  var price = parseFloat(row.querySelector('.part-price').value) || 0;
+  row.querySelector('.part-total').textContent = (qty * price).toLocaleString('ru-RU') + ' ₽';
+}
+
+function submitBatchParts() {
+  var rows = [];
+  document.querySelectorAll('#batchPartRows tr').forEach(function(tr) {
+    var partId = parseInt(tr.querySelector('.part-select').value) || 0;
+    var qty = parseInt(tr.querySelector('.part-qty').value) || 0;
+    var price = parseFloat(tr.querySelector('.part-price').value) || 0;
+    if (partId && qty > 0) rows.push({part_id: partId, quantity: qty, price: price});
+  });
+  if (rows.length === 0) {
+    document.getElementById('batchPartError').textContent = 'Добавьте хотя бы одну запчасть';
+    return;
+  }
+  document.getElementById('batchPartError').textContent = '';
+  
+  var promises = rows.map(function(row) {
+    return fetch('/orders/{{ order.id }}/parts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'part_id=' + row.part_id + '&quantity=' + row.quantity + '&price=' + row.price
+    });
+  });
+  
+  Promise.all(promises).then(function() {
+    window.location.reload();
+  }).catch(function(err) {
+    document.getElementById('batchPartError').textContent = 'Ошибка: ' + err;
+  });
 }
 </script>
 {% endblock %}

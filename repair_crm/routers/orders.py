@@ -131,6 +131,10 @@ def order_detail_page(order_id: int, request: Request, session: Session = Depend
         "services_data": [{
             "id": s.id, "name": s.name, "price": s.price,
         } for s in services],
+        "parts_data": [{
+            "id": p.id, "name": p.name, "article": p.article,
+            "purchase_price": p.purchase_price, "quantity": p.quantity,
+        } for p in parts],
     })
 
 

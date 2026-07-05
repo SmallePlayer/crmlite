@@ -6,13 +6,12 @@
 
 <div class="row g-2 g-md-3 mb-3 mb-md-4">
   {% set cards = [
-    (active_orders, 'Заказов в работе', 'tools', 'primary', '/orders?status=in_progress'),
-    (closed_orders,  'Закрыто заказов','check-circle', 'success', '/orders?status=closed'),
-    (my_tasks,       'Моих задач',      'check2-square', 'warning', '/tasks?filter=my'),
-    (total_clients,  'Клиентов',       'people',        'info', '/clients'),
+    (active_orders, 'Заказов в работе', 'clipboard-check', 'primary', '/orders'),
+    (total_products, 'Товаров на складе', 'boxes', 'success', '/products'),
+    (attendance_today, 'Отметились сегодня', 'person-check', 'info', '/attendance'),
   ] %}
   {% for count, label, icon, color, link in cards %}
-  <div class="col-6 col-md-3">
+  <div class="col-4 col-md-4">
     <a href="{{ link }}" class="text-decoration-none">
     <div class="card border-{{ color }} shadow-sm clickable h-100">
       <div class="card-body py-2 py-md-3">
