@@ -12,61 +12,53 @@
   </div>
 </div>
 
-<ul class="nav nav-tabs nav-tabs-bordered mb-0">
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+<ul class="nav nav-tabs flex-nowrap mb-0">
   {% set tabs = [("", "Все", "list-ul", "bg-dark")] %}
   {% for s_val, s_label, s_icon, s_cls in [("in_progress", "В работе", "tools", "bg-warning text-dark"),
-      ("waiting_parts", "Ожидает запчастей", "hourglass-split", "bg-info text-dark"),
-      ("ready", "Готов к выдаче", "check-circle", "bg-primary"), ("closed", "Архив", "archive", "bg-secondary")] %}
+      ("waiting_parts", "Запчасти", "hourglass-split", "bg-info text-dark"),
+      ("ready", "Готов", "check-circle", "bg-primary"), ("closed", "Архив", "archive", "bg-secondary")] %}
   {% set _ = tabs.append((s_val, s_label, s_icon, s_cls)) %}
   {% endfor %}
   {% for s_val, s_label, s_icon, s_cls in tabs %}
   <li class="nav-item">
-    <a class="nav-link {{ 'active fw-semibold' if current_status == s_val and not (not s_val and (date_from or client_filter or current_type)) }}"
+    <a class="nav-link px-2 px-md-3 {{ 'active fw-semibold' if current_status == s_val and not (not s_val and (date_from or client_filter or current_type)) }}"
        href="/orders{% if s_val %}?status={{ s_val }}{% endif %}{% if current_type %}&order_type={{ current_type }}{% endif %}">
-      <i class="bi bi-{{ s_icon }} me-1"></i>{{ s_label }}
+      <i class="bi bi-{{ s_icon }} me-1 hide-mobile"></i>{{ s_label }}
       <span class="badge {{ s_cls }} ms-1">{{ counts[s_val] if s_val else counts.values()|sum }}</span>
     </a>
   </li>
   {% endfor %}
 </ul>
+</div>
 
-<form class="row g-2 mt-0 mb-3 bg-light p-2 rounded" action="/orders" method="get">
+<form class="row g-1 mt-0 mb-3 bg-light p-2 rounded" action="/orders" method="get">
   {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
-  <div class="col-6 col-md-2 hide-mobile">
-    <select name="order_type" class="form-select form-select-sm">
-      <option value="">Все типы</option>
-      {% for t_val, (t_label, t_icon) in ORDER_TYPES.items() %}
-      <option value="{{ t_val }}" {{ 'selected' if current_type == t_val }}>{{ t_label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-6 col-md-2">
-    <select name="sort" class="form-select form-select-sm">
-      <option value="" {{ 'selected' if not current_sort }}>Новые сверху</option>
-      <option value="oldest" {{ 'selected' if current_sort == 'oldest' }}>Старые сверху</option>
-      <option value="id_desc" {{ 'selected' if current_sort == 'id_desc' }}>По номеру ↓</option>
-      <option value="id_asc" {{ 'selected' if current_sort == 'id_asc' }}>По номеру ↑</option>
-      <option value="price_desc" {{ 'selected' if current_sort == 'price_desc' }}>По сумме ↓</option>
-      <option value="client" {{ 'selected' if current_sort == 'client' }}>По клиенту</option>
-    </select>
-  </div>
-  <div class="col-6 col-md-2">
-    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}" title="С даты">
-  </div>
-  <div class="col-6 col-md-2">
-    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}" title="По дату">
-  </div>
-  <div class="col-6 col-md-2">
+  <div class="col-8 col-md-2">
     <input type="text" name="client" class="form-control form-control-sm" value="{{ client_filter }}" placeholder="Клиент..." autocomplete="off">
   </div>
-  <div class="col-3 col-md-2">
+  <div class="col-4 col-md-2">
     <button type="submit" class="btn btn-sm btn-outline-primary w-100">Найти</button>
   </div>
   {% if date_from or date_to or client_filter or current_type %}
-  <div class="col-3 col-md-2">
+  <div class="col-4 col-md-2">
     <a href="/orders{% if current_status %}?status={{ current_status }}{% endif %}" class="btn btn-sm btn-outline-secondary w-100">Сброс</a>
   </div>
   {% endif %}
+  <div class="col-6 col-md-2">
+    <select name="sort" class="form-select form-select-sm">
+      <option value="" {{ 'selected' if not current_sort }}>Новые</option>
+      <option value="oldest" {{ 'selected' if current_sort == 'oldest' }}>Старые</option>
+      <option value="client" {{ 'selected' if current_sort == 'client' }}>По клиенту</option>
+      <option value="price_desc" {{ 'selected' if current_sort == 'price_desc' }}>По сумме</option>
+    </select>
+  </div>
+  <div class="col-6 col-md-2 hide-mobile">
+    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}" title="С даты">
+  </div>
+  <div class="col-6 col-md-2 hide-mobile">
+    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}" title="По дату">
+  </div>
 </form>
 
 {% if orders %}
