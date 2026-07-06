@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">📊 Статистика и отчёты</h1>
+                <div>
+                    <a href="/reports?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-outline-secondary">
+                        ← Предыдущий
+                    </a>
+                    <span class="mx-3 fs-5">{{ report.period.month_name }} {{ report.period.year }}</span>
+                    {% if can_go_next %}
+                    <a href="/reports?year={{ next_year }}&month={{ next_month }}" class="btn btn-outline-secondary">
+                        Следующий →
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="text-muted">{{ report.period.start_date }} - {{ report.period.end_date }}</p>
+        </div>
+    </div>
+
+    <!-- Выручка -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">💰 Выручка</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h2 class="text-success">{{ "{:,.2f}".format(report.revenue.total) }} ₽</h2>
+                            <p class="text-muted">Общая выручка</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h3 class="text-primary">{{ "{:,.2f}".format(report.revenue.by_type.repair) }} ₽</h3>
+                            <p class="text-muted">Ремонт</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h3 class="text-info">{{ "{:,.2f}".format(report.revenue.by_type.print) }} ₽</h3>
+                            <p class="text-muted">Печать</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Заказы -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📦 Заказы</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-md-3">
+                            <h2 class="text-primary">{{ report.orders.total }}</h2>
+                            <p class="text-muted">Всего заказов</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-success">{{ report.orders.completed }}</h3>
+                            <p class="text-muted">Завершено</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-warning">{{ "{:,.2f}".format(report.orders.avg_check) }} ₽</h3>
+                            <p class="text-muted">Средний чек</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-info">{{ report.clients.unique_clients }}</h3>
+                            <p class="text-muted">Уникальных клиентов</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>По типам:</h6>
+                            <ul class="list-group">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>🔧 Ремонт</span>
+                                    <span class="badge bg-primary">{{ report.orders.by_type.repair }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>🖨️ Печать</span>
+                                    <span class="badge bg-info">{{ report.orders.by_type.print }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>По статусам:</h6>
+                            <ul class="list-group">
+                                {% for status, count in report.orders.by_status.items() %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>{{ status }}</span>
+                                    <span class="badge bg-secondary">{{ count }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Печать -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🖨️ Печать</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-md-3">
+                            <h2 class="text-info">{{ report.prints.total_jobs }}</h2>
+                            <p class="text-muted">Всего заданий</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-success">{{ report.prints.success_rate }}%</h3>
+                            <p class="text-muted">Успешных</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-warning">{{ "{:,}".format(report.prints.total_grams) }} г</h3>
+                            <p class="text-muted">Расход пластика</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-primary">{{ report.prints.total_hours }} ч</h3>
+                            <p class="text-muted">Время печати</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Расход по типам пластика:</h6>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Тип</th>
+                                        <th>Расход</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for type, grams in report.prints.filament_usage.items() %}
+                                    <tr>
+                                        <td>{{ type }}</td>
+                                        <td>{{ "{:,}".format(grams) }} г</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Использование принтеров:</h6>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Принтер</th>
+                                        <th>Заданий</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for printer, count in report.prints.printer_usage.items() %}
+                                    <tr>
+                                        <td>{{ printer }}</td>
+                                        <td>{{ count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пластик -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">🧵 Пластик</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h2 class="text-success">{{ "{:,}".format(report.filaments.income) }} г</h2>
+                            <p class="text-muted">Приход</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h2 class="text-danger">{{ "{:,}".format(report.filaments.expense) }} г</h2>
+                            <p class="text-muted">Расход</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h2 class="text-primary">{{ "{:,}".format(report.filaments.balance) }} г</h2>
+                            <p class="text-muted">Баланс</p>
+                        </div>
+                    </div>
+                    
+                    {% if report.filaments.by_type %}
+                    <h6 class="mt-3">По типам:</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Тип</th>
+                                <th>Приход</th>
+                                <th>Расход</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for type, data in report.filaments.by_type.items() %}
+                            <tr>
+                                <td>{{ type }}</td>
+                                <td class="text-success">{{ "{:,}".format(data['in']) }} г</td>
+                                <td class="text-danger">{{ "{:,}".format(data['out']) }} г</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Услуги -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">🔧 Услуги</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-md-6">
+                            <h2 class="text-secondary">{{ report.services.total_services_sold }}</h2>
+                            <p class="text-muted">Всего услуг продано</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h2 class="text-success">{{ "{:,.2f}".format(report.services.total_revenue) }} ₽</h2>
+                            <p class="text-muted">Выручка от услуг</p>
+                        </div>
+                    </div>
+                    
+                    {% if report.services.top_services %}
+                    <h6>Топ-5 услуг:</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Услуга</th>
+                                <th>Количество</th>
+                                <th>Выручка</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for service in report.services.top_services %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ service.name }}</td>
+                                <td>{{ service.count }}</td>
+                                <td>{{ "{:,.2f}".format(service.total) }} ₽</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Запчасти -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">🔩 Запчасти</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-md-4">
+                            <h2 class="text-success">{{ report.parts.income }}</h2>
+                            <p class="text-muted">Приход</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h2 class="text-danger">{{ report.parts.expense }}</h2>
+                            <p class="text-muted">Расход</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h2 class="text-primary">{{ report.parts.balance }}</h2>
+                            <p class="text-muted">Баланс</p>
+                        </div>
+                    </div>
+                    
+                    {% if report.parts.top_parts %}
+                    <h6>Топ-5 запчастей по расходу:</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Запчасть</th>
+                                <th>Количество</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for part in report.parts.top_parts %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ part.name }}</td>
+                                <td>{{ part.quantity }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Клиенты -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">👥 Клиенты</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h2 class="text-info">{{ report.clients.unique_clients }}</h2>
+                            <p class="text-muted">Уникальных клиентов</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h2 class="text-success">{{ report.clients.new_clients }}</h2>
+                            <p class="text-muted">Новых клиентов</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h2 class="text-primary">{{ report.clients.total_orders }}</h2>
+                            <p class="text-muted">Заказов от клиентов</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Экспорт -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5>Экспорт отчёта</h5>
+                    <p class="text-muted">Скачать отчёт в формате JSON</p>
+                    <a href="/reports/api/monthly?year={{ year }}&month={{ month }}" class="btn btn-primary" download>
+                        📥 Скачать JSON
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

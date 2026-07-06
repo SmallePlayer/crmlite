@@ -218,6 +218,7 @@
         {% if is_admin %}
         {% set _ = nav_items.append(('users', '/users', 'shield-lock', 'Пользователи')) %}
         {% set _ = nav_items.append(('audit', '/audit', 'journal-text', 'Аудит')) %}
+        {% set _ = nav_items.append(('reports', '/reports', 'graph-up', 'Отчёты')) %}
         {% endif %}
         {% for page, url, icon, label in nav_items %}
         <li class="nav-item">

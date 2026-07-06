@@ -17,7 +17,7 @@ from routers import (
     orders_router, warehouse_router, products_router, filaments_router,
     prints_router, attendance_router, schedule_router, chat_router,
     tasks_router, users_router, audit_router, export_router,
-    search_router, api_router,
+    search_router, api_router, reports_router
 )
 
 
@@ -197,6 +197,7 @@ app.include_router(audit_router)
 app.include_router(export_router)
 app.include_router(search_router)
 app.include_router(api_router)
+app.include_router(reports_router)
 
 
 @app.get("/health")
