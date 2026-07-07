@@ -89,7 +89,8 @@ async def lifespan(app: FastAPI):
         for col, dtype in [("cost_price", "FLOAT DEFAULT 0"),
                             ("print_cost", "FLOAT DEFAULT 0"),
                             ("pack_cost", "FLOAT DEFAULT 0"),
-                            ("variants", "TEXT DEFAULT '[]'")]:
+                            ("variants", "TEXT DEFAULT '[]'"),
+                            ("parent_id", "INTEGER")]:
             try:
                 conn.execute(text(f"ALTER TABLE products ADD COLUMN {col} {dtype}"))
                 conn.commit()

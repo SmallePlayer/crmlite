@@ -25,9 +25,20 @@ def products_page(request: Request, session: Session = Depends(get_db)):
         select(ProductMovement).options(joinedload(ProductMovement.product))
         .order_by(desc(ProductMovement.created_at)).limit(40)
     ).unique().scalars().all()
+    
+    # Группируем товары по parent_id
+    parent_products = [p for p in products if p.parent_id is None]
+    children_map = {}
+    for p in products:
+        if p.parent_id:
+            if p.parent_id not in children_map:
+                children_map[p.parent_id] = []
+            children_map[p.parent_id].append(p)
+    
     return templates.TemplateResponse(request, "products.html", {
         **_user_context(request, session),
-        "products": products, "movements": movements,
+        "products": parent_products, "movements": movements,
+        "children_map": children_map,
         "products_data": [{
             "id": p.id, "name": p.name, "article": p.article,
             "color": p.color or "", "quantity": p.quantity,
@@ -167,6 +178,49 @@ async def save_product_variants(product_id: int, request: Request, session: Sess
     if not p: raise HTTPException(404)
     p.variants = json.dumps(data, ensure_ascii=False)
     session.commit()
+    return JSONResponse({"ok": True})
+
+
+@router.post("/products/{product_id}/children")
+async def add_child_products(product_id: int, request: Request, session: Session = Depends(get_db)):
+    """Добавление дочерних товаров (вариантов комплекта)"""
+    parent = session.get(Product, product_id)
+    if not parent:
+        raise HTTPException(404, "Родительский товар не найден")
+    
+    data = await request.json()
+    children = data.get("children", [])
+    
+    for child_data in children:
+        name = child_data.get("name", "").strip()
+        article = child_data.get("article", "").strip()
+        quantity = int(child_data.get("quantity", 0))
+        
+        if not name or not article:
+            continue
+        
+        # Проверяем существование
+        existing = session.execute(
+            select(Product).where(Product.article == article)
+        ).scalar_one_or_none()
+        
+        if existing:
+            existing.quantity += quantity
+            existing.parent_id = product_id
+        else:
+            child = Product(
+                name=name,
+                article=article,
+                quantity=quantity,
+                parent_id=product_id,
+                cost_price=parent.cost_price,
+                print_cost=parent.print_cost,
+                pack_cost=parent.pack_cost,
+            )
+            session.add(child)
+    
+    session.commit()
+    _audit("add_children", "product", product_id, f"Добавлено {len(children)} вариантов", request.state.user, session)
     return JSONResponse({"ok": True})
 
 

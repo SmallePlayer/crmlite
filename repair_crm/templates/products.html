@@ -81,18 +81,27 @@
   <table class="table table-hover align-middle">
     <thead class="table-light">
       <tr>
+        <th style="width:30px"></th>
         <th></th>
         <th>Название</th>
         <th>Артикул</th>
         <th>Цвет</th>
         <th>Кол-во</th>
         <th class="text-end">Себест. печати</th>
-        <th style="width:160px"></th>
+        <th style="width:200px"></th>
       </tr>
     </thead>
     <tbody>
       {% for p in products %}
-      <tr>
+      {% set children = children_map.get(p.id, []) %}
+      <tr class="parent-row {{ 'has-children' if children else '' }}" data-product-id="{{ p.id }}">
+        <td>
+          {% if children %}
+          <button class="btn btn-sm btn-link toggle-children p-0" data-product-id="{{ p.id }}">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          {% endif %}
+        </td>
         <td style="width:50px">
           {% if p.image %}
           <img src="/static/uploads/{{ p.image }}" width="40" height="40"
@@ -103,7 +112,12 @@
                         background:#f0f0f0;border-radius:4px;font-size:12px">—</span>
           {% endif %}
         </td>
-        <td><strong>{{ p.name }}</strong></td>
+        <td>
+          <strong>{{ p.name }}</strong>
+          {% if children %}
+          <span class="badge bg-info ms-2">{{ children|length }} вариант{{ 'а' if children|length in [2,3,4] else 'ов' }}</span>
+          {% endif %}
+        </td>
         <td><code>{{ p.article }}</code></td>
         <td>{{ p.color or '—' }}</td>
         <td>
@@ -116,6 +130,11 @@
         <td class="text-end text-muted small">{{ "%.2f"|format(p.print_cost or 0) }} ₽</td>
         <td>
           <div class="btn-group-icon">
+            {% if children %}
+            <button class="btn btn-info btn-icon add-child-btn" data-product-id="{{ p.id }}" title="Добавить вариант">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            {% endif %}
             <form method="post" action="/products/{{ p.id }}/upload-image" enctype="multipart/form-data"
                   class="d-inline" id="imgForm_{{ p.id }}">
               <input type="file" name="file" accept="image/*" class="d-none"
@@ -130,6 +149,55 @@
               <button class="btn btn-outline-danger btn-icon"><i class="bi bi-trash"></i></button>
             </form>
           </div>
+        </td>
+      </tr>
+      {% if children %}
+      <tr class="children-row d-none" data-parent-id="{{ p.id }}">
+        <td colspan="8" class="p-0">
+          <div class="bg-light p-3 border-start border-4 border-info ms-4">
+            <strong class="text-muted small">Варианты комплекта:</strong>
+            <table class="table table-sm mt-2 mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Название</th>
+                  <th>Артикул</th>
+                  <th>Кол-во</th>
+                  <th style="width:100px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for child in children %}
+                <tr>
+                  <td>{{ child.name }}</td>
+                  <td><code>{{ child.article }}</code></td>
+                  <td>
+                    {% if child.quantity <= 0 %}
+                    <span class="badge bg-danger">0</span>
+                    {% else %}
+                    <span class="badge bg-success">{{ child.quantity | int }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="btn-group-icon">
+                      <button class="btn btn-warning btn-icon btn-sm" onclick="openStockOutModal({{ child.id }})" title="Расход"><i class="bi bi-box-arrow-up"></i></button>
+                      <button class="btn btn-outline-secondary btn-icon btn-sm edit-product-btn" data-id="{{ child.id }}" title="Ред."><i class="bi bi-pencil"></i></button>
+                      <form method="post" action="/products/{{ child.id }}/delete" class="d-inline" data-confirm="Удалить {{ child.name }}?">
+                        <button class="btn btn-outline-danger btn-icon btn-sm"><i class="bi bi-trash"></i></button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
         </td>
       </tr>
       {% endfor %}
@@ -178,6 +246,44 @@
   </table>
 </div>
 {% endif %}
+
+{# Add Children Modal #}
+<div class="modal fade" id="addChildModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="addChildModalLabel"><i class="bi bi-plus-lg me-1"></i>Добавить варианты комплекта</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="mb-2 text-muted small">
+          <i class="bi bi-info-circle me-1"></i>Добавьте варианты товара с разными артикулами (например, комплекты 1шт, 2шт, 3шт)
+        </div>
+        <table class="table table-sm align-middle mb-2">
+          <thead class="table-light">
+            <tr>
+              <th style="width:35%">Название</th>
+              <th style="width:30%">Артикул</th>
+              <th style="width:20%">Кол-во</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="addChildRows"></tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addChildRow()">
+          <i class="bi bi-plus"></i> Добавить строку
+        </button>
+        <div class="text-danger small mt-2" id="addChildError"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-primary" onclick="submitAddChildren()">
+          <i class="bi bi-check-lg"></i> Добавить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {# Batch Receive Modal #}
 <div class="modal fade" id="receiveModal" tabindex="-1">
@@ -573,6 +679,83 @@ function submitSupply() {
 document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     openEditModal(parseInt(this.dataset.id));
+  });
+});
+
+// Toggle children rows
+document.querySelectorAll('.toggle-children').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var productId = this.dataset.productId;
+    var childrenRow = document.querySelector('.children-row[data-parent-id="' + productId + '"]');
+    var icon = this.querySelector('i');
+    
+    if (childrenRow.classList.contains('d-none')) {
+      childrenRow.classList.remove('d-none');
+      icon.classList.remove('bi-chevron-right');
+      icon.classList.add('bi-chevron-down');
+    } else {
+      childrenRow.classList.add('d-none');
+      icon.classList.remove('bi-chevron-down');
+      icon.classList.add('bi-chevron-right');
+    }
+  });
+});
+
+// Add child products modal
+var _addChildProductId = 0;
+
+function openAddChildModal(productId) {
+  _addChildProductId = productId;
+  var p = PDATA.find(function(x) { return x.id === productId; });
+  if (!p) return;
+  
+  document.getElementById('addChildModalLabel').textContent = 'Добавить варианты для: ' + p.name;
+  document.getElementById('addChildRows').innerHTML = '';
+  addChildRow();
+  new bootstrap.Modal(document.getElementById('addChildModal')).show();
+}
+
+function addChildRow() {
+  var tbody = document.getElementById('addChildRows');
+  var tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td><input class="form-control form-control-sm child-name" placeholder="Название" required></td>' +
+    '<td><input class="form-control form-control-sm child-article" placeholder="Артикул" required></td>' +
+    '<td><input type="number" class="form-control form-control-sm child-qty" min="0" value="0" placeholder="Кол-во"></td>' +
+    '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()"><i class="bi bi-x"></i></button></td>';
+  tbody.appendChild(tr);
+}
+
+function submitAddChildren() {
+  var children = [];
+  document.querySelectorAll('#addChildRows tr').forEach(function(tr) {
+    var name = tr.querySelector('.child-name').value.trim();
+    var article = tr.querySelector('.child-article').value.trim();
+    var qty = parseInt(tr.querySelector('.child-qty').value) || 0;
+    if (name && article) {
+      children.push({name: name, article: article, quantity: qty});
+    }
+  });
+  
+  if (children.length === 0) {
+    document.getElementById('addChildError').textContent = 'Добавьте хотя бы один вариант';
+    return;
+  }
+  
+  fetch('/products/' + _addChildProductId + '/children', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({children: children})
+  }).then(function(r) {
+    if (r.ok) window.location.reload();
+    else r.text().then(function(t) { document.getElementById('addChildError').textContent = 'Ошибка: ' + t; });
+  });
+}
+
+document.querySelectorAll('.add-child-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    openAddChildModal(parseInt(this.dataset.productId));
   });
 });
 </script>

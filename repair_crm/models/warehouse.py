@@ -43,9 +43,11 @@ class Product(Base):
     pack_cost: Mapped[float] = mapped_column(Float, default=0)
     variants: Mapped[str] = mapped_column(Text, default="[]")
     image: Mapped[str] = mapped_column(String(300), default="")
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     movements = relationship("ProductMovement", back_populates="product",
                              cascade="all, delete-orphan", order_by="ProductMovement.id")
+    parent = relationship("Product", remote_side=[id], backref="children")
 
 
 class ProductMovement(Base):
