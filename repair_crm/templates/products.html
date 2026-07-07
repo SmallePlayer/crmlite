@@ -62,7 +62,10 @@
           <span class="badge bg-success mb-1">{{ p.quantity | int }} шт.</span>
           {% endif %}
           {% if p.print_cost %}
-          <div class="text-muted" style="font-size:0.7rem">{{ "%.2f"|format(p.print_cost) }} ₽</div>
+          <div class="text-muted" style="font-size:0.7rem">Печать: {{ "%.2f"|format(p.print_cost) }} ₽</div>
+          {% endif %}
+          {% if p.pack_cost %}
+          <div class="text-muted" style="font-size:0.7rem">Упак.: {{ "%.2f"|format(p.pack_cost) }} ₽</div>
           {% endif %}
         </div>
       </div>
@@ -138,6 +141,7 @@
         <th>Кол-во</th>
         <th>Варианты наборов</th>
         <th class="text-end">Себест. печати</th>
+        <th class="text-end">Себест. упаковки</th>
         <th style="width:200px"></th>
       </tr>
     </thead>
@@ -186,6 +190,7 @@
           {% endif %}
         </td>
         <td class="text-end text-muted small">{{ "%.2f"|format(p.print_cost or 0) }} ₽</td>
+        <td class="text-end text-muted small">{{ "%.2f"|format(p.pack_cost or 0) }} ₽</td>
         <td>
           <div class="btn-group-icon">
             {% if children %}
@@ -211,7 +216,7 @@
       </tr>
       {% if children %}
       <tr class="children-row d-none" data-parent-id="{{ p.id }}">
-        <td colspan="9" class="p-0">
+        <td colspan="10" class="p-0">
           <div class="bg-light p-3 border-start border-4 border-info ms-4">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <strong class="text-muted small">Варианты комплекта:</strong>
@@ -827,9 +832,13 @@ document.querySelectorAll('.variants-display').forEach(function(div) {
       var per = v.per_set || 1;
       var canMake = Math.floor(quantity / per);
       var article = v.article || '—';
+      var packCost = v.pack_cost || 0;
       html += '<div class="mb-1">';
       html += '<span class="badge bg-secondary me-1">' + per + ' шт/набор</span>';
       html += '<code class="me-1">' + article + '</code>';
+      if (packCost > 0) {
+        html += '<span class="text-muted ms-1">' + packCost.toFixed(2) + ' ₽ уп.</span>';
+      }
       if (quantity > 0) {
         html += '<span class="text-success">(' + canMake + ' наб.)</span>';
       }
@@ -855,10 +864,14 @@ document.querySelectorAll('.variants-display-mobile').forEach(function(div) {
       var per = v.per_set || 1;
       var canMake = Math.floor(quantity / per);
       var article = v.article || '—';
+      var packCost = v.pack_cost || 0;
       html += '<div class="d-flex justify-content-between align-items-center mb-1">';
       html += '<div>';
       html += '<span class="badge bg-secondary me-1">' + per + ' шт</span>';
       html += '<code>' + article + '</code>';
+      if (packCost > 0) {
+        html += '<div class="text-muted ms-1" style="font-size:0.7rem">' + packCost.toFixed(2) + ' ₽ уп.</div>';
+      }
       html += '</div>';
       if (quantity > 0) {
         html += '<span class="badge bg-success">' + canMake + ' наб.</span>';
