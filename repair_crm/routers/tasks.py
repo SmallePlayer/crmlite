@@ -89,6 +89,33 @@ def create_task(
     return RedirectResponse("/tasks", status_code=303)
 
 
+@router.post("/tasks/{task_id}/edit")
+def edit_task(
+    task_id: int, request: Request,
+    title: str = Form(...),
+    description: str = Form(""),
+    assigned_to: int = Form(...),
+    session: Session = Depends(get_db),
+):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(404)
+    if task.created_by != u.id and u.role.name != "admin":
+        raise HTTPException(403, "Редактировать может только автор или администратор")
+    target = session.get(User, assigned_to)
+    if not target:
+        raise HTTPException(400, "Пользователь не найден")
+    task.title = title.strip()
+    task.description = description.strip()
+    task.assigned_to = assigned_to
+    session.commit()
+    _audit("edit", "task", task.id, f"«{task.title}»", u, session)
+    return RedirectResponse("/tasks", status_code=303)
+
+
 @router.post("/tasks/{task_id}/done")
 def mark_task_done(task_id: int, request: Request, session: Session = Depends(get_db)):
     u = request.state.user
@@ -101,6 +128,23 @@ def mark_task_done(task_id: int, request: Request, session: Session = Depends(ge
     task.completed_at = datetime.utcnow()
     session.commit()
     _audit("done", "task", task.id, f"«{task.title}» выполнена", u, session)
+    return RedirectResponse("/tasks", status_code=303)
+
+
+@router.post("/tasks/{task_id}/reopen")
+def reopen_task(task_id: int, request: Request, session: Session = Depends(get_db)):
+    u = request.state.user
+    if not u:
+        raise HTTPException(403)
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(404)
+    if task.status != "done":
+        raise HTTPException(400, "Задача не завершена")
+    task.status = "pending"
+    task.completed_at = None
+    session.commit()
+    _audit("reopen", "task", task.id, f"«{task.title}» возвращена", u, session)
     return RedirectResponse("/tasks", status_code=303)
 
 

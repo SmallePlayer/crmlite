@@ -42,13 +42,16 @@
           {% if j.status == 'success' %}<span class="badge bg-success">Успех</span>
           {% elif j.status == 'fail' %}<span class="badge bg-danger" title="Брак: {{ j.waste_grams }} г.">Брак</span>
           {% if j.waste_grams > 0 %}<small class="text-muted ms-1">{{ j.waste_grams }} г.</small>{% endif %}
+          {% elif j.status == 'pending' %}<span class="badge bg-warning text-dark">В процессе</span>
           {% endif %}
         </td>
         <td class="hide-mobile">{{ j.creator.full_name }}</td>
         <td class="text-muted small hide-mobile">{{ j.created_at | dt }}</td>
         <td class="text-nowrap">
           <button class="btn btn-outline-secondary btn-icon me-1" onclick="openEditModal({{ j.id }},'{{ j.name|e }}',{{ j.filament_id }},{{ j.grams }},{{ j.hours }},'{{ j.printer_name|e }}')"><i class="bi bi-pencil"></i></button>
+          {% if j.status == 'pending' %}
           <button class="btn btn-outline-secondary btn-icon me-1" onclick="openResultModal({{ j.id }},'{{ j.status }}',{{ j.waste_grams }})"><i class="bi bi-flag"></i></button>
+          {% endif %}
           <form method="post" action="/prints/{{ j.id }}/delete" class="d-inline" data-confirm="Аннулировать?"><button class="btn btn-outline-danger btn-icon"><i class="bi bi-x-lg"></i></button></form>
         </td>
       </tr>

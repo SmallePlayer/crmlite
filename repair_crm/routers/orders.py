@@ -6,7 +6,7 @@ from templates_env import templates
 from sqlalchemy import select, func, desc, or_
 from sqlalchemy.orm import Session, joinedload
 
-from config import BASE_DIR, ORDER_STATUSES, ORDER_TYPES, ORDER_FLOW
+from config import BASE_DIR, ORDER_STATUSES, ORDER_TYPES, ORDER_FLOW, TIMEZONE_OFFSET
 from database import get_db
 from helpers import _audit, _user_context, _paginate, _recalc_total
 from models.user import User
@@ -82,7 +82,7 @@ def orders_page(
         "counts": counts, "page": page, "pages": pages, "total": total,
         "date_from": date_from, "date_to": date_to, "client_filter": client.strip(),
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES, "timedelta": timedelta,
-        "now": datetime.utcnow(),
+        "now": datetime.utcnow() + TIMEZONE_OFFSET,
     })
 
 
@@ -127,7 +127,7 @@ def order_detail_page(order_id: int, request: Request, session: Session = Depend
             select(User).where(User.is_active == True).order_by(User.full_name)
         ).scalars().all(),
         "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES,
-        "ORDER_FLOW": ORDER_FLOW, "timedelta": timedelta, "now": lambda: datetime.utcnow(),
+        "ORDER_FLOW": ORDER_FLOW, "timedelta": timedelta, "now": lambda: datetime.utcnow() + TIMEZONE_OFFSET,
         "services_data": [{
             "id": s.id, "name": s.name, "price": s.price,
         } for s in services],
@@ -299,6 +299,8 @@ def close_order(order_id: int, request: Request, session: Session = Depends(get_
     order = session.get(Order, order_id)
     if not order or order.status == "closed":
         raise HTTPException(400)
+    _recalc_total(session, order_id)
+    order = session.get(Order, order_id)
     order.status = "closed"
     order.closed_at = datetime.utcnow()
     session.commit()
@@ -342,6 +344,7 @@ def edit_order(
     printer: str = Form(...),
     defect: str = Form(...),
     assigned_to: int = Form(0),
+    deadline: str = Form(""),
     scheduled_date: str = Form(""),
     scheduled_time: str = Form(""),
     scheduled_at: str = Form(""),
@@ -365,6 +368,13 @@ def edit_order(
     order.prepaid = prepaid
     order.estimated_price = estimated_price
     order.source = source_custom.strip() or source.strip()
+    if deadline.strip():
+        try:
+            order.deadline = datetime.strptime(deadline.strip(), "%Y-%m-%d")
+        except ValueError:
+            order.deadline = None
+    else:
+        order.deadline = None
     sched_str = scheduled_at.strip()
     if sched_str:
         try:

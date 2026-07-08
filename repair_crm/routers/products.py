@@ -56,6 +56,7 @@ async def products_supply(request: Request, session: Session = Depends(get_db)):
     data = await request.json()
     total = 0
     dest = ""
+    by_product = {}
     for row in data:
         pid = int(row.get("product_id", 0))
         qty = int(row.get("quantity", 0))
@@ -64,16 +65,29 @@ async def products_supply(request: Request, session: Session = Depends(get_db)):
         destination = row.get("destination", "")
         reason = row.get("reason", "Поставка")
         if pid <= 0 or qty <= 0: continue
+        by_product.setdefault(pid, {"qty": 0, "rows": []})
+        by_product[pid]["qty"] += qty
+        by_product[pid]["rows"].append(row)
+    for pid, info in by_product.items():
         p = session.get(Product, pid)
         if not p: continue
-        if p.quantity < qty:
-            return JSONResponse({"error": f"Недостаточно: {p.name} ({p.quantity} шт.)"}, status_code=400)
-        p.quantity -= qty
-        reason_text = f"{reason}: {sets} наб. × {per_set} шт." if per_set > 1 or sets > 1 else reason
-        session.add(ProductMovement(product_id=pid, type="out", quantity=qty,
-                     destination=destination, reason=reason_text))
-        dest = destination
-        total += qty
+        if p.quantity < info["qty"]:
+            return JSONResponse({"error": f"Недостаточно: {p.name} ({p.quantity} шт., нужно {info['qty']})"}, status_code=400)
+    for pid, info in by_product.items():
+        p = session.get(Product, pid)
+        if not p: continue
+        for row in info["rows"]:
+            qty = int(row.get("quantity", 0))
+            per_set = int(row.get("per_set", 1))
+            sets = int(row.get("sets", 1))
+            destination = row.get("destination", "")
+            reason = row.get("reason", "Поставка")
+            p.quantity -= qty
+            reason_text = f"{reason}: {sets} наб. × {per_set} шт." if per_set > 1 or sets > 1 else reason
+            session.add(ProductMovement(product_id=pid, type="out", quantity=qty,
+                          destination=destination, reason=reason_text))
+            dest = destination
+            total += qty
     session.commit()
     if total > 0:
         _audit("supply", "product", None, f"{dest}: −{total} шт.", request.state.user, session)

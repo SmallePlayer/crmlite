@@ -28,6 +28,11 @@ def save_schedule(request: Request, user_id: int = Form(0), date: str = Form("")
     try: d = datetime.strptime(date, "%Y-%m-%d")
     except ValueError: raise HTTPException(400, "Неверная дата")
     if not time_from or not time_to: raise HTTPException(400, "Укажите время")
+    existing = session.execute(
+        select(Schedule).where(Schedule.user_id == target.id, Schedule.date == d)
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, f"Смена для {target.full_name} на {date} уже существует")
     session.add(Schedule(user_id=target.id, date=d, time_from=time_from, time_to=time_to))
     session.commit()
     _audit("add_schedule", "schedule", None, f"{target.full_name} {date} {time_from}-{time_to}", u, session)
@@ -48,12 +53,20 @@ def bulk_schedule(request: Request, user_id: int = Form(0), date_from: str = For
         d_to = datetime.strptime(date_to, "%Y-%m-%d")
     except ValueError: raise HTTPException(400, "Неверная дата")
     if d_to < d_from: raise HTTPException(400, "Дата «по» раньше даты «с»")
+    existing_dates = set()
+    existing = session.execute(
+        select(Schedule.date).where(Schedule.user_id == target.id, Schedule.date >= d_from, Schedule.date <= d_to)
+    ).scalars().all()
+    for ed in existing:
+        existing_dates.add(ed.strftime("%Y-%m-%d") if isinstance(ed, datetime) else str(ed)[:10])
     count = 0
     cur = d_from
     while cur <= d_to:
         if workdays_only != "1" or cur.weekday() < 5:
-            session.add(Schedule(user_id=target.id, date=cur, time_from=time_from, time_to=time_to))
-            count += 1
+            date_key = cur.strftime("%Y-%m-%d")
+            if date_key not in existing_dates:
+                session.add(Schedule(user_id=target.id, date=cur, time_from=time_from, time_to=time_to))
+                count += 1
         cur += timedelta(days=1)
     session.commit()
     _audit("bulk_schedule", "schedule", None, f"{target.full_name} {date_from}–{date_to} ({count} см.)", u, session)

@@ -106,14 +106,6 @@
             {% endif %}
           </td></tr>
           {% endif %}
-          {% if order.deadline %}
-          <tr><td class="text-muted">Срок сдачи</td><td>
-            <span class="badge bg-{{ 'danger' if order.deadline < now() else 'warning text-dark' if (order.deadline - now()).days < 3 else 'success' }}">
-              {{ order.deadline.strftime('%d.%m.%Y') }}
-              ({{ 'просрочен' if order.deadline < now() else 'осталось ' ~ (order.deadline - now()).days|string ~ ' дн.' if (order.deadline - now()).days < 3 else '' }})
-            </span>
-          </td></tr>
-          {% endif %}
           <tr class="table-active">
             <td class="text-muted">Итого</td>
             <td><strong class="fs-5">{{ order.total_price | money }}</strong></td>
@@ -362,6 +354,11 @@
             <input type="number" name="estimated_price" class="form-control form-control-sm" min="0" step="1" value="{{ order.estimated_price or 0 }}">
           </div>
           <div class="col-md-4 mb-2">
+            <label class="form-label">Срок сдачи</label>
+            <input type="date" name="deadline" class="form-control form-control-sm"
+                   value="{{ order.deadline.strftime('%Y-%m-%d') if order.deadline else '' }}">
+          </div>
+          <div class="col-md-4 mb-2">
             <label class="form-label">Источник</label>
             <select name="source" class="form-select form-select-sm" onchange="toggleEditSource(this)">
               <option value="">— —</option>
@@ -570,7 +567,14 @@ function submitBatchServices() {
     });
   });
   
-  Promise.all(promises).then(function() {
+  Promise.all(promises).then(function(responses) {
+    var errors = [];
+    responses.forEach(function(r, i) {
+      if (!r.ok) errors.push('Строка ' + (i+1) + ': ' + rows[i].name);
+    });
+    if (errors.length > 0) {
+      document.getElementById('batchServiceError').textContent = 'Ошибки: ' + errors.join(', ');
+    }
     window.location.reload();
   }).catch(function(err) {
     document.getElementById('batchServiceError').textContent = 'Ошибка: ' + err;
@@ -638,7 +642,14 @@ function submitBatchParts() {
     });
   });
   
-  Promise.all(promises).then(function() {
+  Promise.all(promises).then(function(responses) {
+    var errors = [];
+    responses.forEach(function(r, i) {
+      if (!r.ok) errors.push('Строка ' + (i+1));
+    });
+    if (errors.length > 0) {
+      document.getElementById('batchPartError').textContent = 'Ошибки: ' + errors.join(', ');
+    }
     window.location.reload();
   }).catch(function(err) {
     document.getElementById('batchPartError').textContent = 'Ошибка: ' + err;

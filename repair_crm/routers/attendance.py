@@ -142,16 +142,22 @@ def edit_attendance(request: Request, check_in: str = Form(""), check_out: str =
         select(Attendance).where(Attendance.user_id == u.id, Attendance.date_str == today_str)
     ).scalar_one_or_none()
     if not a: raise HTTPException(400, "Нет отметки за сегодня")
+    new_check_in = a.check_in
+    new_check_out = a.check_out
     if check_in.strip():
         try:
             h, m = map(int, check_in.split(":"))
-            a.check_in = today_dt.replace(hour=h, minute=m) - TIMEZONE_OFFSET
+            new_check_in = today_dt.replace(hour=h, minute=m) - TIMEZONE_OFFSET
         except ValueError: pass
     if check_out.strip():
         try:
             h, m = map(int, check_out.split(":"))
-            a.check_out = today_dt.replace(hour=h, minute=m) - TIMEZONE_OFFSET
+            new_check_out = today_dt.replace(hour=h, minute=m) - TIMEZONE_OFFSET
         except ValueError: pass
+    if new_check_out and new_check_in and new_check_out <= new_check_in:
+        raise HTTPException(400, "Время ухода должно быть позже времени прихода")
+    a.check_in = new_check_in
+    a.check_out = new_check_out
     a.report = report.strip()
     session.commit()
     _audit("edit_attendance", "attendance", a.id, f"{u.full_name}", u, session)
@@ -167,18 +173,24 @@ def admin_edit_attendance(att_id: int, request: Request, check_in: str = Form(""
     a = session.get(Attendance, att_id)
     if not a: raise HTTPException(404)
     base_date = a.date_str
+    new_check_in = a.check_in
+    new_check_out = a.check_out
     if check_in.strip():
         try:
             h, m = map(int, check_in.split(":"))
             dt = datetime.strptime(f"{base_date} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M")
-            a.check_in = dt - TIMEZONE_OFFSET
+            new_check_in = dt - TIMEZONE_OFFSET
         except ValueError: pass
     if check_out.strip():
         try:
             h, m = map(int, check_out.split(":"))
             dt = datetime.strptime(f"{base_date} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M")
-            a.check_out = dt - TIMEZONE_OFFSET
+            new_check_out = dt - TIMEZONE_OFFSET
         except ValueError: pass
+    if new_check_out and new_check_in and new_check_out <= new_check_in:
+        raise HTTPException(400, "Время ухода должно быть позже времени прихода")
+    a.check_in = new_check_in
+    a.check_out = new_check_out
     a.report = report.strip()
     session.commit()
     _audit("admin_edit_attendance", "attendance", att_id, f"{u.full_name}", u, session)

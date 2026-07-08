@@ -93,11 +93,11 @@ class ReportsService:
     
     @staticmethod
     def _get_prints_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
-        """Статистика по печати"""
         jobs = session.query(PrintJob).filter(
             and_(
                 PrintJob.created_at >= start_date,
-                PrintJob.created_at < end_date
+                PrintJob.created_at < end_date,
+                PrintJob.status != 'pending'
             )
         ).all()
         
@@ -227,16 +227,14 @@ class ReportsService:
     
     @staticmethod
     def _get_clients_stats(session: Session, start_created: datetime, end_created: datetime, start_closed: datetime, end_closed: datetime) -> Dict[str, Any]:
-        """Статистика по клиентам"""
-        closed_orders = session.query(Order).filter(
+        all_orders = session.query(Order).filter(
             and_(
-                Order.status == 'closed',
-                Order.closed_at >= start_closed,
-                Order.closed_at < end_closed
+                Order.created_at >= start_created,
+                Order.created_at < end_created
             )
         ).all()
         
-        unique_clients = len(set(o.client_id for o in closed_orders if o.client_id))
+        unique_clients = len(set(o.client_id for o in all_orders if o.client_id))
         
         new_clients = session.query(Client).filter(
             and_(
@@ -276,8 +274,7 @@ class ReportsService:
             ).all()
             
             for op in order_parts:
-                if op.part:
-                    parts_cost += (op.part.purchase_price or 0) * op.quantity
+                parts_cost += (op.price or 0) * op.quantity
         
         profit = total_revenue - parts_cost
         

@@ -68,8 +68,18 @@
                 <i class="bi bi-check-lg"></i>
               </button>
             </form>
+            {% elif t.status == 'done' %}
+            <form method="post" action="/tasks/{{ t.id }}/reopen" class="d-inline">
+              <button class="btn btn-outline-warning btn-icon" title="Вернуть">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+            </form>
             {% endif %}
             {% if t.created_by == user.id or is_admin %}
+            <button class="btn btn-outline-secondary btn-icon" title="Редактировать"
+                    onclick="openEditTaskModal({{ t.id }}, '{{ t.title|e }}', '{{ t.description|e }}', {{ t.assigned_to }})">
+              <i class="bi bi-pencil"></i>
+            </button>
             <form method="post" action="/tasks/{{ t.id }}/delete" class="d-inline"
                   data-confirm="Удалить задачу «{{ t.title }}»?">
               <button class="btn btn-outline-danger btn-icon" title="Удалить">
@@ -127,12 +137,53 @@
     </form>
   </div>
 </div>
+{# Edit Task Modal #}
+<div class="modal fade" id="editTaskModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="editTaskForm" method="post">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-1"></i>Редактировать задачу</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Заголовок</label>
+          <input type="text" name="title" id="editTaskTitle" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Описание</label>
+          <textarea name="description" id="editTaskDescription" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Кому</label>
+          <select name="assigned_to" id="editTaskAssigned" class="form-select" required>
+            {% for u in users %}
+            <option value="{{ u.id }}">{{ u.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 function openTaskModal() {
   new bootstrap.Modal(document.getElementById('taskModal')).show();
+}
+
+function openEditTaskModal(taskId, title, description, assignedTo) {
+  document.getElementById('editTaskForm').action = '/tasks/' + taskId + '/edit';
+  document.getElementById('editTaskTitle').value = title;
+  document.getElementById('editTaskDescription').value = description;
+  document.getElementById('editTaskAssigned').value = assignedTo;
+  new bootstrap.Modal(document.getElementById('editTaskModal')).show();
 }
 </script>
 {% endblock %}
