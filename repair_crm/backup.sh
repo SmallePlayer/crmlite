@@ -16,8 +16,22 @@ mkdir -p "$BACKUP_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/repair_crm_${TIMESTAMP}.db"
 
-cp "$DB_FILE" "$BACKUP_FILE"
-echo "Backup created: $BACKUP_FILE"
+cd "$SCRIPT_DIR"
+python3 -c "
+import sqlite3
+import sys
+
+try:
+    source = sqlite3.connect('repair_crm.db')
+    dest = sqlite3.connect('$BACKUP_FILE')
+    source.backup(dest)
+    dest.close()
+    source.close()
+    print('Backup created safely using SQLite backup API: $BACKUP_FILE')
+except Exception as e:
+    print(f'ERROR: Backup failed: {e}', file=sys.stderr)
+    sys.exit(1)
+"
 
 cd "$BACKUP_DIR"
 ls -t repair_crm_*.db 2>/dev/null | tail -n +$((MAX_BACKUPS + 1)) | xargs -r rm --

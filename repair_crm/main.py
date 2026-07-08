@@ -19,6 +19,7 @@ from routers import (
     tasks_router, users_router, audit_router, export_router,
     search_router, api_router, reports_router
 )
+from services.backup_scheduler import backup_scheduler
 
 
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
@@ -173,7 +174,9 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
     _seed_data()
+    backup_scheduler.start()
     yield
+    backup_scheduler.stop()
 
 
 app = FastAPI(title="CRM — Ремонт 3D принтеров", lifespan=lifespan)
