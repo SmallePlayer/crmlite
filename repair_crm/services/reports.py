@@ -262,13 +262,29 @@ class ReportsService:
             )
         ).all()
         
+        order_ids = [o.id for o in closed_orders]
+        
         total_revenue = sum(o.total_price or 0 for o in closed_orders)
         
         repair_revenue = sum(o.total_price or 0 for o in closed_orders if o.order_type == 'repair')
         print_revenue = sum(o.total_price or 0 for o in closed_orders if o.order_type == 'print')
         
+        parts_cost = 0
+        if order_ids:
+            order_parts = session.query(OrderPart).filter(
+                OrderPart.order_id.in_(order_ids)
+            ).all()
+            
+            for op in order_parts:
+                if op.part:
+                    parts_cost += (op.part.purchase_price or 0) * op.quantity
+        
+        profit = total_revenue - parts_cost
+        
         return {
             "total": total_revenue,
+            "parts_cost": parts_cost,
+            "profit": profit,
             "by_type": {
                 "repair": repair_revenue,
                 "print": print_revenue
