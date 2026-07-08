@@ -20,8 +20,8 @@ class ReportsService:
         start_date_created = local_start - TIMEZONE_OFFSET
         end_date_created = local_end - TIMEZONE_OFFSET
         
-        start_date_closed = local_start
-        end_date_closed = local_end
+        start_date_closed = local_start - TIMEZONE_OFFSET
+        end_date_closed = local_end - TIMEZONE_OFFSET
         
         report = {
             "period": {
@@ -231,6 +231,14 @@ class ReportsService:
             and_(
                 Order.created_at >= start_created,
                 Order.created_at < end_created
+            )
+        ).all()
+        
+        closed_orders = session.query(Order).filter(
+            and_(
+                Order.status == 'closed',
+                Order.closed_at >= start_closed,
+                Order.closed_at < end_closed
             )
         ).all()
         
