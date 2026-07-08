@@ -11,7 +11,18 @@ from config import BASE_DIR, TIMEZONE_OFFSET, PUBLIC_PATHS
 from database import engine, Base, get_db
 from helpers import _get_user_from_request, _seed_data
 from templates_env import templates
-from models import *
+from models.user import User, Role
+from models.audit import AuditLog
+from models.client import Client
+from models.service import Service
+from models.warehouse import Part, StockMovement, Product, ProductMovement
+from models.filament import Filament, FilamentMovement
+from models.print_job import PrintJob, Printer
+from models.order import Order, OrderItem, OrderPart
+from models.task import Task
+from models.attendance import Attendance, Schedule
+from models.notification import Notification
+from models.chat import ChatMessage
 from routers import (
     auth_router, dashboard_router, clients_router, services_router,
     orders_router, warehouse_router, products_router, filaments_router,
@@ -167,7 +178,11 @@ async def lifespan(app: FastAPI):
                          ("attendance", "user_id"), ("order_items", "order_id"),
                          ("order_parts", "order_id"), ("orders", "client_id"),
                          ("schedules", "user_id"), ("chat_messages", "from_user_id"),
-                         ("orders", "assigned_to")]:
+                         ("orders", "assigned_to"),
+                         ("orders", "status"), ("orders", "closed_at"),
+                         ("notifications", "is_read"), ("attendance", "date_str"),
+                         ("audit_logs", "created_at"), ("stock_movements", "created_at"),
+                         ("product_movements", "created_at"), ("filament_movements", "created_at")]:
             try:
                 conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{tbl}_{col} ON {tbl} ({col})"))
                 conn.commit()

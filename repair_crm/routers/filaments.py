@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from templates_env import templates
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.orm import Session, joinedload
 
 from config import BASE_DIR
 from database import get_db
 from helpers import _audit, _user_context
 from models.filament import Filament, FilamentMovement
+from models.print_job import PrintJob
 
 router = APIRouter()
 
@@ -80,6 +81,11 @@ def edit_filament(
 def delete_filament(fid: int, request: Request, session: Session = Depends(get_db)):
     f = session.get(Filament, fid)
     if not f: raise HTTPException(404)
+    used_in_prints = session.execute(
+        select(func.count(PrintJob.id)).where(PrintJob.filament_id == fid)
+    ).scalar() or 0
+    if used_in_prints > 0:
+        raise HTTPException(400, f"Нельзя удалить пластик: используется в {used_in_prints} заданиях печати")
     session.delete(f)
     session.commit()
     _audit("delete", "filament", fid, f.name, request.state.user, session)

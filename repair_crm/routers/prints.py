@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, Form, Request, HTTPException
+from fastapi import APIRouter, Depends, Form, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from templates_env import templates
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.orm import Session, joinedload
 
-from config import BASE_DIR
+from config import BASE_DIR, PER_PAGE
 from database import get_db
-from helpers import _audit, _user_context
+from helpers import _audit, _user_context, _paginate
 from models.filament import Filament, FilamentMovement
 from models.print_job import PrintJob, Printer
 
@@ -36,27 +36,30 @@ def delete_printer(pid: int, request: Request, session: Session = Depends(get_db
 
 
 @router.get("/prints", response_class=HTMLResponse)
-def print_jobs_page(request: Request, session: Session = Depends(get_db)):
-    jobs = session.execute(
-        select(PrintJob).options(joinedload(PrintJob.filament), joinedload(PrintJob.creator))
-        .order_by(desc(PrintJob.created_at)).limit(100)
-    ).unique().scalars().all()
+def print_jobs_page(request: Request, page: int = Query(1), session: Session = Depends(get_db)):
+    q = select(PrintJob).options(joinedload(PrintJob.filament), joinedload(PrintJob.creator))
+    q = q.order_by(desc(PrintJob.created_at))
+    jobs, page, pages, total = _paginate(session, q, page)
     filaments = session.execute(
         select(Filament).order_by(Filament.name)
     ).scalars().all()
     printers = session.execute(
         select(Printer).order_by(Printer.name)
     ).scalars().all()
-    total_jobs = len(jobs)
-    success_jobs = sum(1 for j in jobs if j.status == "success")
-    fail_jobs = sum(1 for j in jobs if j.status == "fail")
-    total_grams = sum(j.grams for j in jobs)
-    success_grams = sum(j.grams for j in jobs if j.status == "success")
-    fail_grams = sum(j.grams for j in jobs if j.status == "fail")
-    waste_grams_total = sum(j.waste_grams for j in jobs if j.status == "fail")
+    all_jobs = session.execute(
+        select(PrintJob).order_by(desc(PrintJob.created_at)).limit(1000)
+    ).scalars().all()
+    total_jobs = len(all_jobs)
+    success_jobs = sum(1 for j in all_jobs if j.status == "success")
+    fail_jobs = sum(1 for j in all_jobs if j.status == "fail")
+    total_grams = sum(j.grams for j in all_jobs)
+    success_grams = sum(j.grams for j in all_jobs if j.status == "success")
+    fail_grams = sum(j.grams for j in all_jobs if j.status == "fail")
+    waste_grams_total = sum(j.waste_grams for j in all_jobs if j.status == "fail")
     return templates.TemplateResponse(request, "prints.html", {
         **_user_context(request, session),
         "jobs": jobs, "filaments": filaments, "printers": printers,
+        "page": page, "pages": pages, "total": total,
         "total_jobs": total_jobs, "success_jobs": success_jobs, "fail_jobs": fail_jobs,
         "total_grams": total_grams, "success_grams": success_grams,
         "fail_grams": fail_grams, "waste_grams_total": waste_grams_total,
@@ -95,8 +98,22 @@ def mark_print_result(job_id: int, request: Request,
                       session: Session = Depends(get_db)):
     job = session.get(PrintJob, job_id)
     if not job: raise HTTPException(404)
+    if job.status != "pending":
+        raise HTTPException(400, "Результат уже отмечен")
     job.status = status
-    job.waste_grams = waste_grams if status == "fail" else 0
+    if status == "fail":
+        job.waste_grams = waste_grams
+        returned = job.grams - waste_grams
+        if returned > 0:
+            f = session.get(Filament, job.filament_id)
+            if f:
+                f.quantity += returned
+                session.add(FilamentMovement(
+                    filament_id=job.filament_id, type="in", quantity=returned,
+                    reason=f"Возврат: брак печати {job.name}"
+                ))
+    else:
+        job.waste_grams = 0
     session.commit()
     _audit("mark_print", "print_job", job_id,
            f"{job.name} → {'успех' if status == 'success' else 'брак'}" +
@@ -155,11 +172,12 @@ def edit_print_job(job_id: int, request: Request,
 def delete_print_job(job_id: int, request: Request, session: Session = Depends(get_db)):
     job = session.get(PrintJob, job_id)
     if not job: raise HTTPException(404)
-    f = session.get(Filament, job.filament_id)
-    if f:
-        f.quantity += job.grams
-        session.add(FilamentMovement(filament_id=job.filament_id, type="in", quantity=job.grams,
-                     reason=f"Аннулирована печать: {job.name}"))
+    if job.status == "pending":
+        f = session.get(Filament, job.filament_id)
+        if f:
+            f.quantity += job.grams
+            session.add(FilamentMovement(filament_id=job.filament_id, type="in", quantity=job.grams,
+                         reason=f"Аннулирована печать: {job.name}"))
     session.delete(job)
     session.commit()
     _audit("delete", "print_job", job_id, f"{job.name} {job.grams}г", request.state.user, session)

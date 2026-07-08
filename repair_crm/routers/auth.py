@@ -1,4 +1,6 @@
 from datetime import datetime
+from collections import defaultdict
+import time
 
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -15,6 +17,10 @@ from models.user import User
 
 router = APIRouter()
 
+_login_attempts = defaultdict(list)
+RATE_LIMIT_WINDOW = 300
+RATE_LIMIT_MAX = 5
+
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
@@ -28,10 +34,18 @@ def login(
     password: str = Form(...),
     session: Session = Depends(get_db),
 ):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    _login_attempts[client_ip] = [t for t in _login_attempts[client_ip] if now - t < RATE_LIMIT_WINDOW]
+    if len(_login_attempts[client_ip]) >= RATE_LIMIT_MAX:
+        return templates.TemplateResponse(request, "login.html", {
+            "user": None, "error": "Слишком много попыток. Подождите 5 минут",
+        }, status_code=429)
     user = session.execute(
         __import__("sqlalchemy").select(User).where(User.username == username.strip())
     ).scalar_one_or_none()
     if not user or not _verify_password(password, user.password_hash):
+        _login_attempts[client_ip].append(now)
         _audit("login_failed", "user", None, f"Неудачный вход: {username.strip()}", None, session)
         return templates.TemplateResponse(request, "login.html", {
             "user": None, "error": "Неверный логин или пароль",
@@ -44,7 +58,9 @@ def login(
     session.commit()
     token = _create_token(user.id)
     response = RedirectResponse("/", status_code=303)
-    response.set_cookie("token", token, max_age=TOKEN_EXPIRY, httponly=True, samesite="lax")
+    is_secure = request.url.scheme == "https"
+    response.set_cookie("token", token, max_age=TOKEN_EXPIRY, httponly=True, samesite="lax", secure=is_secure)
+    _login_attempts[client_ip] = []
     _audit("login", "user", user.id, user.full_name, user, session)
     return response
 

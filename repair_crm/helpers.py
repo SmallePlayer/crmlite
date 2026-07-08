@@ -112,16 +112,7 @@ def _notify(user_id: int, title: str, text: str = "", link: str = "", session: S
 
 
 def _notify_all(title: str, text: str = "", link: str = "", session: Session | None = None):
-    if session is not None:
-        users = session.execute(select(User.id).where(User.is_active == True)).scalars().all()
-        for uid in users:
-            session.add(Notification(user_id=uid, title=title, text=text, link=link))
-    else:
-        with Session(engine) as s:
-            users = s.execute(select(User.id).where(User.is_active == True)).scalars().all()
-            for uid in users:
-                s.add(Notification(user_id=uid, title=title, text=text, link=link))
-            s.commit()
+    pass
 
 
 def _user_context(request: Request, session: Session | None = None) -> dict:

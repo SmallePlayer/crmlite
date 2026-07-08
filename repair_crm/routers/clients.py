@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from templates_env import templates
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.orm import Session
 
 from config import BASE_DIR
 from database import get_db
 from helpers import _audit, _user_context, _client_dict
 from models.client import Client
+from models.order import Order
 
 router = APIRouter()
 
@@ -63,6 +64,11 @@ def delete_client(client_id: int, request: Request, session: Session = Depends(g
     c = session.get(Client, client_id)
     if not c:
         raise HTTPException(404)
+    orders_count = session.execute(
+        select(func.count(Order.id)).where(Order.client_id == client_id)
+    ).scalar() or 0
+    if orders_count > 0:
+        raise HTTPException(400, f"Нельзя удалить клиента: у него {orders_count} заказ(ов)")
     session.delete(c)
     session.commit()
     _audit("delete", "client", client_id, c.full_name, request.state.user, session)

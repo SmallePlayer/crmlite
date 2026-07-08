@@ -13,7 +13,7 @@ from helpers import _audit, _user_context, _hash_password, _validate_password
 from models.user import User, Role
 from models.task import Task
 from models.chat import ChatMessage
-from models.attendance import Attendance, Schedule
+from models.attendance import Schedule
 from models.order import Order
 
 router = APIRouter()
@@ -202,10 +202,6 @@ def delete_user(user_id: int, request: Request, session: Session = Depends(get_d
         select(ChatMessage).where(ChatMessage.from_user_id == user_id)
     ).scalars().all():
         session.delete(m)
-    for a in session.execute(
-        select(Attendance).where(Attendance.user_id == user_id)
-    ).scalars().all():
-        session.delete(a)
     for s in session.execute(
         select(Schedule).where(Schedule.user_id == user_id)
     ).scalars().all():

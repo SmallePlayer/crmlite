@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Form, Request, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from templates_env import templates
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.orm import Session, joinedload
 
 from config import BASE_DIR, UPLOADS_DIR
@@ -229,6 +229,11 @@ def delete_product(product_id: int, request: Request, session: Session = Depends
     p = session.get(Product, product_id)
     if not p:
         raise HTTPException(404)
+    movements_count = session.execute(
+        select(func.count(ProductMovement.id)).where(ProductMovement.product_id == product_id)
+    ).scalar() or 0
+    if movements_count > 0:
+        raise HTTPException(400, f"Нельзя удалить товар: есть {movements_count} записей движений")
     session.delete(p)
     session.commit()
     _audit("delete", "product", product_id, p.name, request.state.user, session)
@@ -241,7 +246,14 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...),
     p = session.get(Product, product_id)
     if not p:
         raise HTTPException(404)
-    ext = Path(file.filename).suffix or ".jpg"
+    if not file.filename:
+        raise HTTPException(400, "Файл не указан")
+    ext = Path(file.filename).suffix.lower()
+    allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    if ext not in allowed:
+        raise HTTPException(400, f"Недопустимый формат: {ext}. Разрешены: {', '.join(allowed)}")
+    if file.size and file.size > 5 * 1024 * 1024:
+        raise HTTPException(400, "Файл слишком большой (макс. 5 МБ)")
     safe_name = f"prod_{product_id}_{secrets.token_hex(4)}{ext}"
     filepath = UPLOADS_DIR / safe_name
     content = await file.read()

@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from templates_env import templates
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.orm import Session, joinedload
 
 from config import BASE_DIR
 from database import get_db
 from helpers import _audit, _user_context
 from models.warehouse import Part, StockMovement
+from models.order import OrderPart
 
 router = APIRouter()
 
@@ -91,6 +92,11 @@ def delete_part(part_id: int, request: Request, session: Session = Depends(get_d
     p = session.get(Part, part_id)
     if not p:
         raise HTTPException(404)
+    used_in_orders = session.execute(
+        select(func.count(OrderPart.id)).where(OrderPart.part_id == part_id)
+    ).scalar() or 0
+    if used_in_orders > 0:
+        raise HTTPException(400, f"Нельзя удалить запчасть: используется в {used_in_orders} заказ(ах)")
     session.delete(p)
     session.commit()
     _audit("delete", "part", part_id, p.name, request.state.user, session)

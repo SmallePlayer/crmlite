@@ -18,7 +18,7 @@ class Filament(Base):
     min_stock: Mapped[int] = mapped_column(Integer, default=500)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     movements = relationship("FilamentMovement", back_populates="filament",
-                             cascade="all, delete-orphan", order_by="FilamentMovement.id")
+                             order_by="FilamentMovement.id")
 
 
 class FilamentMovement(Base):

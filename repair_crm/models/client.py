@@ -12,4 +12,4 @@ class Client(Base):
     phone: Mapped[str] = mapped_column(String(50))
     comment: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    orders = relationship("Order", back_populates="client", cascade="all, delete-orphan")
+    orders = relationship("Order", back_populates="client")

@@ -11,6 +11,14 @@ if DB_URL.startswith("sqlite:///"):
     DB_URL = f"sqlite:///{BASE_DIR / DB_URL.replace('sqlite:///', '')}"
 
 SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-change-me")
+if SECRET_KEY == "default-secret-change-me":
+    import warnings
+    warnings.warn(
+        "SECRET_KEY не установлен! Используйте значение по умолчанию только для разработки. "
+        "Установите SECRET_KEY в .env для продакшена.",
+        RuntimeWarning,
+        stacklevel=2
+    )
 TOKEN_EXPIRY = 30 * 24 * 3600
 
 _tz_offset = int(os.getenv("TZ_OFFSET", "3"))

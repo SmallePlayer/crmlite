@@ -22,7 +22,7 @@ class PrintJob(Base):
     creator = relationship("User")
     grams: Mapped[int] = mapped_column(Integer, default=0)
     hours: Mapped[float] = mapped_column(Float, default=0)
-    status: Mapped[str] = mapped_column(String(10), default="success")
+    status: Mapped[str] = mapped_column(String(10), default="pending")
     waste_grams: Mapped[int] = mapped_column(Integer, default=0)
     printer_name: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
