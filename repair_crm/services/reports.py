@@ -240,8 +240,8 @@ class ReportsService:
         
         new_clients = session.query(Client).filter(
             and_(
-                Client.created_at >= start_date,
-                Client.created_at < end_date
+                Client.created_at >= start_created,
+                Client.created_at < end_created
             )
         ).count()
         
