@@ -4,25 +4,29 @@ from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
 from models import Order, PrintJob, Filament, FilamentMovement, OrderItem, OrderPart, Part, StockMovement
 from models import Client, Service
+from config import TIMEZONE_OFFSET
 
 
 class ReportsService:
     @staticmethod
     def generate_monthly_report(session: Session, year: int, month: int) -> Dict[str, Any]:
         """Генерирует полный месячный отчёт"""
-        start_date = datetime(year, month, 1)
+        local_start = datetime(year, month, 1)
         if month == 12:
-            end_date = datetime(year + 1, 1, 1)
+            local_end = datetime(year + 1, 1, 1)
         else:
-            end_date = datetime(year, month + 1, 1)
+            local_end = datetime(year, month + 1, 1)
+        
+        start_date = local_start - TIMEZONE_OFFSET
+        end_date = local_end - TIMEZONE_OFFSET
         
         report = {
             "period": {
                 "year": year,
                 "month": month,
                 "month_name": ReportsService._get_month_name(month),
-                "start_date": start_date.strftime("%d.%m.%Y"),
-                "end_date": (end_date - timedelta(days=1)).strftime("%d.%m.%Y")
+                "start_date": local_start.strftime("%d.%m.%Y"),
+                "end_date": (local_end - timedelta(days=1)).strftime("%d.%m.%Y")
             },
             "orders": ReportsService._get_orders_stats(session, start_date, end_date),
             "prints": ReportsService._get_prints_stats(session, start_date, end_date),
