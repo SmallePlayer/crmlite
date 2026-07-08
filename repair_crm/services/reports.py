@@ -17,8 +17,11 @@ class ReportsService:
         else:
             local_end = datetime(year, month + 1, 1)
         
-        start_date = local_start - TIMEZONE_OFFSET
-        end_date = local_end - TIMEZONE_OFFSET
+        start_date_created = local_start - TIMEZONE_OFFSET
+        end_date_created = local_end - TIMEZONE_OFFSET
+        
+        start_date_closed = local_start
+        end_date_closed = local_end
         
         report = {
             "period": {
@@ -28,31 +31,31 @@ class ReportsService:
                 "start_date": local_start.strftime("%d.%m.%Y"),
                 "end_date": (local_end - timedelta(days=1)).strftime("%d.%m.%Y")
             },
-            "orders": ReportsService._get_orders_stats(session, start_date, end_date),
-            "prints": ReportsService._get_prints_stats(session, start_date, end_date),
-            "filaments": ReportsService._get_filaments_stats(session, start_date, end_date),
-            "services": ReportsService._get_services_stats(session, start_date, end_date),
-            "parts": ReportsService._get_parts_stats(session, start_date, end_date),
-            "clients": ReportsService._get_clients_stats(session, start_date, end_date),
-            "revenue": ReportsService._get_revenue_stats(session, start_date, end_date)
+            "orders": ReportsService._get_orders_stats(session, start_date_created, end_date_created, start_date_closed, end_date_closed),
+            "prints": ReportsService._get_prints_stats(session, start_date_created, end_date_created),
+            "filaments": ReportsService._get_filaments_stats(session, start_date_created, end_date_created),
+            "services": ReportsService._get_services_stats(session, start_date_created, end_date_created, start_date_closed, end_date_closed),
+            "parts": ReportsService._get_parts_stats(session, start_date_created, end_date_created),
+            "clients": ReportsService._get_clients_stats(session, start_date_created, end_date_created, start_date_closed, end_date_closed),
+            "revenue": ReportsService._get_revenue_stats(session, start_date_closed, end_date_closed)
         }
         
         return report
     
     @staticmethod
-    def _get_orders_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    def _get_orders_stats(session: Session, start_created: datetime, end_created: datetime, start_closed: datetime, end_closed: datetime) -> Dict[str, Any]:
         created_orders = session.query(Order).filter(
             and_(
-                Order.created_at >= start_date,
-                Order.created_at < end_date
+                Order.created_at >= start_created,
+                Order.created_at < end_created
             )
         ).all()
         
         closed_orders = session.query(Order).filter(
             and_(
                 Order.status == 'closed',
-                Order.closed_at >= start_date,
-                Order.closed_at < end_date
+                Order.closed_at >= start_closed,
+                Order.closed_at < end_closed
             )
         ).all()
         
@@ -159,13 +162,13 @@ class ReportsService:
         }
     
     @staticmethod
-    def _get_services_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    def _get_services_stats(session: Session, start_created: datetime, end_created: datetime, start_closed: datetime, end_closed: datetime) -> Dict[str, Any]:
         """Статистика по услугам (из закрытых заказов)"""
         items = session.query(OrderItem).join(Order).filter(
             and_(
                 Order.status == 'closed',
-                Order.closed_at >= start_date,
-                Order.closed_at < end_date
+                Order.closed_at >= start_closed,
+                Order.closed_at < end_closed
             )
         ).all()
         
@@ -223,13 +226,13 @@ class ReportsService:
         }
     
     @staticmethod
-    def _get_clients_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    def _get_clients_stats(session: Session, start_created: datetime, end_created: datetime, start_closed: datetime, end_closed: datetime) -> Dict[str, Any]:
         """Статистика по клиентам"""
         closed_orders = session.query(Order).filter(
             and_(
                 Order.status == 'closed',
-                Order.closed_at >= start_date,
-                Order.closed_at < end_date
+                Order.closed_at >= start_closed,
+                Order.closed_at < end_closed
             )
         ).all()
         
@@ -249,13 +252,13 @@ class ReportsService:
         }
     
     @staticmethod
-    def _get_revenue_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    def _get_revenue_stats(session: Session, start_closed: datetime, end_closed: datetime) -> Dict[str, Any]:
         """Статистика по выручке (по дате закрытия заказа)"""
         closed_orders = session.query(Order).filter(
             and_(
                 Order.status == 'closed',
-                Order.closed_at >= start_date,
-                Order.closed_at < end_date
+                Order.closed_at >= start_closed,
+                Order.closed_at < end_closed
             )
         ).all()
         
