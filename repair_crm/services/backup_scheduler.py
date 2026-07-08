@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from config import BASE_DIR
 
@@ -41,7 +41,7 @@ class DatabaseBackupScheduler:
                 microsecond=0
             )
             if next_backup <= now:
-                next_backup = next_backup.replace(day=next_backup.day + 1)
+                next_backup = next_backup + timedelta(days=1)
             
             wait_seconds = (next_backup - now).total_seconds()
             if self._stop_event.wait(timeout=wait_seconds):

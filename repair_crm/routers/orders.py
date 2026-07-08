@@ -426,6 +426,11 @@ def batch_delete_orders(request: Request, ids: str = Form(""), session: Session 
                 part = session.get(Part, op.part_id)
                 if part:
                     part.quantity += op.quantity
+                    session.add(StockMovement(
+                        part_id=op.part_id, type="in", quantity=op.quantity,
+                        price_per_unit=op.price,
+                        reason=f"Возврат: удаление заказа #{oid}",
+                    ))
             session.delete(order)
             deleted += 1
     session.commit()
