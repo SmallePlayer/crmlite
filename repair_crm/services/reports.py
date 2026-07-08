@@ -41,41 +41,50 @@ class ReportsService:
     
     @staticmethod
     def _get_orders_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
-        """Статистика по заказам"""
-        orders = session.query(Order).filter(
+        created_orders = session.query(Order).filter(
             and_(
                 Order.created_at >= start_date,
                 Order.created_at < end_date
             )
         ).all()
         
-        total_orders = len(orders)
-        completed_orders = len([o for o in orders if o.status == 'closed'])
+        closed_orders = session.query(Order).filter(
+            and_(
+                Order.status == 'closed',
+                Order.closed_at >= start_date,
+                Order.closed_at < end_date
+            )
+        ).all()
         
-        total_revenue = sum(o.total_price or 0 for o in orders if o.status == 'closed')
+        total_created = len(created_orders)
+        total_closed = len(closed_orders)
         
-        # Средний чек
-        avg_check = total_revenue / completed_orders if completed_orders > 0 else 0
+        total_revenue = sum(o.total_price or 0 for o in closed_orders)
+        avg_check = total_revenue / total_closed if total_closed > 0 else 0
         
-        # По типам заказов
-        repair_orders = len([o for o in orders if o.order_type == 'repair'])
-        print_orders = len([o for o in orders if o.order_type == 'print'])
+        created_by_type = {
+            'repair': len([o for o in created_orders if o.order_type == 'repair']),
+            'print': len([o for o in created_orders if o.order_type == 'print'])
+        }
         
-        # По статусам
+        closed_by_type = {
+            'repair': len([o for o in closed_orders if o.order_type == 'repair']),
+            'print': len([o for o in closed_orders if o.order_type == 'print'])
+        }
+        
         status_counts = {}
-        for order in orders:
+        for order in created_orders:
             status = order.status
             status_counts[status] = status_counts.get(status, 0) + 1
         
         return {
-            "total": total_orders,
-            "completed": completed_orders,
+            "total": total_created,
+            "created": total_created,
+            "completed": total_closed,
             "total_revenue": total_revenue,
             "avg_check": round(avg_check, 2),
-            "by_type": {
-                "repair": repair_orders,
-                "print": print_orders
-            },
+            "by_type": created_by_type,
+            "closed_by_type": closed_by_type,
             "by_status": status_counts
         }
     
@@ -151,15 +160,15 @@ class ReportsService:
     
     @staticmethod
     def _get_services_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
-        """Статистика по услугам"""
+        """Статистика по услугам (из закрытых заказов)"""
         items = session.query(OrderItem).join(Order).filter(
             and_(
-                Order.created_at >= start_date,
-                Order.created_at < end_date
+                Order.status == 'closed',
+                Order.closed_at >= start_date,
+                Order.closed_at < end_date
             )
         ).all()
         
-        # Группировка по названиям услуг
         service_stats = {}
         for item in items:
             name = item.name
@@ -168,7 +177,6 @@ class ReportsService:
             service_stats[name]["count"] += 1
             service_stats[name]["total"] += item.price or 0
         
-        # Топ-5 услуг по выручке
         top_services = sorted(
             [{"name": k, "count": v["count"], "total": v["total"]} for k, v in service_stats.items()],
             key=lambda x: x["total"],
@@ -217,17 +225,16 @@ class ReportsService:
     @staticmethod
     def _get_clients_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
         """Статистика по клиентам"""
-        orders = session.query(Order).filter(
+        closed_orders = session.query(Order).filter(
             and_(
-                Order.created_at >= start_date,
-                Order.created_at < end_date
+                Order.status == 'closed',
+                Order.closed_at >= start_date,
+                Order.closed_at < end_date
             )
         ).all()
         
-        # Уникальные клиенты
-        unique_clients = len(set(o.client_id for o in orders if o.client_id))
+        unique_clients = len(set(o.client_id for o in closed_orders if o.client_id))
         
-        # Новые клиенты (созданные в этом месяце)
         new_clients = session.query(Client).filter(
             and_(
                 Client.created_at >= start_date,
@@ -238,25 +245,24 @@ class ReportsService:
         return {
             "unique_clients": unique_clients,
             "new_clients": new_clients,
-            "total_orders": len(orders)
+            "total_orders": len(closed_orders)
         }
     
     @staticmethod
     def _get_revenue_stats(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
-        """Статистика по выручке"""
-        completed_orders = session.query(Order).filter(
+        """Статистика по выручке (по дате закрытия заказа)"""
+        closed_orders = session.query(Order).filter(
             and_(
                 Order.status == 'closed',
-                Order.created_at >= start_date,
-                Order.created_at < end_date
+                Order.closed_at >= start_date,
+                Order.closed_at < end_date
             )
         ).all()
         
-        total_revenue = sum(o.total_price or 0 for o in completed_orders)
+        total_revenue = sum(o.total_price or 0 for o in closed_orders)
         
-        # По типам заказов
-        repair_revenue = sum(o.total_price or 0 for o in completed_orders if o.order_type == 'repair')
-        print_revenue = sum(o.total_price or 0 for o in completed_orders if o.order_type == 'print')
+        repair_revenue = sum(o.total_price or 0 for o in closed_orders if o.order_type == 'repair')
+        print_revenue = sum(o.total_price or 0 for o in closed_orders if o.order_type == 'print')
         
         return {
             "total": total_revenue,

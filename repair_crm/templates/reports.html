@@ -59,12 +59,12 @@
                 <div class="card-body">
                     <div class="row text-center mb-3">
                         <div class="col-md-3">
-                            <h2 class="text-primary">{{ report.orders.total }}</h2>
-                            <p class="text-muted">Всего заказов</p>
+                            <h2 class="text-primary">{{ report.orders.created }}</h2>
+                            <p class="text-muted">Создано</p>
                         </div>
                         <div class="col-md-3">
                             <h3 class="text-success">{{ report.orders.completed }}</h3>
-                            <p class="text-muted">Завершено</p>
+                            <p class="text-muted">Закрыто</p>
                         </div>
                         <div class="col-md-3">
                             <h3 class="text-warning">{{ "{:,.2f}".format(report.orders.avg_check) }} ₽</h3>
@@ -78,7 +78,7 @@
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <h6>По типам:</h6>
+                            <h6>Создано по типам:</h6>
                             <ul class="list-group">
                                 <li class="list-group-item d-flex justify-content-between">
                                     <span>🔧 Ремонт</span>
@@ -91,14 +91,16 @@
                             </ul>
                         </div>
                         <div class="col-md-6">
-                            <h6>По статусам:</h6>
+                            <h6>Закрыто по типам:</h6>
                             <ul class="list-group">
-                                {% for status, count in report.orders.by_status.items() %}
                                 <li class="list-group-item d-flex justify-content-between">
-                                    <span>{{ status }}</span>
-                                    <span class="badge bg-secondary">{{ count }}</span>
+                                    <span>🔧 Ремонт</span>
+                                    <span class="badge bg-success">{{ report.orders.closed_by_type.repair }}</span>
                                 </li>
-                                {% endfor %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>🖨️ Печать</span>
+                                    <span class="badge bg-success">{{ report.orders.closed_by_type.print }}</span>
+                                </li>
                             </ul>
                         </div>
                     </div>
