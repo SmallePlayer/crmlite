@@ -65,7 +65,7 @@
       {% set secs = (now_utc - my.check_in).total_seconds() %}
       <div class="mb-3 fs-5 fw-bold text-warning-emphasis">{{ (secs // 3600) | round(0,'floor') }} ч {{ ((secs % 3600) // 60) | round(0,'floor') }} мин</div>
       <div class="d-flex justify-content-center gap-2 flex-wrap">
-        <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('{{ my.check_in.strftime('%H:%M') }}','','{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('{{ my.check_in | tm }}','','{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
         <button class="btn btn-danger px-4 fw-bold" onclick="openCheckOutModal()"><i class="bi bi-box-arrow-right me-2"></i>Завершить смену</button>
         <form method="post" action="/attendance/cancel" class="d-inline" data-confirm="Точно отменить?"><button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg me-1"></i>Отменить</button></form>
       </div>
@@ -74,7 +74,7 @@
       <div class="mb-1">{{ my.check_in | tm }} — {{ my.check_out | tm }}</div>
       <div class="mb-2 fs-5 fw-bold text-success">{{ ((my.check_out - my.check_in).total_seconds() / 3600) | round(1) }} ч.</div>
       {% if my.report %}<div class="alert alert-success py-1 px-3 d-inline-block mb-2 small"><i class="bi bi-journal-text me-1"></i>{{ my.report }}</div>{% endif %}
-      <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('{{ my.check_in.strftime('%H:%M') }}','{{ my.check_out.strftime('%H:%M') }}','{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('{{ my.check_in | tm }}','{{ my.check_out | tm }}','{{ my.report }}')"><i class="bi bi-pencil me-1"></i>Исправить</button>
     {% endif %}
   </div>
 </div>
@@ -116,7 +116,7 @@
               <button class="btn btn-outline-danger btn-sm py-0" onclick="openAdminCloseShift({{ a.id }},'{{ u.full_name|e }}')" title="Завершить смену">
                 <i class="bi bi-box-arrow-right me-1"></i>Завершить
               </button>
-              <button class="btn btn-outline-secondary btn-sm py-0" onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','','{{ a.report|e }}')" title="Исправить время">
+              <button class="btn btn-outline-secondary btn-sm py-0" onclick="openAdminEdit({{ a.id }},'{{ a.check_in | tm }}','','{{ a.report|e }}')" title="Исправить время">
                 <i class="bi bi-pencil me-1"></i>Исправить
               </button>
               <form method="post" action="/attendance/{{ a.id }}/admin-cancel" class="d-inline" data-confirm="Отменить отметку {{ u.full_name }}?">
@@ -125,7 +125,7 @@
             </div>
             {% elif is_admin and a and a.check_out %}
             <div class="mt-2 d-flex gap-1">
-              <button class="btn btn-outline-secondary btn-sm py-0" onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','{{ a.check_out.strftime('%H:%M') }}','{{ a.report|e }}')" title="Исправить время">
+              <button class="btn btn-outline-secondary btn-sm py-0" onclick="openAdminEdit({{ a.id }},'{{ a.check_in | tm }}','{{ a.check_out | tm }}','{{ a.report|e }}')" title="Исправить время">
                 <i class="bi bi-pencil me-1"></i>Исправить
               </button>
               <form method="post" action="/attendance/{{ a.id }}/admin-cancel" class="d-inline" data-confirm="Удалить запись {{ u.full_name }}?">
@@ -162,11 +162,11 @@
             {% if a and a.check_out %}
               {% set ns2.worked = ns2.worked + 1 %}{% set delta = ((a.check_out - a.check_in).total_seconds()) %}{% set ns2.hrs = ns2.hrs + delta %}
               <td class="bg-success bg-opacity-10 {% if is_admin %}clickable{% endif %}" title="{{ a.check_in | tm }}–{{ a.check_out | tm }}{% if a.report and (is_admin or u.id == current_user_id) %} | {{ a.report }}{% endif %}"
-                  {% if is_admin %}onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','{{ a.check_out.strftime('%H:%M') }}','{{ a.report | e }}')"{% endif %}>✅</td>
+                  {% if is_admin %}onclick="openAdminEdit({{ a.id }},'{{ a.check_in | tm }}','{{ a.check_out | tm }}','{{ a.report | e }}')"{% endif %}>✅</td>
             {% elif a %}
               {% set ns2.worked = ns2.worked + 1 %}
               <td class="bg-warning bg-opacity-10 {% if is_admin %}clickable{% endif %}" title="с {{ a.check_in | tm }}"
-                  {% if is_admin %}onclick="openAdminEdit({{ a.id }},'{{ a.check_in.strftime('%H:%M') }}','','{{ a.report | e }}')"{% endif %}>🕐</td>
+                  {% if is_admin %}onclick="openAdminEdit({{ a.id }},'{{ a.check_in | tm }}','','{{ a.report | e }}')"{% endif %}>🕐</td>
             {% else %}
               <td class="text-muted {% if is_admin %}clickable{% endif %}" style="font-size:0.6rem"
                   {% if is_admin %}onclick="openAdminCheckIn({{ u.id }},'{{ u.full_name|e }}','{{ date_str }}')" title="Отметить {{ u.full_name }}"{% endif %}>·</td>
