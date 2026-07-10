@@ -13,6 +13,17 @@ from models.order import Order
 router = APIRouter()
 
 
+def _format_phone(phone: str) -> str:
+    digits = ''.join(c for c in phone if c.isdigit())
+    if len(digits) == 11 and digits[0] == '8':
+        digits = '7' + digits[1:]
+    if len(digits) == 11 and digits[0] == '7':
+        return '+7' + digits[1:]
+    if len(digits) == 10:
+        return '+7' + digits
+    return phone.strip()
+
+
 @router.get("/clients", response_class=HTMLResponse)
 def clients_page(request: Request, session: Session = Depends(get_db)):
     clients = session.execute(
@@ -33,7 +44,7 @@ def create_client(
     comment: str = Form(""),
     session: Session = Depends(get_db),
 ):
-    c = Client(full_name=full_name.strip(), phone=phone.strip(), comment=comment.strip())
+    c = Client(full_name=full_name.strip(), phone=_format_phone(phone), comment=comment.strip())
     session.add(c)
     session.commit()
     _audit("create", "client", c.id, c.full_name, request.state.user, session)
@@ -52,7 +63,7 @@ def update_client(
     if not c:
         raise HTTPException(404)
     c.full_name = full_name.strip()
-    c.phone = phone.strip()
+    c.phone = _format_phone(phone)
     c.comment = comment.strip()
     session.commit()
     _audit("update", "client", c.id, c.full_name, request.state.user, session)

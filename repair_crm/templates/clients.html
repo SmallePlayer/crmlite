@@ -151,5 +151,23 @@ document.querySelectorAll('.edit-client-btn').forEach(function(btn) {
     openClientModal(parseInt(this.dataset.id));
   });
 });
+
+function formatPhone(phone) {
+  var digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits[0] === '8') {
+    digits = '7' + digits.slice(1);
+  }
+  if (digits.length === 11 && digits[0] === '7') {
+    return '+7' + digits.slice(1);
+  }
+  if (digits.length === 10) {
+    return '+7' + digits;
+  }
+  return phone;
+}
+
+document.getElementById('client_phone').addEventListener('blur', function() {
+  this.value = formatPhone(this.value);
+});
 </script>
 {% endblock %}
