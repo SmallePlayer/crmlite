@@ -34,14 +34,15 @@ def dashboard(request: Request, session: Session = Depends(get_db)):
     total_services = session.execute(select(func.count(Service.id))).scalar() or 0
     total_parts = session.execute(select(func.count(Part.id))).scalar() or 0
     total_products = session.execute(select(func.count(Product.id))).scalar() or 0
+    today_start = (datetime.utcnow() + TIMEZONE_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
     overdue = session.execute(
         select(func.count(Order.id))
-        .where(Order.status != "closed", Order.deadline.isnot(None), Order.deadline < func.now())
+        .where(Order.status != "closed", Order.deadline.isnot(None), Order.deadline < today_start)
     ).scalar() or 0
     due_soon = session.execute(
         select(func.count(Order.id))
         .where(Order.status != "closed", Order.deadline.isnot(None),
-               Order.deadline >= func.now(), Order.deadline < func.now() + timedelta(days=3))
+               Order.deadline >= today_start, Order.deadline < today_start + timedelta(days=3))
     ).scalar() or 0
     low_stock = session.execute(
         select(func.count(Part.id))

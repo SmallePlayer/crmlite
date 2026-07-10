@@ -141,7 +141,7 @@
         <td><span class="badge bg-{{ ORDER_STATUSES[o.status][1] }}">{{ ORDER_STATUSES[o.status][0] }}</span></td>
         <td class="hide-mobile">
           {% if o.deadline %}
-          <span class="badge bg-{{ 'danger' if o.deadline < datetime.now() else 'warning' if (o.deadline - datetime.now()).days < 3 else 'success' }}">
+          <span class="badge bg-{{ 'danger' if o.deadline < datetime.now().replace(hour=0, minute=0, second=0) else 'warning' if (o.deadline - datetime.now()).days < 3 else 'success' }}">
             {{ o.deadline.strftime('%d.%m') }}
           </span>
           {% else %}<span class="text-muted">—</span>{% endif %}

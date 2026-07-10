@@ -67,9 +67,9 @@
           <tr><td class="text-muted">Создан</td><td>{{ order.created_at | dt }}</td></tr>
           {% if order.deadline %}
           <tr><td class="text-muted">Срок</td><td>
-            <span class="badge bg-{{ 'danger' if order.deadline < now() else 'warning text-dark' if (order.deadline - now()).days < 3 else 'success' }}">
+            <span class="badge bg-{{ 'danger' if order.deadline < now().replace(hour=0, minute=0, second=0) else 'warning text-dark' if (order.deadline - now()).days < 3 else 'success' }}">
               {{ order.deadline.strftime('%d.%m.%Y') }}
-              ({{ 'просрочен' if order.deadline < now() else 'осталось ' ~ (order.deadline - now()).days|string ~ ' дн.' if (order.deadline - now()).days < 3 else '' }})
+              ({{ 'просрочен' if order.deadline < now().replace(hour=0, minute=0, second=0) else 'осталось ' ~ (order.deadline - now()).days|string ~ ' дн.' if (order.deadline - now()).days < 3 else '' }})
             </span>
           </td></tr>
           {% endif %}

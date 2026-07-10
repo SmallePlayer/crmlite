@@ -89,7 +89,7 @@
 
 <div class="d-md-none">
   {% for o in orders %}
-  {% set is_overdue = o.deadline and o.deadline < now and o.status != 'closed' %}
+  {% set is_overdue = o.deadline and o.deadline < now.replace(hour=0, minute=0, second=0) and o.status != 'closed' %}
   <a href="/orders/{{ o.id }}" class="text-decoration-none">
     <div class="card shadow-sm mb-2 clickable {{ 'border-danger' if is_overdue else '' }}" 
          style="border-left: 4px solid {{ '#dc3545' if is_overdue else '#ffc107' if o.status == 'in_progress' else '#0dcaf0' if o.status == 'waiting_parts' else '#0d6efd' if o.status == 'ready' else '#198754' }}; {{ 'background: #fff5f5;' if is_overdue else '' }}">
@@ -142,7 +142,7 @@
     </thead>
     <tbody>
       {% for o in orders %}
-      {% set is_overdue = o.deadline and o.deadline < now and o.status != 'closed' %}
+      {% set is_overdue = o.deadline and o.deadline < now.replace(hour=0, minute=0, second=0) and o.status != 'closed' %}
       <tr class="clickable {{ 'table-danger' if is_overdue else '' }}" onclick="location.href='/orders/{{ o.id }}'">
         <td><input type="checkbox" class="order-check" value="{{ o.id }}" onchange="updateBatch()" onclick="event.stopPropagation()"></td>
         <td><a href="/orders/{{ o.id }}" class="fw-bold text-decoration-none">{{ o.id }}</a>
