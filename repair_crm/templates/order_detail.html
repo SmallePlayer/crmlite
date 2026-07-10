@@ -58,7 +58,7 @@
         {% endif %}
         <table class="table table-sm mb-0">
           <tr><td class="text-muted" style="width:100px">Клиент</td><td><strong>{{ order.client.full_name }}</strong>
-            <br><a href="tel:{{ order.client.phone }}" class="text-decoration-none small text-muted">{{ order.client.phone }}</a></td></tr>
+            <br><a href="tel:{{ order.client.phone }}" class="text-decoration-none fs-5">{{ order.client.phone }}</a></td></tr>
           <tr><td class="text-muted">{% if order.order_type == 'print' %}Модель{% else %}Принтер{% endif %}</td><td>{{ order.printer }}</td></tr>
           <tr><td class="text-muted">{% if order.order_type == 'print' %}Задача{% else %}Дефект{% endif %}</td><td>{{ order.defect }}</td></tr>
           {% if order.assignee %}
