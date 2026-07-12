@@ -15,7 +15,7 @@ from models.user import User, Role
 from models.audit import AuditLog
 from models.client import Client
 from models.service import Service
-from models.warehouse import Part, StockMovement, Product, ProductMovement
+from models.warehouse import Part, StockMovement, Product, ProductMovement, PackagingItem, ProductPackaging
 from models.filament import Filament, FilamentMovement
 from models.print_job import PrintJob, Printer
 from models.order import Order, OrderItem, OrderPart
@@ -139,6 +139,26 @@ async def lifespan(app: FastAPI):
                 )
             """))
             nc.commit()
+        with engine.connect() as pkgc:
+            pkgc.execute(text("""
+                CREATE TABLE IF NOT EXISTS packaging_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(200) NOT NULL,
+                    unit VARCHAR(10) DEFAULT 'шт',
+                    price_per_unit FLOAT DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            pkgc.execute(text("""
+                CREATE TABLE IF NOT EXISTS product_packaging (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    product_id INTEGER NOT NULL REFERENCES products(id),
+                    packaging_item_id INTEGER NOT NULL REFERENCES packaging_items(id),
+                    quantity FLOAT DEFAULT 0
+                )
+            """))
+            pkgc.execute(text("CREATE INDEX IF NOT EXISTS ix_product_packaging_product_id ON product_packaging (product_id)"))
+            pkgc.commit()
         with engine.connect() as fc:
             fc.execute(text("""
                 CREATE TABLE IF NOT EXISTS filaments (

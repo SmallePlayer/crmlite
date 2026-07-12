@@ -5,6 +5,9 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h4 class="mb-0">Склад товаров <span class="text-muted fs-6">({{ products | length }})</span></h4>
   <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-outline-primary btn-sm" onclick="openPackagingCatalog()">
+      <i class="bi bi-box-seam"></i> Упаковка
+    </button>
     <div class="dropdown">
       <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Отчёты</button>
       <ul class="dropdown-menu dropdown-menu-end">
@@ -66,6 +69,13 @@
           {% endif %}
           {% if p.pack_cost %}
           <div class="text-muted" style="font-size:0.7rem">Упак.: {{ "%.2f"|format(p.pack_cost) }} ₽</div>
+          {% endif %}
+          {% if p.id in product_packaging_map %}
+          <div class="text-muted mt-1" style="font-size:0.7rem">
+            {% for pkg in product_packaging_map[p.id] %}
+            <div>{{ pkg.quantity }} {{ pkg.packaging_unit }} {{ pkg.packaging_name }}</div>
+            {% endfor %}
+          </div>
           {% endif %}
         </div>
       </div>
@@ -140,6 +150,7 @@
         <th>Цвет</th>
         <th>Кол-во</th>
         <th>Варианты наборов</th>
+        <th class="hide-mobile">Состав упаковки</th>
         <th class="text-end">Себест. печати</th>
         <th class="text-end">Себест. упаковки</th>
         <th style="width:200px"></th>
@@ -185,6 +196,20 @@
           {% if p.variants and p.variants != '[]' %}
           {% set variants_list = p.variants | tojson | safe %}
           <div class="variants-display" data-product-id="{{ p.id }}" data-variants='{{ p.variants }}' data-quantity="{{ p.quantity }}"></div>
+          {% else %}
+          <span class="text-muted small">—</span>
+          {% endif %}
+        </td>
+        <td class="hide-mobile">
+          {% if p.id in product_packaging_map %}
+          <div class="small">
+            {% for pkg in product_packaging_map[p.id] %}
+            <div class="text-nowrap">
+              <span class="badge bg-light text-dark border me-1">{{ pkg.quantity }} {{ pkg.packaging_unit }}</span>
+              <span class="text-muted">{{ pkg.packaging_name }}</span>
+            </div>
+            {% endfor %}
+          </div>
           {% else %}
           <span class="text-muted small">—</span>
           {% endif %}
@@ -486,6 +511,18 @@
           <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addVariantRow()"><i class="bi bi-plus"></i> Добавить</button>
           <div class="form-text">Напр: 1 шт → 25 наборов, 3 шт → 8 наборов</div>
         </div>
+        <hr>
+        <div class="mb-2">
+          <label class="form-label"><i class="bi bi-box-seam me-1"></i>Состав упаковки</label>
+          <div id="packagingList"></div>
+          <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="addPackagingRow()">
+            <i class="bi bi-plus"></i> Добавить упаковку
+          </button>
+          <div class="form-text">Укажите какие материалы упаковки используются для этого товара</div>
+          <div class="mt-2 p-2 bg-light rounded" id="packagingTotal" style="display:none">
+            <strong>Итого: <span id="packagingTotalValue">0.00</span> ₽</strong>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -494,11 +531,52 @@
     </form>
   </div>
 </div>
+
+{# Packaging Catalog Modal #}
+<div class="modal fade" id="packagingCatalogModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-box-seam me-1"></i>Каталог упаковки</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="mb-2 text-muted small">
+          <i class="bi bi-info-circle me-1"></i>Добавьте материалы упаковки с указанием единицы измерения и цены за единицу
+        </div>
+        <table class="table table-sm align-middle mb-2">
+          <thead class="table-light">
+            <tr>
+              <th>Наименование</th>
+              <th style="width:100px">Ед. изм.</th>
+              <th style="width:130px">Цена за ед. (₽)</th>
+              <th style="width:120px">Цена за упаковку</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="packagingCatalogRows"></tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCatalogRow()">
+          <i class="bi bi-plus"></i> Добавить материал
+        </button>
+      </div>
+      <div class="modal-footer">
+        <span id="catalogError" class="text-danger me-auto small"></span>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+        <button type="button" class="btn btn-primary" onclick="saveCatalog()">
+          <i class="bi bi-check-lg"></i> Сохранить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 var PDATA = {{ products_data | tojson }};
+var PACKAGING_DATA = {{ packaging_data | tojson }};
+var PRODUCT_PACKAGING = {{ product_packaging_map | tojson }};
 var _rowIdx = 0;
 
 function showImage(src) {
@@ -881,6 +959,185 @@ document.querySelectorAll('.variants-display-mobile').forEach(function(div) {
     html += '</div>';
     div.innerHTML = html;
   }
+});
+
+function openPackagingCatalog() {
+  renderCatalog();
+  new bootstrap.Modal(document.getElementById('packagingCatalogModal')).show();
+}
+
+function renderCatalog() {
+  var tbody = document.getElementById('packagingCatalogRows');
+  tbody.innerHTML = '';
+  if (PACKAGING_DATA.length === 0) {
+    addCatalogRow();
+    return;
+  }
+  PACKAGING_DATA.forEach(function(item) {
+    addCatalogRow(item);
+  });
+}
+
+function addCatalogRow(item) {
+  var tbody = document.getElementById('packagingCatalogRows');
+  var tr = document.createElement('tr');
+  var name = item ? item.name : '';
+  var unit = item ? item.unit : 'шт';
+  var price = item ? item.price_per_unit : 0;
+  var id = item ? item.id : '';
+  tr.innerHTML =
+    '<td><input class="form-control form-control-sm cat-name" value="' + name + '" placeholder="Например: Пупырка" required></td>' +
+    '<td><select class="form-select form-select-sm cat-unit">' +
+    '<option value="шт"' + (unit === 'шт' ? ' selected' : '') + '>шт</option>' +
+    '<option value="м²"' + (unit === 'м²' ? ' selected' : '') + '>м²</option>' +
+    '</select></td>' +
+    '<td><input type="number" step="0.01" min="0" class="form-control form-control-sm cat-price" value="' + price + '" placeholder="0.00"></td>' +
+    '<td class="cat-total text-muted small">' + (price > 0 ? price.toFixed(2) + ' ₽' : '—') + '</td>' +
+    '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteCatalogRow(this, ' + id + ')"><i class="bi bi-trash"></i></button></td>';
+  tr.dataset.id = id;
+  tbody.appendChild(tr);
+  var priceInput = tr.querySelector('.cat-price');
+  priceInput.addEventListener('input', function() {
+    var val = parseFloat(this.value) || 0;
+    tr.querySelector('.cat-total').textContent = val > 0 ? val.toFixed(2) + ' ₽' : '—';
+  });
+}
+
+function deleteCatalogRow(btn, id) {
+  if (id > 0) {
+    if (!confirm('Удалить материал упаковки?')) return;
+    fetch('/packaging/' + id + '/delete', {method: 'POST'}).then(function(r) {
+      if (r.ok) {
+        btn.closest('tr').remove();
+        PACKAGING_DATA = PACKAGING_DATA.filter(function(x) { return x.id !== id; });
+      } else {
+        r.text().then(function(t) { document.getElementById('catalogError').textContent = t; });
+      }
+    });
+  } else {
+    btn.closest('tr').remove();
+  }
+}
+
+function saveCatalog() {
+  var promises = [];
+  document.querySelectorAll('#packagingCatalogRows tr').forEach(function(tr) {
+    var name = tr.querySelector('.cat-name').value.trim();
+    var unit = tr.querySelector('.cat-unit').value;
+    var price = parseFloat(tr.querySelector('.cat-price').value) || 0;
+    var id = parseInt(tr.dataset.id) || 0;
+    if (!name) return;
+    if (id > 0) {
+      promises.push(fetch('/packaging/' + id + '/edit', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name, unit: unit, price_per_unit: price})
+      }));
+    } else {
+      promises.push(fetch('/packaging/create', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name, unit: unit, price_per_unit: price})
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+          PACKAGING_DATA.push({id: data.id, name: name, unit: unit, price_per_unit: price});
+        }
+      }));
+    }
+  });
+  Promise.all(promises).then(function() {
+    window.location.reload();
+  }).catch(function() {
+    document.getElementById('catalogError').textContent = 'Ошибка сохранения';
+  });
+}
+
+function addPackagingRow(selectedId, qty) {
+  var div = document.createElement('div');
+  div.className = 'd-flex gap-2 mb-1 align-items-center pkg-row';
+  var opts = '<option value="">— Выберите упаковку —</option>';
+  PACKAGING_DATA.forEach(function(p) {
+    var sel = selectedId && selectedId === p.id ? ' selected' : '';
+    opts += '<option value="' + p.id + '" data-unit="' + p.unit + '" data-price="' + p.price_per_unit + '"' + sel + '>' + p.name + ' (' + p.unit + ', ' + p.price_per_unit.toFixed(2) + ' ₽/' + p.unit + ')</option>';
+  });
+  div.innerHTML =
+    '<select class="form-select form-select-sm pkg-select" style="min-width:180px" onchange="onPackagingSelect(this)">' + opts + '</select>' +
+    '<input type="number" step="0.01" min="0" class="form-control form-control-sm pkg-qty" style="width:80px" placeholder="Кол-во" value="' + (qty || '') + '" oninput="calcPackagingTotal()">' +
+    '<span class="pkg-cost text-muted small" style="min-width:70px"></span>' +
+    '<button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove(); calcPackagingTotal();"><i class="bi bi-x"></i></button>';
+  document.getElementById('packagingList').appendChild(div);
+  if (selectedId) {
+    var sel = div.querySelector('.pkg-select');
+    onPackagingSelect(sel);
+  }
+}
+
+function onPackagingSelect(sel) {
+  calcPackagingTotal();
+}
+
+function calcPackagingTotal() {
+  var total = 0;
+  document.querySelectorAll('.pkg-row').forEach(function(row) {
+    var sel = row.querySelector('.pkg-select');
+    var opt = sel.options[sel.selectedIndex];
+    if (!opt.value) return;
+    var price = parseFloat(opt.dataset.price) || 0;
+    var qty = parseFloat(row.querySelector('.pkg-qty').value) || 0;
+    var cost = price * qty;
+    total += cost;
+    row.querySelector('.pkg-cost').textContent = cost > 0 ? cost.toFixed(2) + ' ₽' : '';
+  });
+  var totalDiv = document.getElementById('packagingTotal');
+  if (total > 0) {
+    totalDiv.style.display = '';
+    document.getElementById('packagingTotalValue').textContent = total.toFixed(2);
+  } else {
+    totalDiv.style.display = 'none';
+  }
+  var packCostInput = document.getElementById('edit_pack_cost');
+  if (packCostInput) {
+    packCostInput.value = total.toFixed(2);
+  }
+}
+
+function getPackagingRows() {
+  var items = [];
+  document.querySelectorAll('.pkg-row').forEach(function(row) {
+    var sel = row.querySelector('.pkg-select');
+    var pkgId = parseInt(sel.value) || 0;
+    var qty = parseFloat(row.querySelector('.pkg-qty').value) || 0;
+    if (pkgId > 0 && qty > 0) {
+      items.push({packaging_item_id: pkgId, quantity: qty});
+    }
+  });
+  return items;
+}
+
+var _origOpenEditModal = openEditModal;
+openEditModal = function(productId) {
+  document.getElementById('packagingList').innerHTML = '';
+  _origOpenEditModal(productId);
+  var pkgData = PRODUCT_PACKAGING[productId] || [];
+  if (pkgData.length > 0) {
+    pkgData.forEach(function(pkg) {
+      addPackagingRow(pkg.packaging_item_id, pkg.quantity);
+    });
+  }
+  calcPackagingTotal();
+};
+
+var _savingPackaging = false;
+document.getElementById('editForm').addEventListener('submit', function(e) {
+  if (_savingPackaging) return;
+  e.preventDefault();
+  var items = getPackagingRows();
+  var form = this;
+  _savingPackaging = true;
+  fetch('/products/' + _editProductId + '/save-packaging', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({items: items})
+  }).then(function() {
+    form.submit();
+  });
 });
 </script>
 {% endblock %}

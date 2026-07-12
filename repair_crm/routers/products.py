@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from config import BASE_DIR, UPLOADS_DIR
 from database import get_db
 from helpers import _audit, _user_context
-from models.warehouse import Product, ProductMovement
+from models.warehouse import Product, ProductMovement, PackagingItem, ProductPackaging
 
 router = APIRouter()
 
@@ -25,8 +25,10 @@ def products_page(request: Request, session: Session = Depends(get_db)):
         select(ProductMovement).options(joinedload(ProductMovement.product))
         .order_by(desc(ProductMovement.created_at)).limit(40)
     ).unique().scalars().all()
+    packaging_items = session.execute(
+        select(PackagingItem).order_by(PackagingItem.name)
+    ).scalars().all()
     
-    # Группируем товары по parent_id
     parent_products = [p for p in products if p.parent_id is None]
     children_map = {}
     for p in products:
@@ -35,10 +37,29 @@ def products_page(request: Request, session: Session = Depends(get_db)):
                 children_map[p.parent_id] = []
             children_map[p.parent_id].append(p)
     
+    product_packaging_map = {}
+    for p in products:
+        links = session.execute(
+            select(ProductPackaging).options(joinedload(ProductPackaging.packaging_item))
+            .where(ProductPackaging.product_id == p.id)
+        ).scalars().all()
+        if links:
+            product_packaging_map[p.id] = [{
+                "id": link.id,
+                "packaging_item_id": link.packaging_item_id,
+                "packaging_name": link.packaging_item.name,
+                "packaging_unit": link.packaging_item.unit,
+                "price_per_unit": link.packaging_item.price_per_unit,
+                "quantity": link.quantity,
+                "cost": link.quantity * link.packaging_item.price_per_unit,
+            } for link in links]
+    
     return templates.TemplateResponse(request, "products.html", {
         **_user_context(request, session),
         "products": parent_products, "movements": movements,
         "children_map": children_map,
+        "packaging_items": packaging_items,
+        "product_packaging_map": product_packaging_map,
         "products_data": [{
             "id": p.id, "name": p.name, "article": p.article,
             "color": p.color or "", "quantity": p.quantity,
@@ -48,6 +69,10 @@ def products_page(request: Request, session: Session = Depends(get_db)):
             "variants": p.variants or "[]",
             "image": p.image or "",
         } for p in products],
+        "packaging_data": [{
+            "id": pi.id, "name": pi.name, "unit": pi.unit,
+            "price_per_unit": pi.price_per_unit,
+        } for pi in packaging_items],
     })
 
 
@@ -275,3 +300,94 @@ async def upload_product_image(product_id: int, file: UploadFile = File(...),
     p.image = safe_name
     session.commit()
     return RedirectResponse("/products", status_code=303)
+
+
+@router.post("/packaging/create")
+async def create_packaging_item(request: Request, session: Session = Depends(get_db)):
+    data = await request.json()
+    name = data.get("name", "").strip()
+    unit = data.get("unit", "шт").strip()
+    price = float(data.get("price_per_unit", 0) or 0)
+    if not name:
+        return JSONResponse({"error": "Укажите название"}, status_code=400)
+    if unit not in ("шт", "м²"):
+        unit = "шт"
+    item = PackagingItem(name=name, unit=unit, price_per_unit=price)
+    session.add(item)
+    session.commit()
+    _audit("create", "packaging", item.id, name, request.state.user, session)
+    return JSONResponse({"ok": True, "id": item.id})
+
+
+@router.post("/packaging/{item_id}/edit")
+async def edit_packaging_item(item_id: int, request: Request, session: Session = Depends(get_db)):
+    data = await request.json()
+    item = session.get(PackagingItem, item_id)
+    if not item:
+        raise HTTPException(404)
+    name = data.get("name", "").strip()
+    unit = data.get("unit", "шт").strip()
+    price = float(data.get("price_per_unit", 0) or 0)
+    if not name:
+        return JSONResponse({"error": "Укажите название"}, status_code=400)
+    if unit not in ("шт", "м²"):
+        unit = "шт"
+    item.name = name
+    item.unit = unit
+    item.price_per_unit = price
+    session.commit()
+    _audit("update", "packaging", item.id, name, request.state.user, session)
+    return JSONResponse({"ok": True})
+
+
+@router.post("/packaging/{item_id}/delete")
+def delete_packaging_item(item_id: int, request: Request, session: Session = Depends(get_db)):
+    item = session.get(PackagingItem, item_id)
+    if not item:
+        raise HTTPException(404)
+    used = session.execute(
+        select(func.count(ProductPackaging.id)).where(ProductPackaging.packaging_item_id == item_id)
+    ).scalar() or 0
+    if used > 0:
+        raise HTTPException(400, f"Нельзя удалить: используется в {used} товар(ах)")
+    session.delete(item)
+    session.commit()
+    _audit("delete", "packaging", item.id, item.name, request.state.user, session)
+    return RedirectResponse("/products", status_code=303)
+
+
+@router.post("/products/{product_id}/save-packaging")
+async def save_product_packaging(product_id: int, request: Request, session: Session = Depends(get_db)):
+    p = session.get(Product, product_id)
+    if not p:
+        raise HTTPException(404)
+    data = await request.json()
+    items = data.get("items", [])
+    
+    existing = session.execute(
+        select(ProductPackaging).where(ProductPackaging.product_id == product_id)
+    ).scalars().all()
+    for link in existing:
+        session.delete(link)
+    
+    total_cost = 0.0
+    for row in items:
+        pkg_id = int(row.get("packaging_item_id", 0))
+        qty = float(row.get("quantity", 0) or 0)
+        if pkg_id <= 0 or qty <= 0:
+            continue
+        pkg_item = session.get(PackagingItem, pkg_id)
+        if not pkg_item:
+            continue
+        link = ProductPackaging(
+            product_id=product_id,
+            packaging_item_id=pkg_id,
+            quantity=qty,
+        )
+        session.add(link)
+        total_cost += qty * pkg_item.price_per_unit
+    
+    p.pack_cost = total_cost
+    session.commit()
+    _audit("update_packaging", "product", product_id, f"Упаковка: {total_cost:.2f} ₽", request.state.user, session)
+    return JSONResponse({"ok": True, "pack_cost": total_cost})

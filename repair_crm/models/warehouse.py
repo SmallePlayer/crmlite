@@ -50,6 +50,25 @@ class Product(Base):
     parent = relationship("Product", remote_side=[id], backref="children")
 
 
+class PackagingItem(Base):
+    __tablename__ = "packaging_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    unit: Mapped[str] = mapped_column(String(10), default="шт")
+    price_per_unit: Mapped[float] = mapped_column(Float, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ProductPackaging(Base):
+    __tablename__ = "product_packaging"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    packaging_item_id: Mapped[int] = mapped_column(ForeignKey("packaging_items.id"))
+    quantity: Mapped[float] = mapped_column(Float, default=0)
+    product = relationship("Product", backref="packaging_links")
+    packaging_item = relationship("PackagingItem")
+
+
 class ProductMovement(Base):
     __tablename__ = "product_movements"
     id: Mapped[int] = mapped_column(primary_key=True)
