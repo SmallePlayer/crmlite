@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
+import json
 
 from database import get_db
 from services.reports import ReportsService
@@ -71,6 +72,7 @@ async def get_monthly_report_api(
     request: Request,
     year: int = Query(...),
     month: int = Query(...),
+    download: Optional[bool] = Query(False),
     db: Session = Depends(get_db)
 ):
     """API для получения месячного отчёта в JSON"""
@@ -82,6 +84,16 @@ async def get_monthly_report_api(
         raise HTTPException(status_code=403, detail="Недостаточно прав")
     
     report = ReportsService.generate_monthly_report(db, year, month)
+    
+    if download:
+        month_name = ReportsService._get_month_name(month)
+        filename = f"report_{month_name}_{year}.json"
+        return Response(
+            content=json.dumps(report, ensure_ascii=False, indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    
     return JSONResponse(content=report)
 
 
