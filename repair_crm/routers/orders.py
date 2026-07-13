@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from config import BASE_DIR, ORDER_STATUSES, ORDER_TYPES, ORDER_FLOW, TIMEZONE_OFFSET
 from database import get_db
-from helpers import _audit, _user_context, _paginate, _recalc_total
+from helpers import _audit, _user_context, _paginate, _recalc_total, _notify
 from models.user import User
 from models.client import Client
 from models.service import Service
@@ -58,6 +58,7 @@ def orders_page(
     if overdue == "1":
         now = datetime.utcnow() + TIMEZONE_OFFSET
         base_q = base_q.where(
+            Order.order_type == "print",
             Order.deadline < now.replace(hour=0, minute=0, second=0, microsecond=0),
             Order.status != "closed"
         )
@@ -271,6 +272,12 @@ def add_order_part(
     session.commit()
     _recalc_total(session, order_id)
     _audit("add_part", "order", order_id, f"+{part.name} x{quantity}", request.state.user, session)
+    if part.min_stock > 0 and part.quantity < part.min_stock:
+        admins = session.execute(
+            select(User).where(User.role.has(name="admin"), User.is_active == True)
+        ).scalars().all()
+        for admin in admins:
+            _notify(admin.id, "Низкий остаток запчасти", f"{part.name}: осталось {part.quantity} шт. (мин. {part.min_stock})", f"/warehouse", session)
     return RedirectResponse(f"/orders/{order_id}", status_code=303)
 
 

@@ -108,7 +108,10 @@
             {% set perms = r.permissions | tojson | safe %}
             {% for pk, pl in [("manage_users","Польз."),("manage_clients","Клиенты"),("manage_services","Услуги"),
                                ("manage_orders","Заказы"),("manage_warehouse","Склад запч."),
-                               ("manage_products","Склад тов."),("view_audit","Аудит")] %}
+                               ("manage_products","Склад тов."),("view_filaments","Пластик"),
+                               ("view_prints","Печать"),("view_attendance","Посещ."),
+                               ("view_schedule","Распис."),("view_tasks","Задачи"),
+                               ("view_chat","Чат"),("view_audit","Аудит")] %}
             {% if pk in perms %}<span class="badge bg-info me-1">{{ pl }}</span>{% endif %}
             {% endfor %}
             {% endif %}
@@ -177,6 +180,12 @@
                    maxlength="100" placeholder="Мастер">
           </div>
         </div>
+        <div class="mb-3">
+          <label class="form-label">Почасовая ставка (₽)</label>
+          <input type="number" name="hourly_rate" id="user_hourly_rate" class="form-control"
+                 min="0" step="0.01" placeholder="0" value="0">
+          <div class="form-text">Используется для расчета зарплаты</div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -210,6 +219,12 @@
               ("manage_orders","Управление заказами"),
               ("manage_warehouse","Управление складом запчастей"),
               ("manage_products","Управление складом товаров"),
+              ("view_filaments","Просмотр пластика"),
+              ("view_prints","Просмотр печати"),
+              ("view_attendance","Просмотр посещаемости"),
+              ("view_schedule","Просмотр расписания"),
+              ("view_tasks","Просмотр задач"),
+              ("view_chat","Просмотр чата"),
               ("view_audit","Просмотр аудита"),
             ] %}
             <div class="form-check">
@@ -252,6 +267,7 @@ function openUserModal(userId) {
     document.getElementById('user_fullname').value = u.full_name;
     document.getElementById('user_inn').value = u.inn || '';
     document.getElementById('user_position').value = u.position || '';
+    document.getElementById('user_hourly_rate').value = u.hourly_rate || 0;
     document.getElementById('user_role').value =
       RDATA.find(function(r) { return r.name === u.role_name; }).id;
   } else {
@@ -265,6 +281,7 @@ function openUserModal(userId) {
     document.getElementById('user_fullname').value = '';
     document.getElementById('user_inn').value = '';
     document.getElementById('user_position').value = '';
+    document.getElementById('user_hourly_rate').value = 0;
     document.getElementById('user_role').value = RDATA[0].id;
   }
   new bootstrap.Modal(document.getElementById('userModal')).show();

@@ -55,6 +55,12 @@ AVAILABLE_PERMISSIONS = [
     ("manage_orders", "Управление заказами"),
     ("manage_warehouse", "Управление складом запчастей"),
     ("manage_products", "Управление складом товаров"),
+    ("view_filaments", "Просмотр пластика"),
+    ("view_prints", "Просмотр печати"),
+    ("view_attendance", "Просмотр посещаемости"),
+    ("view_schedule", "Просмотр расписания"),
+    ("view_tasks", "Просмотр задач"),
+    ("view_chat", "Просмотр чата"),
     ("view_audit", "Просмотр аудита"),
 ]
 

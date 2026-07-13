@@ -12,11 +12,12 @@
 {% if clients %}
 <div class="d-md-none">
   {% for c in clients %}
-  <div class="card shadow-sm mb-2" style="border-left: 4px solid #0d6efd">
+  <div class="card shadow-sm mb-2" style="border-left: 4px solid {% if c.tag == 'проблемный' %}#dc3545{% elif c.tag == 'постоянный' %}#198754{% else %}#0d6efd{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex justify-content-between align-items-start">
         <div style="min-width:0;flex:1" onclick="location.href='/clients/{{ c.id }}/orders'">
           <strong style="font-size:0.95rem">{{ c.full_name }}</strong>
+          {% if c.tag %}<span class="badge bg-{{ 'danger' if c.tag == 'проблемный' else 'success' if c.tag == 'постоянный' else 'secondary' }} ms-1" style="font-size:0.7rem">{{ c.tag }}</span>{% endif %}
           <div class="text-muted" style="font-size:0.85rem">
             <a href="tel:{{ c.phone }}" class="text-decoration-none text-muted">
               <i class="bi bi-telephone me-1"></i>{{ c.phone }}
@@ -44,6 +45,7 @@
     <thead class="table-light">
       <tr>
         <th>ФИО</th>
+        <th>Метка</th>
         <th>Телефон</th>
         <th>Комментарий</th>
         <th style="width:90px">Заказов</th>
@@ -55,6 +57,9 @@
       <tr>
         <td>
           <a href="/clients/{{ c.id }}/orders" class="text-decoration-none"><strong>{{ c.full_name }}</strong></a>
+        </td>
+        <td>
+          {% if c.tag %}<span class="badge bg-{{ 'danger' if c.tag == 'проблемный' else 'success' if c.tag == 'постоянный' else 'secondary' }}">{{ c.tag }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td><a href="tel:{{ c.phone }}" class="text-decoration-none">{{ c.phone }}</a></td>
         <td class="text-muted text-truncate-cell">{{ c.comment or '—' }}</td>
@@ -104,6 +109,14 @@
                  maxlength="50" required autocomplete="off">
         </div>
         <div class="mb-3">
+          <label class="form-label">Метка</label>
+          <select name="tag" id="client_tag" class="form-select">
+            <option value="">— нет —</option>
+            <option value="постоянный">Постоянный</option>
+            <option value="проблемный">Проблемный</option>
+          </select>
+        </div>
+        <div class="mb-3">
           <label class="form-label">Комментарий</label>
           <textarea name="comment" id="client_comment" class="form-control" rows="3"></textarea>
         </div>
@@ -132,12 +145,14 @@ function openClientModal(clientId) {
     document.getElementById('client_name').value = c.full_name;
     document.getElementById('client_phone').value = c.phone;
     document.getElementById('client_comment').value = c.comment;
+    document.getElementById('client_tag').value = c.tag || '';
   } else {
     m.textContent = 'Новый клиент';
     f.action = '/clients';
     document.getElementById('client_name').value = '';
     document.getElementById('client_phone').value = '';
     document.getElementById('client_comment').value = '';
+    document.getElementById('client_tag').value = '';
   }
   new bootstrap.Modal(document.getElementById('clientModal')).show();
 }

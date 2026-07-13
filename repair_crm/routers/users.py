@@ -35,6 +35,7 @@ def users_page(request: Request, session: Session = Depends(get_db)):
         "user_data": [{"id": x.id, "username": x.username, "full_name": x.full_name,
                         "role_name": x.role.name, "is_active": x.is_active,
                         "inn": x.inn or "", "position": x.position or "",
+                        "hourly_rate": x.hourly_rate or 0,
                         "last_login": (x.last_login + TIMEZONE_OFFSET).strftime("%d.%m.%Y %H:%M") if x.last_login else ""}
                        for x in users],
         "roles_data": [{"id": r.id, "name": r.name, "permissions": r.permissions} for r in roles],
@@ -116,6 +117,7 @@ def create_user(
     role_id: int = Form(...),
     inn: str = Form(""),
     position: str = Form(""),
+    hourly_rate: float = Form(0),
     session: Session = Depends(get_db),
 ):
     if request.state.user.role.name != "admin":
@@ -133,6 +135,7 @@ def create_user(
         role_id=role_id,
         inn=inn.strip(),
         position=position.strip(),
+        hourly_rate=hourly_rate,
     ))
     session.commit()
     _audit("create", "user", None, full_name.strip(), request.state.user, session)
@@ -146,6 +149,7 @@ def update_user(
     role_id: int = Form(...),
     inn: str = Form(""),
     position: str = Form(""),
+    hourly_rate: float = Form(0),
     password: str = Form(""),
     session: Session = Depends(get_db),
 ):
@@ -158,6 +162,7 @@ def update_user(
     u.role_id = role_id
     u.inn = inn.strip()
     u.position = position.strip()
+    u.hourly_rate = hourly_rate
     if password.strip():
         pw = _validate_password(password)
         u.password_hash = _hash_password(pw)

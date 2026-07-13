@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% set current_page = "salary" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Зарплата</h4>
+  <div class="d-flex gap-2 align-items-center">
+    <a href="/salary?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
+    <span class="fw-semibold">{{ base_month | month_ru }} {{ base_month.year }}</span>
+    <a href="/salary?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4 border-success border-2 rounded-3">
+  <div class="card-body text-center py-4">
+    <div class="text-muted mb-1">Фонд оплаты труда за {{ base_month | month_ru }}</div>
+    <div class="fs-1 fw-bold text-success">{{ total_fund | round(0) | int }} ₽</div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-light fw-semibold"><i class="bi bi-people me-1"></i>Расчет по сотрудникам</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Сотрудник</th>
+            <th class="text-center">Дней</th>
+            <th class="text-end">Часов</th>
+            <th class="text-end">Ставка/час</th>
+            <th class="text-end">Итого</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in salary_data %}
+          <tr>
+            <td>
+              <strong>{{ s.user.full_name }}</strong>
+              <div class="text-muted small">{{ s.user.position or s.user.role.name }}</div>
+            </td>
+            <td class="text-center">
+              {% if s.total_days > 0 %}
+              <span class="badge bg-info">{{ s.total_days }}</span>
+              {% else %}
+              <span class="text-muted">0</span>
+              {% endif %}
+            </td>
+            <td class="text-end fw-bold">
+              {% if s.total_hours > 0 %}
+              {{ s.total_hours | round(1) }}
+              {% else %}
+              <span class="text-muted">0</span>
+              {% endif %}
+            </td>
+            <td class="text-end text-muted">
+              {% if s.hourly_rate > 0 %}
+              {{ s.hourly_rate | round(0) | int }} ₽
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if s.total_salary > 0 %}
+              <strong class="text-success fs-5">{{ s.total_salary | round(0) | int }} ₽</strong>
+              {% else %}
+              <span class="text-muted">0 ₽</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+          <tr class="fw-bold">
+            <td colspan="4" class="text-end">Итого:</td>
+            <td class="text-end text-success fs-5">{{ total_fund | round(0) | int }} ₽</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if not salary_data %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-cash-stack fs-1"></i>
+  <p class="mt-2">Нет данных за этот месяц</p>
+</div>
+{% endif %}
+
+<div class="alert alert-info mt-3 small" role="alert">
+  <i class="bi bi-info-circle me-1"></i>
+  Зарплата рассчитывается на основе отработанных часов и почасовой ставки каждого сотрудника.
+  Ставку можно настроить в разделе <a href="/users" class="alert-link">Пользователи</a>.
+</div>
+{% endblock %}

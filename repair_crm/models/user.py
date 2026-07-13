@@ -23,6 +23,7 @@ class User(Base):
     role = relationship("Role")
     inn: Mapped[str] = mapped_column(String(20), default="")
     position: Mapped[str] = mapped_column(String(100), default="")
+    hourly_rate: Mapped[float] = mapped_column(default=0.0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, default=None, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

@@ -142,6 +142,13 @@ def _user_context(request: Request, session: Session | None = None) -> dict:
         "can_manage_orders": _has_permission(u, "manage_orders"),
         "can_manage_warehouse": _has_permission(u, "manage_warehouse"),
         "can_manage_products": _has_permission(u, "manage_products"),
+        "can_manage_services": _has_permission(u, "manage_services"),
+        "can_view_filaments": _has_permission(u, "manage_products"),
+        "can_view_prints": _has_permission(u, "manage_products"),
+        "can_view_attendance": True,
+        "can_view_schedule": True,
+        "can_view_tasks": True,
+        "can_view_chat": True,
         "unread_count": unread,
     }
 
@@ -156,7 +163,7 @@ def _paginate(session, q, page: int):
 
 
 def _client_dict(c: Client) -> dict:
-    return {"id": c.id, "full_name": c.full_name, "phone": c.phone, "comment": c.comment or ""}
+    return {"id": c.id, "full_name": c.full_name, "phone": c.phone, "comment": c.comment or "", "tag": c.tag or ""}
 
 
 def _recalc_total(session: Session, order_id: int):

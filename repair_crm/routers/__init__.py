@@ -17,11 +17,12 @@ from routers.export import router as export_router
 from routers.search import router as search_router
 from routers.api import router as api_router
 from routers.reports import router as reports_router
+from routers.salary import router as salary_router
 
 __all__ = [
     'auth_router', 'dashboard_router', 'clients_router', 'services_router',
     'orders_router', 'warehouse_router', 'products_router', 'filaments_router',
     'prints_router', 'attendance_router', 'schedule_router', 'chat_router',
     'tasks_router', 'users_router', 'audit_router', 'export_router',
-    'search_router', 'api_router', 'reports_router'
+    'search_router', 'api_router', 'reports_router', 'salary_router'
 ]

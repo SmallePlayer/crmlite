@@ -201,30 +201,32 @@
       {% endif %}
 
       <ul class="nav flex-column flex-grow-1">
-        {% set nav_items = [
-          ('index',     '/',          'speedometer2',     'Главная'),
-          ('clients',   '/clients',   'people',           'Клиенты'),
-          ('services',  '/services',  'tools',            'Услуги'),
-          ('orders',    '/orders',    'clipboard-check',  'Заказы'),
-          ('warehouse', '/warehouse', 'box-seam',         'Склад запчастей'),
-          ('products',  '/products',  'boxes',            'Склад товаров'),
-          ('filaments', '/filaments', 'droplet',          'Пластик'),
-          ('prints',    '/prints',    'printer',          'Печать'),
-          ('attendance','/attendance','person-check',     'Посещаемость'),
-          ('schedule',  '/schedule',  'calendar2-week',   'Расписание'),
-          ('tasks',     '/tasks',     'check2-square',    'Задачи'),
-          ('chat',      '/chat',       'chat-dots',        'Чат'),
-        ] %}
+        {% set nav_items = [] %}
+        {% set _ = nav_items.append(('index', '/', 'speedometer2', 'Главная', True)) %}
+        {% if can_manage_clients %}{% set _ = nav_items.append(('clients', '/clients', 'people', 'Клиенты', True)) %}{% endif %}
+        {% if can_manage_services %}{% set _ = nav_items.append(('services', '/services', 'tools', 'Услуги', True)) %}{% endif %}
+        {% if can_manage_orders %}{% set _ = nav_items.append(('orders', '/orders', 'clipboard-check', 'Заказы', True)) %}{% endif %}
+        {% if can_manage_warehouse %}{% set _ = nav_items.append(('warehouse', '/warehouse', 'box-seam', 'Склад запчастей', True)) %}{% endif %}
+        {% if can_manage_products %}{% set _ = nav_items.append(('products', '/products', 'boxes', 'Склад товаров', True)) %}{% endif %}
+        {% if can_view_filaments %}{% set _ = nav_items.append(('filaments', '/filaments', 'droplet', 'Пластик', True)) %}{% endif %}
+        {% if can_view_prints %}{% set _ = nav_items.append(('prints', '/prints', 'printer', 'Печать', True)) %}{% endif %}
+        {% if can_view_attendance %}{% set _ = nav_items.append(('attendance', '/attendance', 'person-check', 'Посещаемость', True)) %}{% endif %}
+        {% if can_view_schedule %}{% set _ = nav_items.append(('schedule', '/schedule', 'calendar2-week', 'Расписание', True)) %}{% endif %}
+        {% if can_view_tasks %}{% set _ = nav_items.append(('tasks', '/tasks', 'check2-square', 'Задачи', True)) %}{% endif %}
+        {% if can_view_chat %}{% set _ = nav_items.append(('chat', '/chat', 'chat-dots', 'Чат', True)) %}{% endif %}
         {% if is_admin %}
-        {% set _ = nav_items.append(('users', '/users', 'shield-lock', 'Пользователи')) %}
-        {% set _ = nav_items.append(('audit', '/audit', 'journal-text', 'Аудит')) %}
-        {% set _ = nav_items.append(('reports', '/reports', 'graph-up', 'Отчёты')) %}
+        {% set _ = nav_items.append(('salary', '/salary', 'cash-stack', 'Зарплата', True)) %}
+        {% set _ = nav_items.append(('users', '/users', 'shield-lock', 'Пользователи', True)) %}
+        {% set _ = nav_items.append(('audit', '/audit', 'journal-text', 'Аудит', True)) %}
+        {% set _ = nav_items.append(('reports', '/reports', 'graph-up', 'Отчёты', True)) %}
         {% endif %}
-        {% for page, url, icon, label in nav_items %}
+        {% for page, url, icon, label, show in nav_items %}
+        {% if show %}
         <li class="nav-item">
           <a class="nav-link {{ 'active' if current_page == page }}"
              href="{{ url }}"><i class="bi bi-{{ icon }} me-2"></i>{{ label }}</a>
         </li>
+        {% endif %}
         {% endfor %}
       </ul>
 
@@ -281,18 +283,24 @@
     <i class="bi bi-house-door"></i>
     <span>Главная</span>
   </a>
+  {% if can_manage_orders %}
   <a href="/orders" class="bottom-nav-item {{ 'active' if current_page == 'orders' }}">
     <i class="bi bi-clipboard-check"></i>
     <span>Заказы</span>
   </a>
+  {% endif %}
+  {% if can_manage_clients %}
   <a href="/clients" class="bottom-nav-item {{ 'active' if current_page == 'clients' }}">
     <i class="bi bi-people"></i>
     <span>Клиенты</span>
   </a>
+  {% endif %}
+  {% if can_view_chat %}
   <a href="/chat" class="bottom-nav-item {{ 'active' if current_page == 'chat' }}">
     <i class="bi bi-chat-dots"></i>
     <span>Чат</span>
   </a>
+  {% endif %}
   <a href="#" class="bottom-nav-item" onclick="toggleSidebar(); return false;">
     <i class="bi bi-grid-3x3-gap"></i>
     <span>Ещё</span>

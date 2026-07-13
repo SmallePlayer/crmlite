@@ -28,7 +28,7 @@ from routers import (
     orders_router, warehouse_router, products_router, filaments_router,
     prints_router, attendance_router, schedule_router, chat_router,
     tasks_router, users_router, audit_router, export_router,
-    search_router, api_router, reports_router
+    search_router, api_router, reports_router, salary_router
 )
 from services.backup_scheduler import backup_scheduler
 
@@ -123,6 +123,18 @@ async def lifespan(app: FastAPI):
                             ("grams_per_spool", "INTEGER DEFAULT 1000")]:
             try:
                 conn.execute(text(f"ALTER TABLE filaments ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col, dtype in [("tag", "VARCHAR(50) DEFAULT ''")]:
+            try:
+                conn.execute(text(f"ALTER TABLE clients ADD COLUMN {col} {dtype}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col, dtype in [("hourly_rate", "FLOAT DEFAULT 0")]:
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {dtype}"))
                 conn.commit()
             except Exception:
                 pass
@@ -237,6 +249,7 @@ app.include_router(export_router)
 app.include_router(search_router)
 app.include_router(api_router)
 app.include_router(reports_router)
+app.include_router(salary_router)
 
 
 @app.get("/health")
