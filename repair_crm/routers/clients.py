@@ -44,7 +44,13 @@ def create_client(
     comment: str = Form(""),
     session: Session = Depends(get_db),
 ):
-    c = Client(full_name=full_name.strip(), phone=_format_phone(phone), comment=comment.strip())
+    formatted_phone = _format_phone(phone)
+    existing = session.execute(
+        select(Client).where(Client.phone == formatted_phone)
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, f"Клиент с таким телефоном уже существует: {existing.full_name}")
+    c = Client(full_name=full_name.strip(), phone=formatted_phone, comment=comment.strip())
     session.add(c)
     session.commit()
     _audit("create", "client", c.id, c.full_name, request.state.user, session)
@@ -62,8 +68,14 @@ def update_client(
     c = session.get(Client, client_id)
     if not c:
         raise HTTPException(404)
+    formatted_phone = _format_phone(phone)
+    existing = session.execute(
+        select(Client).where(Client.phone == formatted_phone, Client.id != client_id)
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, f"Клиент с таким телефоном уже существует: {existing.full_name}")
     c.full_name = full_name.strip()
-    c.phone = _format_phone(phone)
+    c.phone = formatted_phone
     c.comment = comment.strip()
     session.commit()
     _audit("update", "client", c.id, c.full_name, request.state.user, session)

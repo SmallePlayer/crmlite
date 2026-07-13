@@ -27,6 +27,7 @@ def orders_page(
     date_from: str = Query(""),
     date_to: str = Query(""),
     client: str = Query(""),
+    overdue: str = Query(""),
     page: int = Query(1),
     session: Session = Depends(get_db),
 ):
@@ -54,6 +55,12 @@ def orders_page(
     if client.strip():
         like = f"%{client.strip()}%"
         base_q = base_q.where(Order.client.has(Client.full_name.ilike(like)))
+    if overdue == "1":
+        now = datetime.utcnow() + TIMEZONE_OFFSET
+        base_q = base_q.where(
+            Order.deadline < now.replace(hour=0, minute=0, second=0, microsecond=0),
+            Order.status != "closed"
+        )
 
     q = base_q.order_by(desc(Order.created_at))
     if sort == "oldest":
@@ -81,7 +88,7 @@ def orders_page(
         "current_sort": sort,
         "counts": counts, "page": page, "pages": pages, "total": total,
         "date_from": date_from, "date_to": date_to, "client_filter": client.strip(),
-        "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES, "timedelta": timedelta,
+        "overdue": overdue, "ORDER_STATUSES": ORDER_STATUSES, "ORDER_TYPES": ORDER_TYPES, "timedelta": timedelta,
         "now": datetime.utcnow() + TIMEZONE_OFFSET,
     })
 
@@ -299,6 +306,8 @@ def close_order(order_id: int, request: Request, session: Session = Depends(get_
     order = session.get(Order, order_id)
     if not order or order.status == "closed":
         raise HTTPException(400)
+    if not order.items and not order.parts:
+        raise HTTPException(400, "Нельзя закрыть заказ без услуг или запчастей")
     _recalc_total(session, order_id)
     order = session.get(Order, order_id)
     order.status = "closed"
@@ -414,15 +423,24 @@ def toggle_confirm(order_id: int, request: Request, session: Session = Depends(g
 @router.post("/orders/batch-close")
 def batch_close_orders(request: Request, ids: str = Form(""), session: Session = Depends(get_db)):
     closed = 0
+    skipped = 0
     for oid in [int(x) for x in ids.split(",") if x.strip().isdigit()]:
         order = session.get(Order, oid)
         if order and order.status != "closed":
+            if not order.items and not order.parts:
+                skipped += 1
+                continue
+            _recalc_total(session, oid)
+            order = session.get(Order, oid)
             order.status = "closed"
             order.closed_at = datetime.utcnow()
             closed += 1
     session.commit()
     if closed > 0:
-        _audit("batch_close", "order", None, f"Закрыто {closed} заказов", request.state.user, session)
+        msg = f"Закрыто {closed} заказов"
+        if skipped > 0:
+            msg += f", пропущено {skipped} (нет услуг/запчастей)"
+        _audit("batch_close", "order", None, msg, request.state.user, session)
     return RedirectResponse("/orders", status_code=303)
 
 
@@ -432,15 +450,16 @@ def batch_delete_orders(request: Request, ids: str = Form(""), session: Session 
     for oid in [int(x) for x in ids.split(",") if x.strip().isdigit()]:
         order = session.get(Order, oid)
         if order:
-            for op in order.parts:
-                part = session.get(Part, op.part_id)
-                if part:
-                    part.quantity += op.quantity
-                    session.add(StockMovement(
-                        part_id=op.part_id, type="in", quantity=op.quantity,
-                        price_per_unit=op.price,
-                        reason=f"Возврат: удаление заказа #{oid}",
-                    ))
+            if order.status != "closed":
+                for op in order.parts:
+                    part = session.get(Part, op.part_id)
+                    if part:
+                        part.quantity += op.quantity
+                        session.add(StockMovement(
+                            part_id=op.part_id, type="in", quantity=op.quantity,
+                            price_per_unit=op.price,
+                            reason=f"Возврат: удаление заказа #{oid}",
+                        ))
             session.delete(order)
             deleted += 1
     session.commit()
@@ -470,15 +489,16 @@ def delete_order(order_id: int, request: Request, session: Session = Depends(get
     order = session.get(Order, order_id)
     if not order:
         raise HTTPException(404)
-    for op in order.parts:
-        part = session.get(Part, op.part_id)
-        if part:
-            part.quantity += op.quantity
-            session.add(StockMovement(
-                part_id=op.part_id, type="in", quantity=op.quantity,
-                price_per_unit=op.price,
-                reason=f"Возврат: удаление заказа #{order_id}",
-            ))
+    if order.status != "closed":
+        for op in order.parts:
+            part = session.get(Part, op.part_id)
+            if part:
+                part.quantity += op.quantity
+                session.add(StockMovement(
+                    part_id=op.part_id, type="in", quantity=op.quantity,
+                    price_per_unit=op.price,
+                    reason=f"Возврат: удаление заказа #{order_id}",
+                ))
     session.delete(order)
     session.commit()
     _audit("delete", "order", order_id, f"#{order_id}", request.state.user, session)

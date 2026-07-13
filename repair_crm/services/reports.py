@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
 from sqlalchemy import func, and_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from models import Order, PrintJob, Filament, FilamentMovement, OrderItem, OrderPart, Part, StockMovement
 from models import Client, Service
 from config import TIMEZONE_OFFSET
@@ -277,12 +277,13 @@ class ReportsService:
         
         parts_cost = 0
         if order_ids:
-            order_parts = session.query(OrderPart).filter(
+            order_parts = session.query(OrderPart).options(joinedload(OrderPart.part)).filter(
                 OrderPart.order_id.in_(order_ids)
             ).all()
             
             for op in order_parts:
-                parts_cost += (op.price or 0) * op.quantity
+                purchase_price = op.part.purchase_price if op.part and op.part.purchase_price else (op.price or 0)
+                parts_cost += purchase_price * op.quantity
         
         profit = total_revenue - parts_cost
         

@@ -78,6 +78,7 @@ def create_print_job(
 ):
     u = request.state.user
     if not u: raise HTTPException(403)
+    if grams <= 0: raise HTTPException(400, "Укажите расход пластика")
     f = session.get(Filament, filament_id)
     if not f: raise HTTPException(400, "Пластик не найден")
     if f.quantity < grams: raise HTTPException(400, f"Недостаточно пластика: {f.quantity} г.")
@@ -132,12 +133,19 @@ def edit_print_job(job_id: int, request: Request,
                    session: Session = Depends(get_db)):
     job = session.get(PrintJob, job_id)
     if not job: raise HTTPException(404)
+    if grams <= 0: raise HTTPException(400, "Укажите расход пластика")
     old_grams = job.grams
     old_filament_id = job.filament_id
     new_filament = session.get(Filament, filament_id)
     if not new_filament: raise HTTPException(400, "Пластик не найден")
+
+    if job.status == "fail":
+        effective_current = job.waste_grams
+    else:
+        effective_current = old_grams
+
     if old_filament_id == filament_id:
-        delta = old_grams - grams
+        delta = effective_current - grams
         if delta < 0 and new_filament.quantity < -delta:
             raise HTTPException(400, f"Недостаточно пластика: {new_filament.quantity} г.")
         new_filament.quantity += delta
@@ -148,16 +156,24 @@ def edit_print_job(job_id: int, request: Request,
             session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=-delta,
                           reason=f"Корректировка печати: {name.strip()}"))
     else:
+        if job.status == "fail":
+            return_qty = job.waste_grams
+        else:
+            return_qty = old_grams
         old_f = session.get(Filament, old_filament_id)
         if old_f:
-            old_f.quantity += old_grams
-            session.add(FilamentMovement(filament_id=old_filament_id, type="in", quantity=old_grams,
-                          reason=f"Возврат: {job.name}"))
+            old_f.quantity += return_qty
+            if return_qty > 0:
+                session.add(FilamentMovement(filament_id=old_filament_id, type="in", quantity=return_qty,
+                              reason=f"Возврат: {job.name}"))
         if new_filament.quantity < grams:
             raise HTTPException(400, f"Недостаточно пластика: {new_filament.quantity} г.")
         new_filament.quantity -= grams
         session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=grams,
                       reason=f"Печать: {name.strip()}"))
+
+    if job.status == "fail":
+        job.waste_grams = 0
     job.name = name.strip()
     job.filament_id = filament_id
     job.grams = grams
