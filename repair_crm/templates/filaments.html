@@ -127,6 +127,10 @@ document.getElementById('filamentForm').addEventListener('submit', function(e) {
       alert('Укажите тип пластика');
       return false;
     }
+    var option = document.createElement('option');
+    option.value = customVal;
+    option.text = customVal;
+    sel.appendChild(option);
     sel.value = customVal;
   }
 });
