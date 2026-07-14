@@ -282,7 +282,7 @@ class ReportsService:
             ).all()
             
             for op in order_parts:
-                purchase_price = op.part.purchase_price if op.part and op.part.purchase_price else (op.price or 0)
+                purchase_price = op.part.purchase_price if op.part and op.part.purchase_price and op.part.purchase_price > 0 else 0
                 parts_cost += purchase_price * op.quantity
         
         profit = total_revenue - parts_cost
