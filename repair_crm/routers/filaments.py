@@ -60,7 +60,7 @@ def edit_filament(
     type: str = Form("PLA"),
     color: str = Form(""),
     grams_per_spool: int = Form(1000),
-    min_stock: int = Form(0),
+    min_stock: int = Form(None),
     session: Session = Depends(get_db),
 ):
     f = session.get(Filament, fid)
@@ -71,7 +71,8 @@ def edit_filament(
     f.color = color.strip()
     f.type = type
     f.grams_per_spool = grams_per_spool
-    f.min_stock = min_stock
+    if min_stock is not None:
+        f.min_stock = min_stock
     session.commit()
     _audit("update", "filament", f.id, f.name, request.state.user, session)
     return RedirectResponse("/filaments", status_code=303)
