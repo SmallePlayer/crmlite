@@ -25,4 +25,7 @@ class PrintJob(Base):
     status: Mapped[str] = mapped_column(String(10), default="pending")
     waste_grams: Mapped[int] = mapped_column(Integer, default=0)
     printer_name: Mapped[str] = mapped_column(String(200), default="")
+    weight_good: Mapped[int] = mapped_column(Integer, default=0)
+    weight_waste: Mapped[int] = mapped_column(Integer, default=0)
+    slicer_estimate: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

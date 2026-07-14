@@ -13,9 +13,9 @@
 {% if total_jobs > 0 %}
 <div class="row g-2 mb-3">
   <div class="col-6 col-sm-3"><div class="card border-primary bg-primary bg-opacity-10 text-center py-2"><div class="text-primary fw-bold fs-5">{{ total_jobs }}</div><small class="text-muted">Всего печатей</small></div></div>
-  <div class="col-6 col-sm-3"><div class="card border-success bg-success bg-opacity-10 text-center py-2"><div class="text-success fw-bold fs-5">{{ success_grams | int }}</div><small class="text-muted">Успешно, грамм</small></div></div>
-  <div class="col-6 col-sm-3"><div class="card border-danger bg-danger bg-opacity-10 text-center py-2"><div class="text-danger fw-bold fs-5">{{ fail_grams | int }}</div><small class="text-muted">Брак, грамм</small></div></div>
-  <div class="col-6 col-sm-3"><div class="card border-warning bg-warning bg-opacity-10 text-center py-2"><div class="text-warning-emphasis fw-bold fs-5">{{ waste_grams_total | int }}</div><small class="text-muted">Потери, грамм</small></div></div>
+  <div class="col-6 col-sm-3"><div class="card border-success bg-success bg-opacity-10 text-center py-2"><div class="text-success fw-bold fs-5">{{ success_grams | int }} г</div><small class="text-muted">Успешно</small></div></div>
+  <div class="col-6 col-sm-3"><div class="card border-danger bg-danger bg-opacity-10 text-center py-2"><div class="text-danger fw-bold fs-5">{{ fail_grams | int }} г</div><small class="text-muted">Брак</small></div></div>
+  <div class="col-6 col-sm-3"><div class="card border-warning bg-warning bg-opacity-10 text-center py-2"><div class="text-warning-emphasis fw-bold fs-5">{{ waste_grams_total | int }} г</div><small class="text-muted">Потери</small></div></div>
 </div>
 {% endif %}
 
@@ -23,34 +23,32 @@
 <div class="table-responsive">
   <table class="table table-hover align-middle" style="font-size:0.82rem">
     <thead class="table-light">
-      <tr><th>Название</th><th>Пластик</th><th class="hide-mobile">Принтер</th><th class="text-end">Грамм</th><th class="text-end hide-mobile">Часов</th><th>Результат</th><th class="hide-mobile">Кто</th><th class="hide-mobile">Дата</th><th></th></tr>
+      <tr><th>Название</th><th>Пластик</th><th class="hide-mobile">Принтер</th><th class="text-end">Деталь</th><th class="text-end">Брак</th><th>Результат</th><th class="hide-mobile">Кто</th><th class="hide-mobile">Дата</th><th></th></tr>
     </thead>
     <tbody>
       {% for j in jobs %}
       <tr>
-        <td><strong>{{ j.name }}</strong></td>
+        <td><strong>{{ j.name }}</strong>{% if j.slicer_estimate > 0 %}<br><small class="text-muted">Слайсер: {{ j.slicer_estimate }} г</small>{% endif %}</td>
         <td>
           <span class="badge bg-primary me-1">{{ j.filament.type }}</span>
           {{ j.filament.name }}
           {% if j.filament.color %}<small class="text-muted d-block">{{ j.filament.color }}</small>{% endif %}
-          {% if j.filament.article %}<small class="text-muted"><code>{{ j.filament.article }}</code></small>{% endif %}
         </td>
         <td class="hide-mobile">{{ j.printer_name or '—' }}</td>
-        <td class="text-end">{{ j.grams }} г.</td>
-        <td class="text-end hide-mobile">{{ j.hours }} ч.</td>
+        <td class="text-end">{% if j.status != 'pending' %}{{ j.weight_good }} г{% else %}—{% endif %}</td>
+        <td class="text-end">{% if j.status == 'fail' %}<span class="text-danger">{{ j.weight_waste }} г</span>{% else %}—{% endif %}</td>
         <td>
           {% if j.status == 'success' %}<span class="badge bg-success">Успех</span>
-          {% elif j.status == 'fail' %}<span class="badge bg-danger" title="Брак: {{ j.waste_grams }} г.">Брак</span>
-          {% if j.waste_grams > 0 %}<small class="text-muted ms-1">{{ j.waste_grams }} г.</small>{% endif %}
+          {% elif j.status == 'fail' %}<span class="badge bg-danger">Брак</span>
           {% elif j.status == 'pending' %}<span class="badge bg-warning text-dark">В процессе</span>
           {% endif %}
         </td>
         <td class="hide-mobile">{{ j.creator.full_name }}</td>
         <td class="text-muted small hide-mobile">{{ j.created_at | dt }}</td>
         <td class="text-nowrap">
-          <button class="btn btn-outline-secondary btn-icon me-1" onclick="openEditModal({{ j.id }},'{{ j.name|e }}',{{ j.filament_id }},{{ j.grams }},{{ j.hours }},'{{ j.printer_name|e }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-outline-secondary btn-icon me-1" onclick="openEditModal({{ j.id }},'{{ j.name|e }}',{{ j.filament_id }},{{ j.hours }},'{{ j.printer_name|e }}',{{ j.slicer_estimate }})"><i class="bi bi-pencil"></i></button>
           {% if j.status == 'pending' %}
-          <button class="btn btn-outline-secondary btn-icon me-1" onclick="openResultModal({{ j.id }},'{{ j.status }}',{{ j.waste_grams }})"><i class="bi bi-flag"></i></button>
+          <button class="btn btn-outline-success btn-icon me-1" onclick="openResultModal({{ j.id }})"><i class="bi bi-flag"></i></button>
           {% endif %}
           <form method="post" action="/prints/{{ j.id }}/delete" class="d-inline" data-confirm="Аннулировать?"><button class="btn btn-outline-danger btn-icon"><i class="bi bi-x-lg"></i></button></form>
         </td>
@@ -75,19 +73,23 @@
         {% if printers %}<select name="printer_name" class="form-select"><option value="">— Выбрать —</option>{% for p in printers %}<option value="{{ p.name }}">{{ p.name }}</option>{% endfor %}</select>
         {% else %}<input type="text" name="printer_name" class="form-control" placeholder="Название принтера...">{% endif %}
       </div>
-      <div class="row"><div class="col-6 mb-3"><label class="form-label">Грамм</label><input type="number" name="grams" class="form-control" min="1" value="50"></div><div class="col-6 mb-3"><label class="form-label">Часов</label><input type="number" name="hours" class="form-control" min="0" step="0.5" value="1"></div></div>
+      <div class="mb-3"><label class="form-label">Оценка из слайсера (г)</label><input type="number" name="slicer_estimate" class="form-control" min="0" value="0" placeholder="Необязательно"></div>
+      <div class="mb-3"><label class="form-label">Часов</label><input type="number" name="hours" class="form-control" min="0" step="0.5" value="1"></div>
+      <div class="alert alert-info small mb-0"><i class="bi bi-info-circle me-1"></i>Вес детали и брака укажите после печати</div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Записать</button></div></form></div></div>
 
 {# Result Modal #}
-<div class="modal fade" id="resultModal" tabindex="-1"><div class="modal-dialog modal-sm">
+<div class="modal fade" id="resultModal" tabindex="-1"><div class="modal-dialog">
   <form class="modal-content" id="resultForm" method="post" action="/prints/0/result">
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-flag me-1"></i>Результат печати</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
       <div class="mb-3"><label class="form-label">Статус</label>
-        <select name="status" class="form-select" id="resultStatus" onchange="document.getElementById('wasteRow').style.display = this.value==='fail'?'':'none'">
+        <select name="status" class="form-select" id="resultStatus" onchange="toggleWeightFields()">
           <option value="success">Успешно</option><option value="fail">Брак</option></select></div>
-      <div class="mb-3" id="wasteRow" style="display:none"><label class="form-label">Грамм в брак</label><input type="number" name="waste_grams" class="form-control" min="0" value="0"></div>
+      <div class="mb-3"><label class="form-label">Вес годной детали (г) <span class="text-danger">*</span></label><input type="number" name="weight_good" id="weightGood" class="form-control" min="0" value="0" required></div>
+      <div class="mb-3" id="wasteRow"><label class="form-label">Вес брака/поддержек (г)</label><input type="number" name="weight_waste" id="weightWaste" class="form-control" min="0" value="0"></div>
+      <div class="alert alert-info small mb-0"><i class="bi bi-info-circle me-1"></i>Взвесьте деталь и брак отдельно. При успехе учитывается только вес детали, при браке — всё.</div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
   </form>
@@ -104,7 +106,8 @@
         {% if printers %}<select name="printer_name" id="editPrintPrinter" class="form-select"><option value="">— —</option>{% for p in printers %}<option value="{{ p.name }}">{{ p.name }}</option>{% endfor %}</select>
         {% else %}<input type="text" name="printer_name" id="editPrintPrinter" class="form-control">{% endif %}
       </div>
-      <div class="row"><div class="col-6 mb-3"><label class="form-label">Грамм</label><input type="number" name="grams" id="editPrintGrams" class="form-control" min="1"></div><div class="col-6 mb-3"><label class="form-label">Часов</label><input type="number" name="hours" id="editPrintHours" class="form-control" min="0" step="0.5"></div></div>
+      <div class="mb-3"><label class="form-label">Оценка из слайсера (г)</label><input type="number" name="slicer_estimate" id="editPrintSlicer" class="form-control" min="0" value="0"></div>
+      <div class="mb-3"><label class="form-label">Часов</label><input type="number" name="hours" id="editPrintHours" class="form-control" min="0" step="0.5"></div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
   </form>
@@ -147,19 +150,30 @@ function showFilamentInfo() {
     document.getElementById('filInfo').textContent = parts.join(' · ');
   } else document.getElementById('filInfo').textContent = '';
 }
-function openResultModal(jobId, status, waste) {
+function toggleWeightFields() {
+  var status = document.getElementById('resultStatus').value;
+  var wasteRow = document.getElementById('wasteRow');
+  if (status === 'fail') {
+    wasteRow.style.display = '';
+  } else {
+    wasteRow.style.display = 'none';
+    document.getElementById('weightWaste').value = 0;
+  }
+}
+function openResultModal(jobId) {
   document.getElementById('resultForm').action = '/prints/'+jobId+'/result';
-  document.getElementById('resultStatus').value = status;
-  document.getElementById('wasteRow').style.display = status==='fail'?'':'none';
-  if (waste) document.querySelector('[name=waste_grams]').value = waste;
+  document.getElementById('resultStatus').value = 'success';
+  document.getElementById('weightGood').value = 0;
+  document.getElementById('weightWaste').value = 0;
+  toggleWeightFields();
   new bootstrap.Modal(document.getElementById('resultModal')).show();
 }
-function openEditModal(jobId, name, filamentId, grams, hours, printer) {
+function openEditModal(jobId, name, filamentId, hours, printer, slicer) {
   document.getElementById('editPrintForm').action = '/prints/'+jobId+'/edit';
   document.getElementById('editPrintName').value = name;
   document.getElementById('editPrintFilament').value = filamentId;
-  document.getElementById('editPrintGrams').value = grams;
   document.getElementById('editPrintHours').value = hours;
+  document.getElementById('editPrintSlicer').value = slicer || 0;
   var psel = document.getElementById('editPrintPrinter');
   if (psel.tagName === 'SELECT') {
     for (var i = 0; i < psel.options.length; i++) {

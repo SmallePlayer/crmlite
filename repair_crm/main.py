@@ -83,7 +83,10 @@ async def lifespan(app: FastAPI):
                 pass
         for col, dtype in [("status", "VARCHAR(10) DEFAULT 'success'"),
                             ("waste_grams", "INTEGER DEFAULT 0"),
-                            ("printer_name", "VARCHAR(200) DEFAULT ''")]:
+                            ("printer_name", "VARCHAR(200) DEFAULT ''"),
+                            ("weight_good", "INTEGER DEFAULT 0"),
+                            ("weight_waste", "INTEGER DEFAULT 0"),
+                            ("slicer_estimate", "INTEGER DEFAULT 0")]:
             try:
                 conn.execute(text(f"ALTER TABLE print_jobs ADD COLUMN {col} {dtype}"))
                 conn.commit()
