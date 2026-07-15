@@ -43,9 +43,6 @@ def print_jobs_page(request: Request, page: int = Query(1), session: Session = D
     filaments = session.execute(
         select(Filament).order_by(Filament.name)
     ).scalars().all()
-    printers = session.execute(
-        select(Printer).order_by(Printer.name)
-    ).scalars().all()
     all_jobs = session.execute(
         select(PrintJob).order_by(desc(PrintJob.created_at)).limit(1000)
     ).scalars().all()
@@ -58,7 +55,7 @@ def print_jobs_page(request: Request, page: int = Query(1), session: Session = D
     waste_grams_total = sum(j.waste_grams for j in all_jobs if j.status == "fail")
     return templates.TemplateResponse(request, "prints.html", {
         **_user_context(request, session),
-        "jobs": jobs, "filaments": filaments, "printers": printers,
+        "jobs": jobs, "filaments": filaments,
         "page": page, "pages": pages, "total": total,
         "total_jobs": total_jobs, "success_jobs": success_jobs, "fail_jobs": fail_jobs,
         "total_grams": total_grams, "success_grams": success_grams,
@@ -69,110 +66,29 @@ def print_jobs_page(request: Request, page: int = Query(1), session: Session = D
 @router.post("/prints")
 def create_print_job(
     request: Request,
-    name: str = Form(...),
+    name: str = Form(""),
     filament_id: int = Form(...),
-    hours: float = Form(0),
-    printer_name: str = Form(""),
-    slicer_estimate: int = Form(0),
+    grams: int = Form(...),
+    status: str = Form("success"),
     session: Session = Depends(get_db),
 ):
     u = request.state.user
     if not u: raise HTTPException(403)
+    if grams <= 0: raise HTTPException(400, "Укажите вес")
     f = session.get(Filament, filament_id)
     if not f: raise HTTPException(400, "Пластик не найден")
-    session.add(PrintJob(name=name.strip(), filament_id=filament_id, created_by=u.id, hours=hours,
-                         printer_name=printer_name.strip(), slicer_estimate=slicer_estimate))
+    if f.quantity < grams: raise HTTPException(400, f"Недостаточно пластика: {f.quantity} г.")
+    f.quantity -= grams
+    job_name = name.strip() or ("Брак" if status == "fail" else "Печать")
+    session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=grams,
+                 reason=f"{'Брак' if status == 'fail' else 'Печать'}: {job_name}"))
+    session.add(PrintJob(name=job_name, filament_id=filament_id, created_by=u.id,
+                         grams=grams, status=status,
+                         weight_good=grams if status == "success" else 0,
+                         weight_waste=grams if status == "fail" else 0))
     session.commit()
-    _audit("create", "print_job", None, f"{name.strip()}", u, session)
-    return RedirectResponse("/prints", status_code=303)
-
-
-@router.post("/prints/{job_id}/result")
-def mark_print_result(job_id: int, request: Request,
-                      status: str = Form(...),
-                      weight_good: int = Form(0),
-                      weight_waste: int = Form(0),
-                      session: Session = Depends(get_db)):
-    job = session.get(PrintJob, job_id)
-    if not job: raise HTTPException(404)
-    if job.status != "pending":
-        raise HTTPException(400, "Результат уже отмечен")
-    
-    f = session.get(Filament, job.filament_id)
-    if not f: raise HTTPException(400, "Пластик не найден")
-    
-    job.status = status
-    job.weight_good = weight_good
-    job.weight_waste = weight_waste
-    
-    if status == "success":
-        total_consumed = weight_good
-        job.grams = weight_good
-        job.waste_grams = 0
-        if f.quantity < total_consumed:
-            raise HTTPException(400, f"Недостаточно пластика: {f.quantity} г.")
-        f.quantity -= total_consumed
-        session.add(FilamentMovement(
-            filament_id=job.filament_id, type="out", quantity=total_consumed,
-            reason=f"Печать: {job.name}"
-        ))
-    else:
-        total_consumed = weight_good + weight_waste
-        job.grams = total_consumed
-        job.waste_grams = weight_waste
-        if f.quantity < total_consumed:
-            raise HTTPException(400, f"Недостаточно пластика: {f.quantity} г.")
-        f.quantity -= total_consumed
-        session.add(FilamentMovement(
-            filament_id=job.filament_id, type="out", quantity=total_consumed,
-            reason=f"Брак печати: {job.name}"
-        ))
-    
-    session.commit()
-    _audit("mark_print", "print_job", job_id,
-           f"{job.name} → {'успех' if status == 'success' else 'брак'}" +
-           (f", {total_consumed} г. расход" if status == "success" else f", {weight_good} г. деталь + {weight_waste} г. брак"),
-           request.state.user, session)
-    return RedirectResponse("/prints", status_code=303)
-
-
-@router.post("/prints/{job_id}/edit")
-def edit_print_job(job_id: int, request: Request,
-                   name: str = Form(...),
-                   filament_id: int = Form(...),
-                   hours: float = Form(0),
-                   printer_name: str = Form(""),
-                   slicer_estimate: int = Form(0),
-                   session: Session = Depends(get_db)):
-    job = session.get(PrintJob, job_id)
-    if not job: raise HTTPException(404)
-    
-    old_filament_id = job.filament_id
-    new_filament = session.get(Filament, filament_id)
-    if not new_filament: raise HTTPException(400, "Пластик не найден")
-    
-    if job.status != "pending":
-        if old_filament_id != filament_id:
-            old_consumed = job.grams
-            old_f = session.get(Filament, old_filament_id)
-            if old_f:
-                old_f.quantity += old_consumed
-                session.add(FilamentMovement(filament_id=old_filament_id, type="in", quantity=old_consumed,
-                              reason=f"Корректировка: {job.name}"))
-            new_consumed = job.grams
-            if new_filament.quantity < new_consumed:
-                raise HTTPException(400, f"Недостаточно пластика: {new_filament.quantity} г.")
-            new_filament.quantity -= new_consumed
-            session.add(FilamentMovement(filament_id=filament_id, type="out", quantity=new_consumed,
-                          reason=f"Корректировка: {job.name}"))
-    
-    job.name = name.strip()
-    job.filament_id = filament_id
-    job.hours = hours
-    job.printer_name = printer_name.strip()
-    job.slicer_estimate = slicer_estimate
-    session.commit()
-    _audit("edit_print", "print_job", job_id, f"{job.name}", request.state.user, session)
+    _audit("create", "print_job", None,
+           f"{job_name} {grams}г → {'успех' if status == 'success' else 'брак'}", u, session)
     return RedirectResponse("/prints", status_code=303)
 
 
@@ -180,15 +96,12 @@ def edit_print_job(job_id: int, request: Request,
 def delete_print_job(job_id: int, request: Request, session: Session = Depends(get_db)):
     job = session.get(PrintJob, job_id)
     if not job: raise HTTPException(404)
-    if job.status == "pending":
-        pass
-    else:
-        f = session.get(Filament, job.filament_id)
-        if f:
-            f.quantity += job.grams
-            session.add(FilamentMovement(filament_id=job.filament_id, type="in", quantity=job.grams,
-                         reason=f"Аннулирована печать: {job.name}"))
+    f = session.get(Filament, job.filament_id)
+    if f:
+        f.quantity += job.grams
+        session.add(FilamentMovement(filament_id=job.filament_id, type="in", quantity=job.grams,
+                     reason=f"Аннулирована печать: {job.name}"))
     session.delete(job)
     session.commit()
-    _audit("delete", "print_job", job_id, f"{job.name}", request.state.user, session)
+    _audit("delete", "print_job", job_id, f"{job.name} {job.grams}г", request.state.user, session)
     return RedirectResponse("/prints", status_code=303)
